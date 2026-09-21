@@ -3592,6 +3592,8 @@ body{
       <p class="motivation-text">
         النسخة اللي معاك من التطبيق قديمة، ولازم تاخد النسخة الجديدة عشان تكمل الاستخدام.
       </p>
+      <button class="profile-edit-save" id="forceUpdateReloadBtn" style="width:100%; margin-bottom:12px;">🔄 حدّث دلوقتي</button>
+      <p class="motivation-text" style="font-size:12px; opacity:.8;">لو التحديث مكملش، تواصل معانا:</p>
       <a class="profile-contact-btn profile-contact-messenger" href="https://m.me/6.6.4.ooc" target="_blank" rel="noopener">
         <span>💬</span><span>تواصل عبر Messenger للتحديث</span>
       </a>
@@ -5337,7 +5339,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 2.0;
+const APP_VERSION = 2.1;
 
 const CONFIG = {
   DAILY_LIMIT: 149,         // أقصى عدد أسئلة جديدة/يوم تأخذ نقاط
@@ -10419,6 +10421,33 @@ function setupAuthScreens() {
 
   const logoutRow = document.getElementById("profileLogoutSection");
   if (logoutRow) logoutRow.addEventListener("click", handleLogout);
+
+  // --- زرار "حدّث دلوقتي" في شاشة التحديث الإجباري — بيمسح الكاش القديم ويجيب أحدث نسخة فورًا ---
+  const forceUpdateBtn = document.getElementById("forceUpdateReloadBtn");
+  if (forceUpdateBtn) {
+    forceUpdateBtn.addEventListener("click", async () => {
+      forceUpdateBtn.disabled = true;
+      forceUpdateBtn.textContent = "بيحدّث...";
+      try {
+        if ("caches" in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+        if ("serviceWorker" in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.unregister()));
+        }
+      } catch (e) { /* حتى لو فشل المسح، جرب تحدّث برضو */ }
+      window.location.reload();
+    });
+  }
+
+  // --- نعيد التأكد من الإصدار كل مرة المستخدم يرجع للتطبيق (مش بس أول فتحة) ---
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState === "visible") {
+      await checkForcedUpdate();
+    }
+  });
 
   const guestLoginLink = document.getElementById("profileGuestLoginLink");
   if (guestLoginLink) {
