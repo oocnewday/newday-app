@@ -9,7 +9,7 @@
    بدل الجديدة.
    ============================================================ */
 
-const CACHE_NAME = "newday-cache-v2";
+const CACHE_NAME = "newday-cache-v3";
 
 const APP_SHELL = [
   "./index.html",
@@ -39,7 +39,37 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// 3) كل طلب — استراتيجية Cache-First مع تحديث في الخلفية
+// 3) استقبال إشعار Push حقيقي من السيرفر وعرضه للمستخدم
+self.addEventListener("push", (event) => {
+  let data = { title: "New Day", body: "عندك تحديث جديد!", url: "/" };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch (e) {}
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "./icon-192.png",
+      badge: "./icon-192.png",
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
+// 4) لما المستخدم يدوس على الإشعار — يفتح/يركّز التطبيق
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || "./index.html";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
+    })
+  );
+});
+
+// 5) كل طلب — استراتيجية Cache-First مع تحديث في الخلفية
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   // متلمسش طلبات خارجية (زي Supabase أو الخطوط) — بس ملفات التطبيق نفسه

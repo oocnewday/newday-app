@@ -2619,6 +2619,19 @@ body{
 .profile-row-link{ cursor:pointer; }
 .profile-row-link:active{ background:var(--q-teal-soft); }
 
+.push-enable-btn{
+  display:block; width:100%; margin:10px 0 4px; padding:10px 14px;
+  background:var(--q-teal-soft); border:1px solid var(--q-teal); border-radius:10px;
+  color:var(--q-teal); font-weight:700; font-size:14px; cursor:pointer; font-family:inherit;
+}
+.push-enable-btn.is-on{ background:var(--q-teal); color:#fff; }
+.push-enable-note{ font-size:12px; color:var(--q-ink-soft, #678); margin-bottom:6px; min-height:14px; }
+.name-change-warning{
+  font-size:12.5px; line-height:1.6; color:#8a5a00;
+  background:#fff4d6; border:1px solid #f0d896; border-radius:10px;
+  padding:10px 12px; margin:8px 0;
+}
+
 /* شاشة "تثبيت التطبيق" في الملف الشخصي */
 .install-app-sheet{ padding-bottom:24px; }
 .install-app-intro{
@@ -4449,6 +4462,7 @@ body{
       </div>
       <div class="profile-edit-panel" id="profileNameEdit">
         <input type="text" class="profile-edit-input" id="profileNameInput" maxlength="20" placeholder="مثال: د. أحمد">
+        <div class="name-change-warning">⚠️ تنويه: قدامك فرصة واحدة بس لتغيير اسمك، وهي دي الفرصة الحالية. بمجرد الحفظ، مش هتقدر تغيّره تاني أبدًا — وده للمحافظة على الشفافية بين الكل في المنافسة.</div>
         <div class="admin-auth-warning" id="profileNameEditError"></div>
         <button class="profile-edit-save" id="profileNameSave">حفظ</button>
       </div>
@@ -4478,6 +4492,8 @@ body{
           <label for="profileR3">التذكير الثالث</label>
           <input type="time" class="onboarding-time" id="profileR3">
         </div>
+        <button class="push-enable-btn" id="profilePushEnable" type="button">🔔 فعّل إشعارات الموبايل</button>
+        <div class="push-enable-note" id="profilePushNote"></div>
         <button class="profile-edit-save" id="profileRemindersSave">حفظ</button>
       </div>
 
@@ -5229,6 +5245,82 @@ if (typeof window !== "undefined" && window.supabase) {
 
 const TRIAL_DAYS = 7;
 
+/* ============================================================
+   1-c) PUSH NOTIFICATIONS (إشعارات حقيقية على الموبايل)
+   ============================================================ */
+const VAPID_PUBLIC_KEY = "BDw3lBAF0Er-SayApTQGCFZnr-AE_CF8AcgGzvurv9JJKwfpSEjiC8Pa9No2YI8p2qHQ6cpFUAg2tiBdXxXYDu8";
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+// بيطلب إذن الإشعارات من المتصفح، ويشترك في الـPush، ويسجّل الاشتراك على Supabase
+async function enablePushNotifications() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return { ok: false, reason: "غير مدعوم في هذا المتصفح" };
+  }
+  if (isGuest || !currentUserId) {
+    return { ok: false, reason: "لازم تسجّل دخول بحساب الأول" };
+  }
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      return { ok: false, reason: "لازم توافق على إذن الإشعارات من المتصفح" };
+    }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    const subJson = sub.toJSON();
+    const { error } = await supabaseClient.from("push_subscriptions").upsert(
+      {
+        user_id: currentUserId,
+        endpoint: subJson.endpoint,
+        p256dh: subJson.keys.p256dh,
+        auth_key: subJson.keys.auth,
+        last_seen_at: new Date().toISOString(),
+      },
+      { onConflict: "endpoint" }
+    );
+    if (error) return { ok: false, reason: "معرفتش أسجّل الاشتراك، حاول تاني" };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: "حصل خطأ، حاول تاني" };
+  }
+}
+
+async function isPushSubscribed() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    return !!sub;
+  } catch (e) {
+    return false;
+  }
+}
+
+// بتتنادى من لوحة الأدمن بعد ما يبعت إشعار — بتوصّل الإشعار فعليًا كـPush حقيقي
+async function sendRealPushNotification(title, body, userIds) {
+  if (!supabaseClient) return;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const token = session ? session.access_token : SUPABASE_KEY;
+  await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ title, body, user_ids: userIds || undefined }),
+  });
+}
+
 /* حالة المستخدم الحالية (بتتحدد بعد الدخول/الاستمرار كضيف) */
 let isGuest = true;
 let currentUserId = null;
@@ -5245,7 +5337,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 1.2;
+const APP_VERSION = 2.0;
 
 const CONFIG = {
   DAILY_LIMIT: 149,         // أقصى عدد أسئلة جديدة/يوم تأخذ نقاط
@@ -8218,6 +8310,8 @@ function setupProfileEditing() {
     nameSave.addEventListener("click", async () => {
       const val = (nameInput.value || "").trim();
       if (val.length < 2) return;
+      const confirmMsg = "متأكد؟ دي فرصتك الوحيدة لتغيير اسمك — بعد الحفظ مش هتقدر تغيّره تاني أبدًا.";
+      if (!window.confirm(confirmMsg)) return;
       const prevName = displayName;
       const prevCount = nameChangeCount;
       displayName = val;
@@ -8268,6 +8362,7 @@ function setupProfileEditing() {
         document.getElementById("profileR1").value = reminders.r1 || "";
         document.getElementById("profileR2").value = reminders.r2 || "";
         document.getElementById("profileR3").value = reminders.r3 || "";
+        refreshPushButtonState();
       }
     });
   }
@@ -8278,8 +8373,36 @@ function setupProfileEditing() {
       const r3 = document.getElementById("profileR3").value || null;
       reminders = { r1, r2, r3 };
       await saveState();
+      if (supabaseClient && currentUserId) {
+        await supabaseClient.from("users").update({
+          reminder_1: r1, reminder_2: r2, reminder_3: r3,
+        }).eq("id", currentUserId);
+      }
       renderProfile();
       document.getElementById("profileRemindersEdit").classList.remove("open");
+    });
+  }
+
+  // --- زرار تفعيل إشعارات الموبايل الحقيقية ---
+  const pushBtn = document.getElementById("profilePushEnable");
+  const pushNote = document.getElementById("profilePushNote");
+  async function refreshPushButtonState() {
+    if (!pushBtn) return;
+    const on = await isPushSubscribed();
+    pushBtn.classList.toggle("is-on", on);
+    pushBtn.textContent = on ? "🔔 الإشعارات مفعّلة على الجهاز ده" : "🔔 فعّل إشعارات الموبايل";
+  }
+  if (pushBtn) {
+    pushBtn.addEventListener("click", async () => {
+      pushBtn.disabled = true;
+      const result = await enablePushNotifications();
+      pushBtn.disabled = false;
+      if (result.ok) {
+        if (pushNote) pushNote.textContent = "تمام! هتوصلك الإشعارات على الجهاز ده.";
+        await refreshPushButtonState();
+      } else if (pushNote) {
+        pushNote.textContent = result.reason || "معرفناش نفعّل الإشعارات";
+      }
     });
   }
 
@@ -9770,6 +9893,7 @@ function setupAdminForms() {
         textEl.value = "";
         notifSendBtn.classList.add("saved-flash");
         setTimeout(() => notifSendBtn.classList.remove("saved-flash"), 600);
+        sendRealPushNotification("New Day", text).catch(() => {});
       }
     });
   }
@@ -10753,11 +10877,18 @@ async function init() {
   // نرجّع الاسم/اللون من قيم Supabase (لو حساب مسجّل) بعد التحميل — عشان مايفضلش
   // فيه اسم حساب تاني كان شغال على نفس الجهاز قبل كده من صندوقه المحلي
   if (!isGuest && currentUserId) {
-    const { data: profile2 } = await supabaseClient.from("users").select("display_name, track_color, name_change_count").eq("id", currentUserId).single();
+    const { data: profile2 } = await supabaseClient.from("users").select("display_name, track_color, name_change_count, reminder_1, reminder_2, reminder_3").eq("id", currentUserId).single();
     if (profile2) {
       displayName = profile2.display_name || "Dr. You";
       trackColor = profile2.track_color || "#3DBE68";
       nameChangeCount = typeof profile2.name_change_count === "number" ? profile2.name_change_count : 0;
+      if (profile2.reminder_1 || profile2.reminder_2 || profile2.reminder_3) {
+        reminders = {
+          r1: profile2.reminder_1 ? profile2.reminder_1.slice(0, 5) : null,
+          r2: profile2.reminder_2 ? profile2.reminder_2.slice(0, 5) : null,
+          r3: profile2.reminder_3 ? profile2.reminder_3.slice(0, 5) : null,
+        };
+      }
     }
   }
   await checkDailyReset();
