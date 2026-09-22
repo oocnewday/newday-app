@@ -2619,6 +2619,48 @@ body{
 .profile-row-link{ cursor:pointer; }
 .profile-row-link:active{ background:var(--q-teal-soft); }
 
+.global-error-overlay{
+  position:fixed; inset:0; background:rgba(15,26,26,.55); z-index:10001;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+  padding:16px; box-sizing:border-box;
+}
+.global-error-overlay.open{ opacity:1; pointer-events:auto; }
+.global-error-card{
+  background:#fff; border-radius:16px; padding:20px; max-width:380px; width:100%;
+  box-shadow:0 12px 40px rgba(0,0,0,.25); box-sizing:border-box;
+}
+.global-error-title{ font-weight:800; font-size:15px; color:#b3261e; margin-bottom:8px; }
+.global-error-hint{ font-size:12.5px; color:var(--q-ink-soft, #678); margin:0 0 8px; }
+#globalErrorDiagText{
+  width:100%; box-sizing:border-box; font-family:monospace; font-size:11.5px;
+  padding:8px; border-radius:8px; border:1px solid var(--q-rule); resize:none;
+}
+.global-error-btn-row{ display:flex; gap:8px; margin-top:10px; }
+.global-error-btn-row button{ flex:1; }
+
+.update-success-toast{
+  position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-20px);
+  background:#1f7a4c; color:#fff; padding:12px 20px; border-radius:12px;
+  font-weight:700; font-size:14px; box-shadow:0 8px 24px rgba(0,0,0,.2);
+  z-index:10000; opacity:0; pointer-events:none; transition:all .3s ease;
+  max-width:88%; text-align:center;
+}
+.update-success-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+.reminder-alert-overlay{
+  position:fixed; inset:0; background:rgba(15,26,26,.55); z-index:9999;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.reminder-alert-overlay.open{ opacity:1; pointer-events:auto; }
+.reminder-alert-card{
+  background:#fff; border-radius:18px; padding:28px 22px; max-width:340px; width:88%;
+  text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.25);
+}
+.reminder-alert-icon{ font-size:40px; margin-bottom:10px; }
+.reminder-alert-text{ font-size:15.5px; line-height:1.7; color:var(--q-ink, #1a2c2c); margin-bottom:18px; font-weight:700; }
+
 .profile-edit-btn-row{ display:flex; gap:8px; }
 .profile-edit-btn-row .profile-edit-save{ flex:1; }
 .profile-edit-cancel{
@@ -3607,8 +3649,18 @@ body{
       <a class="profile-contact-btn profile-contact-telegram" href="http://t.me/oocadmin3" target="_blank" rel="noopener">
         <span>✈️</span><span>تواصل عبر Telegram للتحديث</span>
       </a>
+
+      <div id="forceUpdateFailBlock" style="display:none; margin-top:16px;">
+        <p class="motivation-text" style="color:#b3261e; font-weight:700;">⚠️ حدث خطأ، لم يتم التحديث.</p>
+        <p class="motivation-text" style="font-size:12.5px;">انسخ النص التالي وتواصل به معنا:</p>
+        <textarea id="forceUpdateDiagText" readonly rows="3" style="width:100%; box-sizing:border-box; font-family:monospace; font-size:12px; padding:8px; border-radius:8px; border:1px solid var(--q-rule); resize:none;"></textarea>
+        <button class="profile-edit-save" id="forceUpdateCopyBtn" style="width:100%; margin-top:8px;">📋 انسخ النص</button>
+      </div>
     </div>
   </div>
+
+  <!-- تنبيه نجاح التحديث — بيظهر لحظة ما التطبيق يتأكد إنه فعلاً بقى على آخر نسخة بعد ضغط "حدّث دلوقتي" -->
+  <div class="update-success-toast" id="updateSuccessToast">✅ مبروك، تم التحديث بفضل الله — انت الآن على أحدث نسخة</div>
 
   <!-- ============================================================
        TRIAL BLOCKED SCREEN (بعد أسبوع من غير موافقة الأدمن)
@@ -4656,6 +4708,32 @@ body{
 </div>
 
 <!-- ============================================================
+     REMINDER ALERT (تنبيه داخل التطبيق لحظة وصول ميعاد التذكير)
+     ============================================================ -->
+<div class="reminder-alert-overlay" id="reminderAlertOverlay">
+  <div class="reminder-alert-card">
+    <div class="reminder-alert-icon">🔔</div>
+    <div class="reminder-alert-text" id="reminderAlertText"></div>
+    <button class="motivation-btn" id="reminderAlertOkBtn">تمام يا رب</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     GLOBAL ERROR BOX (نفس شكل صندوق خطأ التحديث، بس متاح من أي مكان في التطبيق)
+     ============================================================ -->
+<div class="global-error-overlay" id="globalErrorOverlay">
+  <div class="global-error-card">
+    <div class="global-error-title" id="globalErrorTitle">⚠️ حدث خطأ، لم يتم إكمال العملية</div>
+    <p class="global-error-hint">انسخ النص التالي وتواصل به معنا:</p>
+    <textarea id="globalErrorDiagText" readonly rows="4"></textarea>
+    <div class="global-error-btn-row">
+      <button class="profile-edit-save" id="globalErrorCopyBtn">📋 انسخ النص</button>
+      <button class="profile-edit-cancel" id="globalErrorCloseBtn" type="button">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
      REWARD OVERLAY (Milestone + Bonus)
      ============================================================ -->
 <div class="reward-overlay" id="rewardOverlay">
@@ -5258,6 +5336,49 @@ if (typeof window !== "undefined" && window.supabase) {
 const TRIAL_DAYS = 7;
 
 /* ============================================================
+   1-b-2) GLOBAL ERROR BOX — متاح من أي مكان في التطبيق
+   ------------------------------------------------------------
+   بيمسك أي خطأ غير متوقع (حتى لو حصل جوه كود مانتوقعوش)، ويعرضه
+   بشكل موحّد وواضح للمستخدم: عنوان مختصر يوضح "في أي مهمة حصل
+   الخطأ"، ونص تشخيصي كامل جاهز للنسخ (نوع الخطأ، الجهاز، المتصفح،
+   حجم الشاشة، رقم الإصدار، توقيت الحدوث) — عشان لو حصلت مشكلة على
+   أي جهاز أو متصفح أو مقاس شاشة، يقدر المستخدم يبعتلنا تفاصيل
+   دقيقة تساعدنا نلاقي السبب بسرعة، بدل ما يقولنا "مش شغال" بس.
+   ============================================================ */
+function showGlobalError(taskLabel, err) {
+  try {
+    const overlay = document.getElementById("globalErrorOverlay");
+    const titleEl = document.getElementById("globalErrorTitle");
+    const diagEl = document.getElementById("globalErrorDiagText");
+    if (!overlay || !titleEl || !diagEl) return;
+
+    const errMsg = (err && (err.message || err.reason || String(err))) || "خطأ غير معروف";
+    const screenSize = `${window.innerWidth}×${window.innerHeight}`;
+    const diag =
+`New Day — تقرير خطأ
+المهمة: ${taskLabel || "غير محددة"}
+تفاصيل الخطأ: ${errMsg}
+رقم الإصدار: ${typeof APP_VERSION !== "undefined" ? APP_VERSION : "?"}
+حجم الشاشة: ${screenSize}
+المتصفح: ${navigator.userAgent}
+التوقيت: ${new Date().toISOString()}`;
+
+    titleEl.textContent = `⚠️ حدث خطأ، لم يتم إكمال: ${taskLabel || "العملية"}`;
+    diagEl.value = diag;
+    overlay.classList.add("open");
+  } catch (e) { /* لو حتى صندوق الخطأ نفسه فشل، ماتكسرش التطبيق بسببه */ }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("error", (e) => {
+    showGlobalError("خطأ عام في التطبيق", e.error || e.message);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    showGlobalError("عملية غير متزامنة", e.reason);
+  });
+}
+
+/* ============================================================
    1-c) PUSH NOTIFICATIONS (إشعارات حقيقية على الموبايل)
    ============================================================ */
 const VAPID_PUBLIC_KEY = "BDw3lBAF0Er-SayApTQGCFZnr-AE_CF8AcgGzvurv9JJKwfpSEjiC8Pa9No2YI8p2qHQ6cpFUAg2tiBdXxXYDu8";
@@ -5274,7 +5395,7 @@ function urlBase64ToUint8Array(base64String) {
 // بيطلب إذن الإشعارات من المتصفح، ويشترك في الـPush، ويسجّل الاشتراك على Supabase
 async function enablePushNotifications() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    return { ok: false, reason: "غير مدعوم في هذا المتصفح" };
+    return { ok: false, reason: "متصفحك الحالي مش بيدعم الإشعارات — جرب Chrome على أندرويد أو Edge/Chrome على ويندوز" };
   }
   if (isGuest || !currentUserId) {
     return { ok: false, reason: "لازم تسجّل دخول بحساب الأول" };
@@ -5282,7 +5403,7 @@ async function enablePushNotifications() {
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
-      return { ok: false, reason: "لازم توافق على إذن الإشعارات من المتصفح" };
+      return { ok: false, reason: "لازم توافق على إذن الإشعارات من المتصفح عشان تشتغل" };
     }
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
@@ -5293,6 +5414,9 @@ async function enablePushNotifications() {
       });
     }
     const subJson = sub.toJSON();
+    if (!subJson.endpoint || !subJson.keys || !subJson.keys.p256dh || !subJson.keys.auth) {
+      return { ok: false, reason: "المتصفح رجّع اشتراك ناقص البيانات، جرب تاني" };
+    }
     const { error } = await supabaseClient.from("push_subscriptions").upsert(
       {
         user_id: currentUserId,
@@ -5303,10 +5427,28 @@ async function enablePushNotifications() {
       },
       { onConflict: "endpoint" }
     );
-    if (error) return { ok: false, reason: "معرفتش أسجّل الاشتراك، حاول تاني" };
+    if (error) return { ok: false, reason: `معرفتش أسجّل الاشتراك: ${error.message || "خطأ غير معروف"}` };
     return { ok: true };
   } catch (e) {
-    return { ok: false, reason: "حصل خطأ، حاول تاني" };
+    return { ok: false, reason: `حصل خطأ: ${(e && e.message) || e}` };
+  }
+}
+
+async function disablePushNotifications() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return { ok: true };
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      const endpoint = sub.endpoint;
+      await sub.unsubscribe();
+      if (supabaseClient) {
+        await supabaseClient.from("push_subscriptions").delete().eq("endpoint", endpoint);
+      }
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: `حصل خطأ: ${(e && e.message) || e}` };
   }
 }
 
@@ -5349,7 +5491,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 4.4;
+const APP_VERSION = 4.7;
 
 const CONFIG = {
   DAILY_LIMIT: 149,         // أقصى عدد أسئلة جديدة/يوم تأخذ نقاط
@@ -6164,16 +6306,39 @@ async function reconcileGuestJoinDate() {
  * بيرجع true لو مسموح يكمل، false لو لازم يقف على شاشة التحديث
  */
 async function checkForcedUpdate() {
+  const PENDING_KEY = "nd_pending_update_attempt";
   if (!supabaseClient) return true;
   try {
     const { data } = await supabaseClient.from("app_settings").select("value").eq("key", "required_app_version").maybeSingle();
     const required = data && data.value ? parseFloat(data.value) : APP_VERSION;
+    const wasAttemptingUpdate = localStorage.getItem(PENDING_KEY) === "1";
+
     if (Number.isFinite(required) && required > APP_VERSION) {
+      if (wasAttemptingUpdate) {
+        const diagBlock = document.getElementById("forceUpdateFailBlock");
+        const diagText = document.getElementById("forceUpdateDiagText");
+        if (diagBlock) diagBlock.style.display = "block";
+        if (diagText) {
+          diagText.value = `New Day — فشل التحديث\nالنسخة الحالية: ${APP_VERSION}\nالنسخة المطلوبة: ${required}\nالمتصفح: ${navigator.userAgent}`;
+        }
+      }
       navigate("forceUpdate");
       return false;
     }
+
+    if (wasAttemptingUpdate) {
+      localStorage.removeItem(PENDING_KEY);
+      showUpdateSuccessToast();
+    }
   } catch (e) { /* من غير نت، سيبه يكمل عادي */ }
   return true;
+}
+
+function showUpdateSuccessToast() {
+  const toast = document.getElementById("updateSuccessToast");
+  if (!toast) return;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 4000);
 }
 let lastActiveDate = null;
 let dailyDate = null;
@@ -8522,24 +8687,33 @@ function setupProfileEditing() {
     });
   }
 
-  // --- زرار تفعيل إشعارات الموبايل الحقيقية (صف مستقل في البروفايل) ---
+  // --- زرار تفعيل/إلغاء إشعارات الموبايل الحقيقية (صف مستقل في البروفايل) ---
   const pushRow = document.getElementById("profilePushEnableRow");
+  const pushRowLabel = pushRow ? pushRow.querySelector(".profile-row-label") : null;
   const pushRowValue = document.getElementById("profilePushEnableRowValue");
   async function refreshPushButtonState() {
     if (!pushRowValue) return;
     const on = await isPushSubscribed();
     pushRowValue.textContent = on ? "✅ مفعّلة" : "→";
+    if (pushRowLabel) pushRowLabel.textContent = on ? "🔕 إلغاء إشعارات الموبايل" : "🔔 فعّل إشعارات الموبايل";
+    return on;
   }
   if (pushRow) {
     pushRow.addEventListener("click", async () => {
-      if (await isPushSubscribed()) return; // مفعّلة أصلًا، مفيش داعي نكرر
+      const alreadyOn = await isPushSubscribed();
       pushRowValue.textContent = "...";
+      if (alreadyOn) {
+        const result = await disablePushNotifications();
+        await refreshPushButtonState();
+        if (!result.ok) showGlobalError("إلغاء إشعارات الموبايل", result.reason);
+        return;
+      }
       const result = await enablePushNotifications();
       if (result.ok) {
         await refreshPushButtonState();
       } else {
-        pushRowValue.textContent = "→";
-        alert(result.reason || "معرفناش نفعّل الإشعارات");
+        await refreshPushButtonState();
+        showGlobalError("تفعيل إشعارات الموبايل", result.reason);
       }
     });
     refreshPushButtonState();
@@ -10562,20 +10736,52 @@ function setupAuthScreens() {
   // --- زرار "حدّث دلوقتي" في شاشة التحديث الإجباري — بيمسح الكاش القديم ويجيب أحدث نسخة فورًا ---
   const forceUpdateBtn = document.getElementById("forceUpdateReloadBtn");
   if (forceUpdateBtn) {
-    forceUpdateBtn.addEventListener("click", async () => {
+    forceUpdateBtn.addEventListener("click", () => {
       forceUpdateBtn.disabled = true;
       forceUpdateBtn.textContent = "بيحدّث...";
+      try { localStorage.setItem("nd_pending_update_attempt", "1"); } catch (e) {}
+
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        // كسر أي نسخة متخزّنة في الرابط نفسه، ضمان إضافي إن المتصفح هيجيب نسخة جديدة فعليًا
+        const url = new URL(window.location.href);
+        url.searchParams.set("_v", Date.now().toString());
+        window.location.href = url.toString();
+      };
+
+      // مهما حصل، متأخرش أكتر من ثانيتين — بعض المتصفحات بتعلّق وهي بتمسح الكاش
+      setTimeout(finish, 2000);
+
+      (async () => {
+        try {
+          if ("caches" in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((k) => caches.delete(k)));
+          }
+          if ("serviceWorker" in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((r) => r.unregister()));
+          }
+        } catch (e) { /* حتى لو فشل المسح، هنحدّث برضو */ }
+        finish();
+      })();
+    });
+  }
+
+  const forceUpdateCopyBtn = document.getElementById("forceUpdateCopyBtn");
+  if (forceUpdateCopyBtn) {
+    forceUpdateCopyBtn.addEventListener("click", async () => {
+      const diagText = document.getElementById("forceUpdateDiagText");
+      if (!diagText) return;
       try {
-        if ("caches" in window) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map((k) => caches.delete(k)));
-        }
-        if ("serviceWorker" in navigator) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(regs.map((r) => r.unregister()));
-        }
-      } catch (e) { /* حتى لو فشل المسح، جرب تحدّث برضو */ }
-      window.location.reload();
+        await navigator.clipboard.writeText(diagText.value);
+      } catch (e) {
+        diagText.select(); // بديل لو الحافظة اتمنعت
+      }
+      forceUpdateCopyBtn.textContent = "✅ اتنسخ";
+      setTimeout(() => { forceUpdateCopyBtn.textContent = "📋 انسخ النص"; }, 1500);
     });
   }
 
@@ -10920,6 +11126,39 @@ function buildActiveGrid(activeKey) {
 }
 
 /* ============================================================
+   27-a) IN-APP REMINDER ALERT (جرس داخلي لحظة وصول ميعاد التذكير، مش بس Push خارجي)
+   ============================================================ */
+let reminderCheckLastMinute = null;
+function checkInAppReminders() {
+  if (isGuest || !reminders) return;
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const nowKey = `${hh}:${mm}`;
+  if (reminderCheckLastMinute === nowKey) return; // مرة واحدة بس كل دقيقة، مش كل ثانية
+  reminderCheckLastMinute = nowKey;
+
+  const todayKey = getTodayKey();
+  const slots = [["r1", "الأول"], ["r2", "الثاني"], ["r3", "الثالث"]];
+  slots.forEach(([key, label]) => {
+    const time = reminders[key];
+    if (!time || time !== nowKey) return;
+    const shownKey = `inAppReminderShown_${key}`;
+    if (rawStorage.get(shownKey, null) === todayKey) return; // اتعرض النهاردة أصلًا
+    rawStorage.set(shownKey, todayKey);
+    showInAppReminderAlert(label);
+  });
+}
+
+function showInAppReminderAlert(label) {
+  const overlay = document.getElementById("reminderAlertOverlay");
+  const textEl = document.getElementById("reminderAlertText");
+  if (!overlay || !textEl) return;
+  textEl.textContent = `جزاك الله خيرًا، انت الآن بالفعل داخل الموعد ${label} بإذن الله.`;
+  overlay.classList.add("open");
+}
+
+/* ============================================================
    27-b) INSTALL APP SHEET (Android / Windows / Apple)
    ============================================================ */
 function wireInstallAppSheet() {
@@ -10950,6 +11189,29 @@ function wireInstallAppSheet() {
   link.addEventListener("click", () => {
     openOverlay();
   });
+
+  const reminderAlertOkBtn = document.getElementById("reminderAlertOkBtn");
+  const reminderAlertOverlay = document.getElementById("reminderAlertOverlay");
+  if (reminderAlertOkBtn && reminderAlertOverlay) {
+    reminderAlertOkBtn.addEventListener("click", () => reminderAlertOverlay.classList.remove("open"));
+  }
+
+  // --- صندوق الخطأ العام (متاح من أي مكان) ---
+  const globalErrorOverlay = document.getElementById("globalErrorOverlay");
+  const globalErrorCloseBtn = document.getElementById("globalErrorCloseBtn");
+  const globalErrorCopyBtn = document.getElementById("globalErrorCopyBtn");
+  if (globalErrorCloseBtn && globalErrorOverlay) {
+    globalErrorCloseBtn.addEventListener("click", () => globalErrorOverlay.classList.remove("open"));
+  }
+  if (globalErrorCopyBtn) {
+    globalErrorCopyBtn.addEventListener("click", async () => {
+      const diagEl = document.getElementById("globalErrorDiagText");
+      if (!diagEl) return;
+      try { await navigator.clipboard.writeText(diagEl.value); } catch (e) { diagEl.select(); }
+      globalErrorCopyBtn.textContent = "✅ اتنسخ";
+      setTimeout(() => { globalErrorCopyBtn.textContent = "📋 انسخ النص"; }, 1500);
+    });
+  }
   if (closeBtn) closeBtn.addEventListener("click", closeOverlay);
   overlay.addEventListener("click", (e) => { if (e.target.id === "installAppOverlay") closeOverlay(); });
   wireSheetDragToClose(["installAppHandle", "installAppHeader"], ".install-app-sheet", "installAppOverlay");
@@ -11080,6 +11342,7 @@ async function init() {
     renderSessionTimer();
     updateRetinaStrip();
     saveTotalStudyTimeSeconds(totalStudyTimeSeconds);
+    checkInAppReminders();
   }, 1000);
 
   // 3) اعرض شاشات البداية
