@@ -5315,6 +5315,7 @@ async function switchStorageNamespaceForCurrentUser() {
     : "newday_state_v3_" + currentUserId;
   await loadMemberState(); // لازم نجيب حالة العضو من قاعدة البيانات قبل أي تحميل تاني
   await loadState();
+  ensurePushSubscriptionSynced(); // من غير await — في الخلفية، مايأخّرش فتح التطبيق
   // تايمر السؤال وتايمر الجلسة بيبدأوا من الصفر مع أي حساب جديد — مش هيستمروا من حساب لحساب
   qTimerSeconds = 0;
   sessionTimerSeconds = 0;
@@ -5392,10 +5393,38 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-// بيطلب إذن الإشعارات من المتصفح، ويشترك في الـPush، ويسجّل الاشتراك على Supabase
+// مهلة أمان لأي عملية ممكن تعلّق على بعض المتصفحات (زي انتظار الـService Worker)
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error(`انتهت المهلة: ${label}`)), ms)),
+  ]);
+}
+
+// بيجيب اشتراك الجهاز (أو يعمل واحد جديد) ويسجّله على السيرفر للحساب الحالي
+async function subscribeAndRegisterPush() {
+  const reg = await withTimeout(navigator.serviceWorker.ready, 8000, "تجهيز الخدمة الخلفية");
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
+  const j = sub.toJSON();
+  if (!j.endpoint || !j.keys || !j.keys.p256dh || !j.keys.auth) {
+    throw new Error("المتصفح رجّع اشتراك ناقص البيانات");
+  }
+  const { error } = await supabaseClient.rpc("register_push_subscription", {
+    p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth,
+  });
+  if (error) throw new Error(`تسجيل الاشتراك على السيرفر: ${error.message}`);
+  return true;
+}
+
 async function enablePushNotifications() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    return { ok: false, reason: "متصفحك الحالي مش بيدعم الإشعارات — جرب Chrome على أندرويد أو Edge/Chrome على ويندوز" };
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    return { ok: false, reason: "متصفحك الحالي مش بيدعم الإشعارات — على آيفون لازم التطبيق يكون مثبّت على الشاشة الرئيسية، وعلى أندرويد جرّب Chrome" };
   }
   if (isGuest || !currentUserId) {
     return { ok: false, reason: "لازم تسجّل دخول بحساب الأول" };
@@ -5403,35 +5432,32 @@ async function enablePushNotifications() {
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
-      return { ok: false, reason: "لازم توافق على إذن الإشعارات من المتصفح عشان تشتغل" };
+      return { ok: false, reason: "إذن الإشعارات مرفوض — فعّله من إعدادات الموبايل ← التطبيقات ← New Day ← الإشعارات" };
     }
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-    }
-    const subJson = sub.toJSON();
-    if (!subJson.endpoint || !subJson.keys || !subJson.keys.p256dh || !subJson.keys.auth) {
-      return { ok: false, reason: "المتصفح رجّع اشتراك ناقص البيانات، جرب تاني" };
-    }
-    const { error } = await supabaseClient.from("push_subscriptions").upsert(
-      {
-        user_id: currentUserId,
-        endpoint: subJson.endpoint,
-        p256dh: subJson.keys.p256dh,
-        auth_key: subJson.keys.auth,
-        last_seen_at: new Date().toISOString(),
-      },
-      { onConflict: "endpoint" }
-    );
-    if (error) return { ok: false, reason: `معرفتش أسجّل الاشتراك: ${error.message || "خطأ غير معروف"}` };
+    await subscribeAndRegisterPush();
+    try { localStorage.setItem("nd_push_wanted", "1"); } catch (e) {}
     return { ok: true };
   } catch (e) {
-    return { ok: false, reason: `حصل خطأ: ${(e && e.message) || e}` };
+    return { ok: false, reason: (e && e.message) || String(e) };
   }
+}
+
+// إصلاح ذاتي صامت: كل ما التطبيق يفتح بحساب، لو المستخدم كان مفعّل الإشعارات والإذن لسه مسموح،
+// نتأكد إن الاشتراك موجود وشغال ومسجّل على السيرفر (لو اتمسح لأي سبب، بيترجع لوحده من غير ما يحس)
+async function ensurePushSubscriptionSynced() {
+  try {
+    if (isGuest || !currentUserId || !supabaseClient) return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+    if (localStorage.getItem("nd_push_wanted") !== "1") {
+      // ترحيل من النسخ القديمة: لو الجهاز كان مفعّل فعلًا قبل كده (فيه اشتراك في المتصفح)، اعتبره مفعّل
+      const reg = await withTimeout(navigator.serviceWorker.ready, 8000, "sw");
+      const existing = await reg.pushManager.getSubscription();
+      if (!existing) return;
+      localStorage.setItem("nd_push_wanted", "1");
+    }
+    await subscribeAndRegisterPush();
+  } catch (e) { /* صامت — هيتحاول تاني الفتحة الجاية */ }
 }
 
 async function disablePushNotifications() {
@@ -5442,6 +5468,7 @@ async function disablePushNotifications() {
     if (sub) {
       const endpoint = sub.endpoint;
       await sub.unsubscribe();
+      try { localStorage.removeItem("nd_push_wanted"); } catch (e) {}
       if (supabaseClient) {
         await supabaseClient.from("push_subscriptions").delete().eq("endpoint", endpoint);
       }
@@ -5455,9 +5482,9 @@ async function disablePushNotifications() {
 async function isPushSubscribed() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
   try {
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await withTimeout(navigator.serviceWorker.ready, 5000, "تجهيز الخدمة الخلفية");
     const sub = await reg.pushManager.getSubscription();
-    return !!sub;
+    return !!sub && localStorage.getItem("nd_push_wanted") === "1";
   } catch (e) {
     return false;
   }
@@ -5465,14 +5492,18 @@ async function isPushSubscribed() {
 
 // بتتنادى من لوحة الأدمن بعد ما يبعت إشعار — بتوصّل الإشعار فعليًا كـPush حقيقي
 async function sendRealPushNotification(title, body, userIds) {
-  if (!supabaseClient) return;
+  if (!supabaseClient) throw new Error("مفيش اتصال بالسيرفر");
   const { data: { session } } = await supabaseClient.auth.getSession();
-  const token = session ? session.access_token : SUPABASE_KEY;
-  await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+  if (!session) throw new Error("لازم تكون داخل بحساب أدمن");
+  const res = await withTimeout(fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
     body: JSON.stringify({ title, body, user_ids: userIds || undefined }),
-  });
+  }), 15000, "إرسال الإشعار");
+  let out = {};
+  try { out = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`);
+  return out;
 }
 
 /* حالة المستخدم الحالية (بتتحدد بعد الدخول/الاستمرار كضيف) */
@@ -5491,7 +5522,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 4.7;
+const APP_VERSION = 5.0;
 
 const CONFIG = {
   DAILY_LIMIT: 149,         // أقصى عدد أسئلة جديدة/يوم تأخذ نقاط
@@ -6334,11 +6365,15 @@ async function checkForcedUpdate() {
   return true;
 }
 
-function showUpdateSuccessToast() {
+function showToast(msg, ms) {
   const toast = document.getElementById("updateSuccessToast");
   if (!toast) return;
+  toast.textContent = msg;
   toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), 4000);
+  setTimeout(() => toast.classList.remove("show"), ms || 4000);
+}
+function showUpdateSuccessToast() {
+  showToast("✅ مبروك، تم التحديث بفضل الله — انت الآن على أحدث نسخة");
 }
 let lastActiveDate = null;
 let dailyDate = null;
@@ -8179,7 +8214,7 @@ async function renderRace() {
       if (raceCache.data && Date.now() - raceCache.at < RACE_CACHE_MS) {
         others = raceCache.data;
       } else {
-        const { data } = await supabaseClient.from("leaderboard_view").select("*");
+        const { data } = await supabaseClient.rpc("get_leaderboard");
         others = (data || []).map(u => ({
           name: u.display_name,
           points: Number(u.total_points) || 0,
@@ -10206,7 +10241,9 @@ function setupAdminForms() {
         textEl.value = "";
         notifSendBtn.classList.add("saved-flash");
         setTimeout(() => notifSendBtn.classList.remove("saved-flash"), 600);
-        sendRealPushNotification("New Day", text).catch(() => {});
+        sendRealPushNotification("New Day", text)
+          .then((r) => showToast(`📲 الإشعار وصل لـ ${r.sent || 0} جهاز${r.removed ? ` (واتشال ${r.removed} اشتراك منتهي)` : ""}`, 5000))
+          .catch((e) => showGlobalError("إرسال الإشعار للموبايلات", e));
       }
     });
   }
@@ -10616,6 +10653,16 @@ async function handleLogout() {
   if (profileOverlay) profileOverlay.classList.remove("open");
 
   // signOut ونقل صندوق التخزين مستقلين عن بعض — نشغّلهم مع بعض بدل واحد ورا التاني (أسرع)
+  // قبل الخروج: افصل الجهاز ده عن إشعارات الحساب اللي خارج (عشان إشعاراته متوصلش لجهاز مش داخل بيه)
+  // الاشتراك نفسه بيفضل في المتصفح، فلما أي حساب يدخل تاني بيتسجّل له تلقائيًا
+  try {
+    if (supabaseClient && "serviceWorker" in navigator && "PushManager" in window) {
+      const reg = await withTimeout(navigator.serviceWorker.ready, 2000, "sw");
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) await withTimeout(supabaseClient.from("push_subscriptions").delete().eq("endpoint", sub.endpoint), 2500, "unlink");
+    }
+  } catch (e) { /* مايوقفش الخروج أبدًا */ }
+
   const signOutPromise = supabaseClient
     ? supabaseClient.auth.signOut().catch(() => { /* من غير نت، كمّل واعمل logout محلي برضو */ })
     : Promise.resolve();
@@ -10732,58 +10779,6 @@ function setupAuthScreens() {
 
   const logoutRow = document.getElementById("profileLogoutSection");
   if (logoutRow) logoutRow.addEventListener("click", handleLogout);
-
-  // --- زرار "حدّث دلوقتي" في شاشة التحديث الإجباري — بيمسح الكاش القديم ويجيب أحدث نسخة فورًا ---
-  const forceUpdateBtn = document.getElementById("forceUpdateReloadBtn");
-  if (forceUpdateBtn) {
-    forceUpdateBtn.addEventListener("click", () => {
-      forceUpdateBtn.disabled = true;
-      forceUpdateBtn.textContent = "بيحدّث...";
-      try { localStorage.setItem("nd_pending_update_attempt", "1"); } catch (e) {}
-
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        done = true;
-        // كسر أي نسخة متخزّنة في الرابط نفسه، ضمان إضافي إن المتصفح هيجيب نسخة جديدة فعليًا
-        const url = new URL(window.location.href);
-        url.searchParams.set("_v", Date.now().toString());
-        window.location.href = url.toString();
-      };
-
-      // مهما حصل، متأخرش أكتر من ثانيتين — بعض المتصفحات بتعلّق وهي بتمسح الكاش
-      setTimeout(finish, 2000);
-
-      (async () => {
-        try {
-          if ("caches" in window) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map((k) => caches.delete(k)));
-          }
-          if ("serviceWorker" in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(regs.map((r) => r.unregister()));
-          }
-        } catch (e) { /* حتى لو فشل المسح، هنحدّث برضو */ }
-        finish();
-      })();
-    });
-  }
-
-  const forceUpdateCopyBtn = document.getElementById("forceUpdateCopyBtn");
-  if (forceUpdateCopyBtn) {
-    forceUpdateCopyBtn.addEventListener("click", async () => {
-      const diagText = document.getElementById("forceUpdateDiagText");
-      if (!diagText) return;
-      try {
-        await navigator.clipboard.writeText(diagText.value);
-      } catch (e) {
-        diagText.select(); // بديل لو الحافظة اتمنعت
-      }
-      forceUpdateCopyBtn.textContent = "✅ اتنسخ";
-      setTimeout(() => { forceUpdateCopyBtn.textContent = "📋 انسخ النص"; }, 1500);
-    });
-  }
 
   // --- نعيد التأكد من الإصدار وتصفير اليوم كل مرة المستخدم يرجع للتطبيق (مش بس أول فتحة) ---
   document.addEventListener("visibilitychange", async () => {
@@ -11196,22 +11191,6 @@ function wireInstallAppSheet() {
     reminderAlertOkBtn.addEventListener("click", () => reminderAlertOverlay.classList.remove("open"));
   }
 
-  // --- صندوق الخطأ العام (متاح من أي مكان) ---
-  const globalErrorOverlay = document.getElementById("globalErrorOverlay");
-  const globalErrorCloseBtn = document.getElementById("globalErrorCloseBtn");
-  const globalErrorCopyBtn = document.getElementById("globalErrorCopyBtn");
-  if (globalErrorCloseBtn && globalErrorOverlay) {
-    globalErrorCloseBtn.addEventListener("click", () => globalErrorOverlay.classList.remove("open"));
-  }
-  if (globalErrorCopyBtn) {
-    globalErrorCopyBtn.addEventListener("click", async () => {
-      const diagEl = document.getElementById("globalErrorDiagText");
-      if (!diagEl) return;
-      try { await navigator.clipboard.writeText(diagEl.value); } catch (e) { diagEl.select(); }
-      globalErrorCopyBtn.textContent = "✅ اتنسخ";
-      setTimeout(() => { globalErrorCopyBtn.textContent = "📋 انسخ النص"; }, 1500);
-    });
-  }
   if (closeBtn) closeBtn.addEventListener("click", closeOverlay);
   overlay.addEventListener("click", (e) => { if (e.target.id === "installAppOverlay") closeOverlay(); });
   wireSheetDragToClose(["installAppHandle", "installAppHeader"], ".install-app-sheet", "installAppOverlay");
@@ -11250,9 +11229,100 @@ function wireInstallAppSheet() {
 }
 
 /* ============================================================
+   0-a) CRITICAL GLOBAL UI — لازم تتربط قبل أي حاجة تانية في init()
+   ------------------------------------------------------------
+   زرار "حدّث دلوقتي" وصندوق الخطأ العام لازم يشتغلوا حتى لو
+   التطبيق واقف على شاشة "فيه تحديث مهم" (يعني حتى لو باقي init()
+   ما كملش) — عشان كده بتتربط لوحدها هنا الأول، قبل فحص الإصدار.
+   ============================================================ */
+function wireCriticalGlobalUI() {
+  const forceUpdateBtn = document.getElementById("forceUpdateReloadBtn");
+  if (forceUpdateBtn) {
+    forceUpdateBtn.addEventListener("click", () => {
+      forceUpdateBtn.disabled = true;
+      forceUpdateBtn.textContent = "بيحدّث...";
+      try { localStorage.setItem("nd_pending_update_attempt", "1"); } catch (e) {}
+
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        const url = new URL(window.location.href);
+        url.searchParams.set("_v", Date.now().toString());
+        window.location.href = url.toString();
+      };
+      setTimeout(finish, 2000);
+
+      (async () => {
+        try {
+          if ("caches" in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((k) => caches.delete(k)));
+          }
+          // ملحوظة مهمة: منمسحش الـService Worker (unregister) — اشتراك الإشعارات مربوط بيه
+          // ومسحه كان بيلغي الإشعارات على الجهاز بصمت. بنطلب منه يحدّث نفسه بس.
+          if ("serviceWorker" in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((r) => r.update().catch(() => {})));
+          }
+        } catch (e) { /* حتى لو فشل المسح، هنحدّث برضو */ }
+        finish();
+      })();
+    });
+  }
+
+  const forceUpdateCopyBtn = document.getElementById("forceUpdateCopyBtn");
+  if (forceUpdateCopyBtn) {
+    forceUpdateCopyBtn.addEventListener("click", async () => {
+      const diagText = document.getElementById("forceUpdateDiagText");
+      if (!diagText) return;
+      try {
+        await navigator.clipboard.writeText(diagText.value);
+      } catch (e) {
+        diagText.removeAttribute("readonly");
+        diagText.focus();
+        diagText.select();
+        try { document.execCommand("copy"); } catch (e2) {}
+        diagText.setAttribute("readonly", "readonly");
+      }
+      forceUpdateCopyBtn.textContent = "✅ اتنسخ";
+      setTimeout(() => { forceUpdateCopyBtn.textContent = "📋 انسخ النص"; }, 1500);
+    });
+  }
+
+  const globalErrorOverlay = document.getElementById("globalErrorOverlay");
+  const globalErrorCloseBtn = document.getElementById("globalErrorCloseBtn");
+  const globalErrorCopyBtn = document.getElementById("globalErrorCopyBtn");
+  if (globalErrorCloseBtn && globalErrorOverlay) {
+    globalErrorCloseBtn.addEventListener("click", () => globalErrorOverlay.classList.remove("open"));
+  }
+  if (globalErrorCopyBtn) {
+    globalErrorCopyBtn.addEventListener("click", async () => {
+      const diagEl = document.getElementById("globalErrorDiagText");
+      if (!diagEl) return;
+      try {
+        await navigator.clipboard.writeText(diagEl.value);
+      } catch (e) {
+        diagEl.removeAttribute("readonly");
+        diagEl.focus();
+        diagEl.select();
+        try { document.execCommand("copy"); } catch (e2) {}
+        diagEl.setAttribute("readonly", "readonly");
+      }
+      globalErrorCopyBtn.textContent = "✅ اتنسخ";
+      setTimeout(() => { globalErrorCopyBtn.textContent = "📋 انسخ النص"; }, 1500);
+    });
+  }
+}
+
+/* ============================================================
    28) INIT
    ============================================================ */
 async function init() {
+  // 0) وصّل زرار "حدّث دلوقتي" وصندوق الخطأ العام قبل أي حاجة تانية —
+  // لازم يشتغلوا حتى لو التطبيق هيقف بعد كده على شاشة "فيه تحديث مهم"
+  wireCriticalGlobalUI();
+
   // 1) ابنِ المشهد
   buildGrass();
   buildFlowers();
