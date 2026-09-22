@@ -9,7 +9,7 @@
    بدل الجديدة.
    ============================================================ */
 
-const CACHE_NAME = "newday-cache-v12";
+const CACHE_NAME = "newday-cache-v18";
 
 const APP_SHELL = [
   "./index.html",
@@ -40,19 +40,32 @@ self.addEventListener("activate", (event) => {
 });
 
 // 3) استقبال إشعار Push حقيقي من السيرفر وعرضه للمستخدم
+//    + إيصال استلام حقيقي: لو الإشعار عليه رقم رسالة، الجهاز بيبلّغ السيرفر إنه وصله فعلًا
+const ND_SUPABASE_URL = "https://wymcsdzuwzabjdjpuprc.supabase.co";
+const ND_SUPABASE_KEY = "sb_publishable_igUClzy2FNybrF0W5UZwLA_ALedOf4h";
+
 self.addEventListener("push", (event) => {
-  let data = { title: "New Day", body: "عندك تحديث جديد!", url: "/" };
+  let data = { title: "New Day", body: "عندك تحديث جديد!", url: "/", nid: null };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch (e) {}
-  event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: "./icon-192.png",
-      badge: "./icon-192.png",
-      data: { url: data.url || "/" },
-    })
-  );
+
+  const show = self.registration.showNotification(data.title, {
+    body: data.body,
+    icon: "./icon-192.png",
+    badge: "./icon-192.png",
+    data: { url: data.url || "/" },
+  });
+
+  const ack = data.nid
+    ? fetch(`${ND_SUPABASE_URL}/rest/v1/rpc/ack_notification_delivery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: ND_SUPABASE_KEY },
+        body: JSON.stringify({ p_id: data.nid }),
+      }).catch(() => {})
+    : Promise.resolve();
+
+  event.waitUntil(Promise.all([show, ack]));
 });
 
 // 4) لما المستخدم يدوس على الإشعار — يفتح/يركّز التطبيق

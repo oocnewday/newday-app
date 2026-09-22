@@ -18,7 +18,25 @@
      عشان لو المستخدم دوس على زرار "تثبيت التطبيق" في الملف الشخصي
      نقدر نظهرله نافذة التثبيت الرسمية من غير ما يفوتنا الحدث -->
 <script>
+  // شاشة الافتتاح: تختفي بعد ما الحركة تكمل (وأسرع لو المستخدم مقلل الحركات في إعدادات موبايله)
+  (function () {
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var hide = function () {
+      var el = document.getElementById("bootSplash");
+      if (el) el.classList.add("is-done");
+    };
+    window.addEventListener("load", function () { setTimeout(hide, reduce ? 500 : 2100); });
+    setTimeout(hide, 5000); // حماية: متفضلش واقفة لو حصل تأخير في التحميل
+  })();
+
   window.__ndDeferredInstallPrompt = null;
+  // رابط "استعادة كلمة السر" من الإيميل: نلقطه قبل ما مكتبة الدخول تنضّف الرابط
+  (function () {
+    var h = (location.hash || "") + "&" + (location.search || "");
+    window.__ndRecovery = /type=recovery/.test(h);
+    var m = h.match(/error_description=([^&]+)/);
+    window.__ndAuthLinkError = m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : "";
+  })();
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault();
     window.__ndDeferredInstallPrompt = e;
@@ -918,10 +936,16 @@ body{
   text-align:center;
 }
 .welcome-text .welcome-ayah{
-  color:var(--glow);
-  font-size:16px; font-weight:700;
-  text-align:center; line-height:2.15;
-  margin:10px 0;
+  direction:rtl; unicode-bidi:isolate;
+  color:#f5d67a;
+  font-size:17.5px; font-weight:700;
+  text-align:center; line-height:2.3;
+  margin:14px 0;
+  padding:12px 14px;
+  border-radius:14px;
+  background:linear-gradient(180deg, rgba(245,214,122,0.10), rgba(245,214,122,0.04));
+  border:1px solid rgba(245,214,122,0.35);
+  box-shadow:0 0 18px rgba(245,214,122,0.08) inset;
 }
 .welcome-text .welcome-emphasis{
   font-weight:800; font-size:15.5px;
@@ -2639,6 +2663,42 @@ body{
 .global-error-btn-row{ display:flex; gap:8px; margin-top:10px; }
 .global-error-btn-row button{ flex:1; }
 
+/* شاشة الافتتاح: الشمس بتطلع من ورا الخط، وبعدها الاسم */
+.boot-splash{
+  position:fixed; inset:0; z-index:100000; background:#0E2A26;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:26px;
+  transition:opacity .45s ease, visibility .45s ease;
+}
+.boot-splash.is-done{ opacity:0; visibility:hidden; }
+.boot-mark{ position:relative; width:46vw; max-width:190px; aspect-ratio:1; display:grid; place-items:center; }
+.boot-sun{
+  position:absolute; width:62%; aspect-ratio:1; border-radius:50%; bottom:24%;
+  background:radial-gradient(circle at 34% 30%, #F0C044, #D9A520 62%);
+  animation:bootRise 1500ms cubic-bezier(.22,.9,.3,1) both;
+}
+.boot-bar{ position:absolute; bottom:22%; width:100%; height:9%; border-radius:3px; background:#E8CE7A; }
+.boot-glow{
+  position:absolute; bottom:6%; width:120%; aspect-ratio:1; border-radius:50%;
+  background:radial-gradient(circle, rgba(217,165,32,.30), transparent 62%);
+  animation:bootGlow 1700ms ease-out both 320ms;
+}
+.boot-word{ text-align:center; animation:bootLift 900ms ease-out both 1150ms; }
+.boot-en{ display:block; font-family:'Noto Serif', serif; font-size:30px; letter-spacing:.06em; color:#F3EEE2; }
+.boot-tag{ display:block; margin-top:3px; font-family:'Noto Serif', serif; font-size:13px; letter-spacing:.13em; color:#E8CE7A; }
+@keyframes bootRise{ from{ transform:translateY(54%) scale(.92); } to{ transform:translateY(0) scale(1); } }
+@keyframes bootGlow{ from{ opacity:0; } 60%{ opacity:1; } to{ opacity:.85; } }
+@keyframes bootLift{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+@media (prefers-reduced-motion:reduce){ .boot-sun, .boot-glow, .boot-word{ animation:none; } }
+
+.list-removal-note{
+  position:fixed; left:50%; bottom:86px; transform:translateX(-50%) translateY(14px);
+  background:#1f7a4c; color:#fff; padding:10px 16px; border-radius:12px;
+  font-weight:700; font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,.22);
+  z-index:9998; opacity:0; pointer-events:none; transition:all .3s ease;
+  max-width:88%; text-align:center;
+}
+.list-removal-note.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
 .update-success-toast{
   position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-20px);
   background:#1f7a4c; color:#fff; padding:12px 20px; border-radius:12px;
@@ -2661,7 +2721,47 @@ body{
 .reminder-alert-icon{ font-size:40px; margin-bottom:10px; }
 .reminder-alert-text{ font-size:15.5px; line-height:1.7; color:var(--q-ink, #1a2c2c); margin-bottom:18px; font-weight:700; }
 
+/* ------------------------------------------------------------
+   إتجاه النص على مستوى التطبيق كله:
+   الصفحة أساسها LTR (عشان الأسئلة إنجليزي)، فأي فقرة عربي كانت بتاخد إتجاه إنجليزي
+   وعلامات الترقيم (. : ،) تطلع في أول السطر. "plaintext" بيخلّي كل فقرة تحدد إتجاهها
+   من أول حرف فيها: عربي ← يمين لشمال، إنجليزي ← شمال ليمين (الأسئلة زي ما هي).
+   ------------------------------------------------------------ */
+p, li, h1, h2, h3, h4, label, textarea, blockquote,
+.ag-note, .motivation-text, .motivation-title, .notification-text, .reminder-alert-text,
+.global-error-title, .global-error-hint, .install-app-intro, .install-app-step-title, .install-app-step-desc,
+.install-app-note, .install-app-choice-title, .install-app-choice-sub, .name-change-warning, .push-row-note,
+.notif-hint, .admin-archive-row > div:first-child, .phone-nav-steps > div, .profile-row-label, .profile-title,
+.auth-field-help, .admin-auth-warning, .admin-label, .reminders-push-hint span, .welcome-title,
+.update-success-toast, .force-update-status, .member-answer-row .mar-label{
+  unicode-bidi: plaintext;
+}
+bdi{ unicode-bidi: isolate; }
+
 .profile-edit-btn-row{ display:flex; gap:8px; }
+.logout-confirm-card{ position:relative; padding-top:18px; transition:transform .3s ease; }
+.logout-confirm-handle{ width:44px; height:5px; border-radius:3px; background:#d5d9dd; margin:0 auto 10px; }
+.logout-back-btn{ width:100%; background:none; border:none; color:var(--q-teal); font-weight:700; font-size:14px; padding:8px; cursor:pointer; font-family:inherit; }
+.phone-nav{ direction:ltr; display:flex; justify-content:space-around; align-items:flex-end; background:#eef1f3; border-radius:14px; padding:12px 6px 8px; margin-bottom:10px; }
+.phone-nav-key{ display:flex; flex-direction:column; align-items:center; gap:4px; color:#6b7280; }
+.phone-nav-key .k{ width:42px; height:42px; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:700; border-radius:50%; }
+.phone-nav-key.hl .k{ color:var(--q-teal); border:2px solid var(--q-teal); background:#fff; animation:navPulse 1.4s ease-in-out infinite; }
+.phone-nav-key small{ font-size:11px; font-weight:700; color:var(--q-teal); }
+@keyframes navPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(27,75,67,.35); } 50%{ box-shadow:0 0 0 7px rgba(27,75,67,0); } }
+.opt-editor{ display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
+.opt-editor-rows{ display:flex; flex-direction:column; gap:6px; }
+.opt-editor-row{ display:flex; align-items:center; gap:6px; }
+.opt-editor-row input{ flex:1; min-width:0; box-sizing:border-box; margin:0; }
+.opt-editor-num{ font-size:12px; opacity:.7; min-width:18px; text-align:center; }
+.opt-editor-add{ align-self:flex-start; background:transparent; border:1px dashed rgba(255,255,255,.35); color:inherit; border-radius:8px; padding:6px 12px; font-weight:700; cursor:pointer; font-family:inherit; }
+.member-detail-ids{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.member-id-chip{ font-size:11.5px; padding:3px 9px; border-radius:999px; background:rgba(124,196,255,.12); color:#9fd3ff; border:1px solid rgba(124,196,255,.3); }
+.member-no-tag{ font-size:11px; opacity:.65; margin-inline-start:4px; }
+.pw-label{ display:block; font-size:13px; font-weight:700; margin:10px 0 4px; }
+.pw-show{ display:flex; align-items:center; gap:6px; font-size:13px; margin:10px 0 6px; cursor:pointer; }
+.password-sheet{ padding-bottom:24px; }
+.phone-nav-steps{ text-align:right; font-size:13px; line-height:1.8; color:var(--q-ink, #1a2c2c); background:var(--q-teal-soft); border-radius:12px; padding:10px 12px; margin-bottom:10px; }
+.phone-nav-note{ font-size:12.5px; color:var(--q-ink-soft, #678); margin:0 0 8px; text-align:center; }
 .profile-edit-back{ width:100%; margin-top:10px; flex:none; }
 .push-row-note{ font-size:12px; line-height:1.6; color:var(--q-ink-soft, #678); padding:4px 14px 10px; }
 .profile-row.row-flash{ animation:rowFlash 1.6s ease; }
@@ -2682,7 +2782,15 @@ body{
 .admin-archive-month{ font-size:12px; font-weight:800; opacity:.7; margin-top:6px; }
 .admin-archive-row{ border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:10px 12px; font-size:13px; line-height:1.6; }
 .admin-archive-meta{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
-.admin-archive-chip{ font-size:11px; padding:2px 8px; border-radius:999px; background:rgba(255,255,255,.08); }
+.admin-archive-chip{ font-size:11.5px; padding:3px 9px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid transparent; }
+.admin-archive-row > div:first-child{ font-size:14.5px; font-weight:700; color:#fff; }
+.chip-time{ color:#b8c2cc; background:rgba(184,194,204,.10); }
+.chip-now{ color:#6ee7a8; background:rgba(110,231,168,.12); border-color:rgba(110,231,168,.35); }
+.chip-reminder{ color:#fbbf6a; background:rgba(251,191,106,.12); border-color:rgba(251,191,106,.35); }
+.chip-audience{ color:#7cc4ff; background:rgba(124,196,255,.12); border-color:rgba(124,196,255,.35); }
+.chip-sent{ color:#e9d9a6; background:rgba(233,217,166,.10); }
+.chip-delivered{ color:#1a1a1a; background:#f5c542; font-weight:800; }
+.chip-muted{ opacity:.55; }
 .profile-edit-btn-row .profile-edit-save{ flex:1; }
 .profile-edit-cancel{
   flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--q-rule);
@@ -3371,6 +3479,21 @@ body{
 </head>
 <body>
 
+<!-- ============================================================
+     BOOT SPLASH — شروق (أول شاشة لحظة فتح التطبيق، بتختفي لوحدها)
+     ============================================================ -->
+<div class="boot-splash" id="bootSplash" aria-hidden="true">
+  <div class="boot-mark">
+    <div class="boot-glow"></div>
+    <div class="boot-sun"></div>
+    <div class="boot-bar"></div>
+  </div>
+  <div class="boot-word">
+    <span class="boot-en">New Day</span>
+    <span class="boot-tag">More knowledge · Better Vision</span>
+  </div>
+</div>
+
 <div class="app" id="app">
 
   <!-- ============================================================
@@ -3681,7 +3804,9 @@ body{
     </div>
   </div>
 
-  <!-- تنبيه نجاح التحديث — بيظهر لحظة ما التطبيق يتأكد إنه فعلاً بقى على آخر نسخة بعد ضغط "حدّث دلوقتي" -->
+  <div class="list-removal-note" id="listRemovalNote"></div>
+
+<!-- تنبيه نجاح التحديث — بيظهر لحظة ما التطبيق يتأكد إنه فعلاً بقى على آخر نسخة بعد ضغط "حدّث دلوقتي" -->
   <div class="update-success-toast" id="updateSuccessToast">✅ مبروك، تم التحديث بفضل الله — انت الآن على أحدث نسخة</div>
 
   <!-- ============================================================
@@ -4546,6 +4671,11 @@ body{
     <div class="profile-section">
       <div class="profile-section-title">Settings</div>
 
+      <div class="profile-row profile-row-link" id="profilePasswordRow" style="display:none;"><span class="profile-row-label">🔑 تغيير كلمة السر</span><span class="profile-row-value">→</span></div>
+      <div class="profile-row" id="profileMemberNoRow" style="display:none;">
+        <span class="profile-row-label">🆔 رقم العضوية</span>
+        <span class="profile-row-value"><bdi id="profileMemberNo">—</bdi></span>
+      </div>
       <div class="profile-row profile-row-editable" id="profileNameRow">
         <span class="profile-row-label">Display Name</span>
         <span class="profile-row-value" id="profileNameValue">Dr. You</span>
@@ -4662,7 +4792,7 @@ body{
 
     <!-- الشاشة الأولى: اختيار نوع الجهاز -->
     <div id="installAppChooser">
-      <p class="install-app-intro">اختار نوع جهازك، وهنساعدك تحط أيقونة <span dir="ltr" style="unicode-bidi:isolate;">"New Day"</span> على شاشتك زي أي تطبيق تاني — بدون نت في أي وقت بعد كده بإذن الله.</p>
+      <p class="install-app-intro">اختار نوع جهازك، وهنساعدك تحط أيقونة <bdi dir="ltr">"New Day"</bdi> على شاشتك زي أي تطبيق تاني — بدون نت في أي وقت بعد كده بإذن الله.</p>
       <button class="install-app-choice" id="installAppAndroidBtn">
         <span class="install-app-choice-icon">🤖</span>
         <span class="install-app-choice-text">
@@ -4693,7 +4823,7 @@ body{
     <!-- شاشة تعليمات آبل -->
     <div id="installAppAppleGuide" style="display:none;">
       <button class="install-app-back" id="installAppAppleBack">← رجوع</button>
-      <p class="install-app-intro">بس افتح صفحة التطبيق من متصفح <b>Safari</b> (مش أي متصفح تاني) واتبع الخطوتين دول:</p>
+      <p class="install-app-intro">بس افتح صفحة التطبيق من متصفح <bdi dir="ltr"><b>Safari</b></bdi> (مش أي متصفح تاني) واتبع الخطوات دي:</p>
 
       <div class="install-app-step">
         <div class="install-app-step-num">1</div>
@@ -4710,7 +4840,7 @@ body{
       <div class="install-app-step">
         <div class="install-app-step-num">2</div>
         <div class="install-app-step-body">
-          <div class="install-app-step-title">مرّر لتحت ودوس "Add to Home Screen"</div>
+          <div class="install-app-step-title">مرّر لتحت ودوس <bdi dir="ltr">"Add to Home Screen"</bdi></div>
           <div class="install-app-step-desc">يعني "إضافة إلى الشاشة الرئيسية" — هتلاقيها في القايمة اللي بتفتح</div>
           <div class="install-app-visual">
             <span class="install-app-visual-fallback">➕🏠</span>
@@ -4721,7 +4851,7 @@ body{
       <div class="install-app-step">
         <div class="install-app-step-num">3</div>
         <div class="install-app-step-body">
-          <div class="install-app-step-title">دوس "Add" (إضافة) فوق على اليمين</div>
+          <div class="install-app-step-title">دوس <bdi dir="ltr">"Add"</bdi> (إضافة) فوق على اليمين</div>
           <div class="install-app-step-desc">وخلاص! أيقونة "New Day" هتظهر على شاشتك الرئيسية زي أي تطبيق تاني 🎉</div>
           <div class="install-app-visual">
             <span class="install-app-visual-fallback">✅</span>
@@ -4753,6 +4883,71 @@ body{
     <div class="reminder-alert-icon">🔔</div>
     <div class="reminder-alert-text" id="reminderAlertText"></div>
     <button class="motivation-btn" id="reminderAlertOkBtn">الحمد لله</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     PASSWORD SHEET (تغيير كلمة السر من الملف الشخصي + كلمة سر جديدة بعد رابط الاستعادة)
+     ============================================================ -->
+<div class="profile-overlay" id="passwordOverlay">
+  <div class="profile-sheet password-sheet">
+    <div class="profile-handle" id="passwordHandle"></div>
+    <div class="profile-header" id="passwordHeader">
+      <div class="profile-title" id="passwordTitle">🔑 تغيير كلمة السر</div>
+      <button class="profile-close" id="passwordClose">✕</button>
+    </div>
+    <p class="install-app-intro" id="passwordIntro"></p>
+    <div id="pwCurrentWrap">
+      <label class="pw-label" for="pwCurrent">كلمة السر الحالية</label>
+      <input type="password" class="profile-edit-input" id="pwCurrent" autocomplete="current-password">
+    </div>
+    <label class="pw-label" for="pwNew">كلمة السر الجديدة</label>
+    <input type="password" class="profile-edit-input" id="pwNew" autocomplete="new-password" placeholder="6 حروف أو أرقام على الأقل">
+    <label class="pw-label" for="pwConfirm">اكتبها تاني للتأكيد</label>
+    <input type="password" class="profile-edit-input" id="pwConfirm" autocomplete="new-password">
+    <label class="pw-show"><input type="checkbox" id="pwShow"> إظهار كلمة السر</label>
+    <div class="admin-auth-warning" id="pwError"></div>
+    <div class="profile-edit-btn-row">
+      <button class="profile-edit-save" id="pwSave">💾 حفظ كلمة السر</button>
+      <button class="profile-edit-cancel" id="pwBack" type="button">↩️ رجوع</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     LOGOUT CONFIRM (تنويه قبل تسجيل الخروج)
+     ============================================================ -->
+<div class="reminder-alert-overlay logout-confirm-overlay" id="logoutConfirmOverlay">
+  <div class="reminder-alert-card logout-confirm-card">
+    <div class="logout-confirm-handle" id="logoutConfirmHandle"></div>
+
+    <!-- الشاشة الأولى: التنويه + الاختيارات -->
+    <div id="logoutConfirmMain">
+      <div class="reminder-alert-icon" id="logoutConfirmIcon">🚪</div>
+      <div class="reminder-alert-text">في حال تسجيل الخروج من التطبيق، لن تصل حضرتك إشعارات أو تذكيرات.<br><span style="font-weight:600;font-size:14px;">يمكن حضرتك فقط غلق نافذة التطبيق للخروج، وهتفضل توصلك بإذن الله.</span></div>
+      <button class="motivation-btn" id="logoutConfirmCancel" style="width:100%;margin-bottom:10px;">✅ إلغاء تسجيل الخروج وغلق التطبيق</button>
+      <button class="profile-edit-cancel" id="logoutConfirmGo" type="button" style="width:100%;margin-bottom:10px;">🚪 تسجيل الخروج</button>
+      <button class="logout-back-btn" id="logoutConfirmBack" type="button">↩️ رجوع للملف الشخصي</button>
+    </div>
+
+    <!-- الشاشة التانية: إزاي تقفل التطبيق من أزرار الموبايل نفسه -->
+    <div id="logoutConfirmCloseHint" style="display:none;">
+      <div class="reminder-alert-icon">📱</div>
+      <div class="reminder-alert-text" style="margin-bottom:12px;">اقفل التطبيق من أزرار موبايلك نفسه<br><span style="font-weight:600;font-size:13.5px;">(الأزرار اللي تحت الشاشة خالص — مش أزرار التطبيق)</span></div>
+      <div class="phone-nav">
+        <div class="phone-nav-key"><span class="k">|||</span><small>&nbsp;</small></div>
+        <div class="phone-nav-key hl"><span class="k">○</span><small>الشاشة الرئيسية</small></div>
+        <div class="phone-nav-key hl"><span class="k">‹</span><small>رجوع</small></div>
+      </div>
+      <div class="phone-nav-steps">
+        <div>👇 بص على الأزرار اللي في <b>آخر شاشة موبايلك من تحت</b> (برّه التطبيق).</div>
+        <div>1️⃣ اضغط مرة واحدة على زرار <b>○</b> (الشاشة الرئيسية) — أو زرار <b>‹</b> (رجوع).</div>
+        <div>2️⃣ التطبيق هيتقفل وترجع لشاشة موبايلك، وحسابك فاضل زي ما هو ✅</div>
+      </div>
+      <p class="phone-nav-note">📱 على آيفون: اسحب بصباعك من تحت الشاشة خالص لفوق.<br>📱 لو موبايلك من غير أزرار: اسحب من تحت لفوق برضو.</p>
+      <p class="phone-nav-note" style="font-weight:700;">وهتفضل توصلك إشعاراتك وتذكيراتك بإذن الله 🔔</p>
+      <button class="motivation-btn" id="logoutConfirmHintOk" style="width:100%;">👍 تمام</button>
+    </div>
   </div>
 </div>
 
@@ -5353,6 +5548,7 @@ async function switchStorageNamespaceForCurrentUser() {
     : "newday_state_v3_" + currentUserId;
   await loadMemberState(); // لازم نجيب حالة العضو من قاعدة البيانات قبل أي تحميل تاني
   await loadState();
+  await hydrateRemindersFromServer(); // مواعيد التذكير من ملف العضو على السيرفر (مش ذاكرة الجهاز)
   ensurePushSubscriptionSynced(); // من غير await — في الخلفية، مايأخّرش فتح التطبيق
   // تايمر السؤال وتايمر الجلسة بيبدأوا من الصفر مع أي حساب جديد — مش هيستمروا من حساب لحساب
   qTimerSeconds = 0;
@@ -5443,7 +5639,8 @@ function withTimeout(promise, ms, label) {
 //  - عضو داخل بحساب ← إشعارات حسابه + تذكيراته (العلم nd_push_wanted)
 //  - زائر / مش داخل ← الإعلانات العامة بس (العلم nd_push_wanted_guest)
 function pushModeIsGuest() { return isGuest || !currentUserId; }
-function pushWantedKey() { return pushModeIsGuest() ? "nd_push_wanted_guest" : "nd_push_wanted"; }
+// العلم لكل حساب لوحده: "1" = مفعّل، "0" = لغاه بنفسه (منرجّعهوش تلقائي)، مش موجود = لسه ماختارش
+function pushWantedKey() { return pushModeIsGuest() ? "nd_push_wanted_guest" : ("nd_push_wanted_" + currentUserId); }
 function pushSupported() {
   return ("serviceWorker" in navigator) && ("PushManager" in window) && ("Notification" in window);
 }
@@ -5495,12 +5692,15 @@ async function ensurePushSubscriptionSynced() {
     if (!supabaseClient || !pushSupported()) return;
     if (Notification.permission !== "granted") return;
     const key = pushWantedKey();
-    if (localStorage.getItem(key) !== "1") {
+    const flag = localStorage.getItem(key);
+    if (flag === "0") return; // لغاه بنفسه — نحترم اختياره
+    if (flag !== "1") {
       if (pushModeIsGuest()) return; // الزائر لازم يختار الإعلانات العامة بنفسه
-      // ترحيل من النسخ القديمة: عضو كان مفعّل فعلًا (فيه اشتراك في المتصفح) — اعتبره مفعّل
+      // عضو ماختارش لسه: لو الجهاز مفعّل إشعارات أصلًا (من النسخ القديمة أو من حساب/زائر قبله) — نكمّل له تلقائي
+      const legacy = localStorage.getItem("nd_push_wanted");
       const reg = await withTimeout(navigator.serviceWorker.ready, 8000, "sw");
       const existing = await reg.pushManager.getSubscription();
-      if (!existing) return;
+      if (!existing && legacy !== "1") return;
       localStorage.setItem(key, "1");
     }
     await subscribeAndRegisterPush();
@@ -5512,7 +5712,7 @@ async function disablePushNotifications() {
   try {
     const reg = await withTimeout(navigator.serviceWorker.ready, 5000, "تجهيز الخدمة الخلفية");
     const sub = await reg.pushManager.getSubscription();
-    try { localStorage.removeItem(pushWantedKey()); } catch (e) {}
+    try { localStorage.setItem(pushWantedKey(), "0"); } catch (e) {}
     if (sub && supabaseClient) {
       if (pushModeIsGuest()) {
         await supabaseClient.rpc("unregister_guest_push_subscription", { p_endpoint: sub.endpoint });
@@ -5589,7 +5789,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 5.1;
+const APP_VERSION = 5.7;
 
 const CONFIG = {
   DAILY_LIMIT: 149,         // أقصى عدد أسئلة جديدة/يوم تأخذ نقاط
@@ -6446,6 +6646,15 @@ async function checkForcedUpdate() {
   return true;
 }
 
+function showListRemovalNote(text) {
+  const el = document.getElementById("listRemovalNote");
+  if (!el) return;
+  el.textContent = text;
+  el.classList.add("show");
+  clearTimeout(showListRemovalNote._t);
+  showListRemovalNote._t = setTimeout(() => el.classList.remove("show"), 4200);
+}
+
 function showToast(msg, ms) {
   const toast = document.getElementById("updateSuccessToast");
   if (!toast) return;
@@ -6512,6 +6721,7 @@ let context = {
 /* --- Onboarding (اسم + لون + تذكيرات) --- */
 let onboardingCompleted = false;
 let displayName = "Dr. You";
+let memberNo = null;
 let nameChangeCount = 0;
 let trackColor = "#3DBE68";
 let reminders = { r1: null, r2: null, r3: null };
@@ -6938,8 +7148,15 @@ async function awardPoints(qCode, isCorrect) {
   });
 
   // 4) لو الإجابة صح → شيل من Wrong Set
-  if (isCorrect && wrongSet.has(qCode)) {
+  const wasInWrong = wrongSet.has(qCode);
+  if (isCorrect && wasInWrong) {
     wrongSet.delete(qCode);
+  }
+  // نوضّح للمستخدم إن السؤال ده هيختفي من القايمة أول ما يعدّيه (بدل ما يختفي فجأة من غير سبب)
+  if (qMode === "wrong" && isCorrect && wasInWrong) {
+    showListRemovalNote("✅ تمام! السؤال ده هيتشال من قايمة Wrong أول ما تعدّيه");
+  } else if (qMode === "remaining" && !solvedSet.has(qCode)) {
+    showListRemovalNote("✅ اتحل! السؤال ده هيتشال من قايمة Remaining أول ما تعدّيه");
   }
 
   // 5) لو الإجابة غلط → ضيف في Wrong Set
@@ -7039,19 +7256,24 @@ function getAllQuestionsInContext() {
 /**
  * يرجع الـ Pool الحالي حسب qMode
  */
+let stickyQCode = null;
 function getPool() {
   const all = getAllQuestionsInContext();
 
+  // السؤال المعروض حاليًا بيفضل في القايمة لحد ما تسيبه بنفسك — عشان لما تحلّه أو تكشف إجابته
+  // تشوف الإجابة والشرح بدل ما يختفي فجأة وتتنقل للي بعده
+  const keep = (q) => q.qCode === stickyQCode;
+
   if (qMode === "fav") {
-    return all.filter(q => favorites.has(q.qCode));
+    return all.filter(q => favorites.has(q.qCode) || keep(q));
   }
 
   if (qMode === "wrong") {
-    return all.filter(q => wrongSet.has(q.qCode));
+    return all.filter(q => wrongSet.has(q.qCode) || keep(q));
   }
 
   if (qMode === "remaining") {
-    return all.filter(q => !solvedSet.has(q.qCode));
+    return all.filter(q => !solvedSet.has(q.qCode) || keep(q));
   }
 
   // allq
@@ -7483,11 +7705,23 @@ const letters = ["A", "B", "C", "D", "E"];
 function renderQuestion() {
   // 0) هيّئ نظافة الشاشة قبل رسم السؤال الجديد — عشان المسطرة/الأداة بتاعة السؤال اللي قبله متفضلش عالقة
   hideAnnotateRuler();
+  const lrn = document.getElementById("listRemovalNote");
+  if (lrn) lrn.classList.remove("show");
   document.querySelectorAll(".q-annotate-tool[data-tool]").forEach(btn => btn.classList.remove("active"));
 
   // 1) احسب الـ Pool الحالي
   currentPool = getPool();
   clampQIdx();
+  // ثبّت السؤال المعروض: لو اتغيّر، نعيد حساب القايمة ونفضل على نفس السؤال (السؤال اللي سبته يخرج من القايمة دلوقتي بس)
+  if (currentPool.length > 0) {
+    const shownCode = currentPool[qIdx] ? currentPool[qIdx].qCode : null;
+    if (shownCode && shownCode !== stickyQCode) {
+      stickyQCode = shownCode;
+      currentPool = getPool();
+      const i = currentPool.findIndex(q => q.qCode === stickyQCode);
+      qIdx = i >= 0 ? i : 0;
+    }
+  }
 
   const body = document.getElementById("qBody");
   if (!body) return;
@@ -8399,6 +8633,11 @@ function renderProfile() {
 
   setTxt("profileAppVersionLabel", APP_VERSION); // دايمًا من الثابت الحقيقي، مش رقم مكتوب بالإيد
   if (window.refreshPushButtonState) window.refreshPushButtonState();
+  const memberNoRow = document.getElementById("profileMemberNoRow");
+  if (memberNoRow) memberNoRow.style.display = (!isGuest && memberNo) ? "" : "none";
+  setTxt("profileMemberNo", memberNo || "—");
+  const pwRow = document.getElementById("profilePasswordRow");
+  if (pwRow) pwRow.style.display = isGuest ? "none" : "";
 
   if (isGuest) {
     // الزائر معندوش حساب فعلي — مفيش إحصائيات حقيقية نوريهاله
@@ -8823,7 +9062,8 @@ function setupProfileEditing() {
     if (pushNote) {
       pushNote.textContent = guestMode
         ? "ℹ️ كزائر هتوصلك الإعلانات العامة بس — سجّل دخول عشان توصلك تذكيراتك وإشعارات حسابك كمان."
-        : "ℹ️ في حال تسجيل الخروج من التطبيق، لن تصل حضرتك إشعارات أو تذكيرات — يمكن حضرتك فقط غلق النافذة للخروج.";
+        : (on ? "ℹ️ الإشعارات والتذكيرات بتوصلك على الجهاز ده حتى لو التطبيق مقفول، طول ما انت داخل بحسابك."
+              : "ℹ️ فعّلها عشان توصلك تذكيراتك وإشعاراتنا حتى لو التطبيق مقفول.");
     }
     if (remindersHint) remindersHint.style.display = (on || guestMode) ? "none" : "flex";
     return on;
@@ -8833,13 +9073,22 @@ function setupProfileEditing() {
   // زرار "فعّل الإشعارات" جوه لوحة التذكيرات — بيقفل اللوحة وينقلك لصف الإشعارات ويلفت نظرك ليه
   const remHintBtn = document.getElementById("remindersPushHintBtn");
   if (remHintBtn && pushRow) {
-    remHintBtn.addEventListener("click", () => {
-      document.getElementById("profileRemindersEdit").classList.remove("open");
-      pushRow.scrollIntoView({ behavior: "smooth", block: "center" });
-      pushRow.classList.remove("row-flash");
-      void pushRow.offsetWidth;
-      pushRow.classList.add("row-flash");
-      setTimeout(() => pushRow.classList.remove("row-flash"), 1700);
+    remHintBtn.addEventListener("click", async () => {
+      remHintBtn.disabled = true;
+      remHintBtn.textContent = "⏳ بيفعّل...";
+      const result = await enablePushNotifications();
+      remHintBtn.disabled = false;
+      remHintBtn.textContent = "🔔 فعّل الإشعارات";
+      await refreshPushButtonState();
+      if (result.ok) {
+        showToast("✅ الإشعارات اتفعّلت — تذكيراتك هتوصلك بإذن الله", 4000);
+        pushRow.classList.remove("row-flash");
+        void pushRow.offsetWidth;
+        pushRow.classList.add("row-flash");
+        setTimeout(() => pushRow.classList.remove("row-flash"), 1700);
+      } else {
+        showGlobalError("تفعيل إشعارات الموبايل", result.reason);
+      }
     });
   }
 
@@ -9177,8 +9426,9 @@ const APP_GUIDE_ITEMS = [
     icon: "⏰",
     title: "تذكيرات المذاكرة",
     html: `
-      <p>تقدر تحدد وقت تذكير واحد إجباري، ووقتين إضافيين اختياريين، من الملف الشخصي، وبتتحفظ في جهازك فورًا من غير ما تحتاج نت.</p>
-      <span class="ag-note">⚠️ قريبًا بإذن الله: إشعارات فعلية توصلك في المواعيد دي، حتى لو التطبيق مقفول.</span>
+      <p>تقدر تحدد وقت تذكير واحد إجباري، ووقتين إضافيين اختياريين، من الملف الشخصي. ولما تفعّل إشعارات الموبايل، بتوصلك التذكيرات في مواعيدها حتى لو التطبيق مقفول — ولو التطبيق مفتوح وقت الميعاد، بيظهرلك تنبيه جواه كمان.</p>
+      <span class="ag-note">📶 منبهات التذكير لا تعمل إذا حان وقتها ولم تكن متصلًا بالإنترنت، حيث يصل لها موعد تذكيرك بفضل الله من ملف حضرتك على سيرفرنا بالإنترنت.</span>
+      <span class="ag-note">✨ ولكن يمكنك بفضل الله استخدام التطبيق بدون إنترنت، وجميع بيانات جلستك ونقاطك ومنافستك محفوظة في الحفظ والصون 🤩 محليًا على التطبيق، ويتم إرسالها لملف حضرتك بفضل الله على سيرفرنا بمجرد فتح الإنترنت.</span>
     `
   },
   {
@@ -9343,7 +9593,7 @@ function renderMotivationScreen() {
 function formatWelcomeMessageHtml(text) {
   const lines = String(text || "").split("\n").map(l => l.trim()).filter(Boolean);
   return lines.map(line => {
-    if (line.includes("﴿")) return `<p class="welcome-ayah">${line}</p>`;
+    if (line.includes("﴿") || line.includes("۝")) return `<p class="welcome-ayah">${line}</p>`;
     if (line.startsWith("قال") || line.startsWith("أعوذ") || line.startsWith("بسم الله")) {
       return `<p class="welcome-invocation">${line}</p>`;
     }
@@ -9684,7 +9934,7 @@ function renderMembersEmailListForCategory(category, query) {
     } else if (category && categorizeMember(m) !== category) {
       return false;
     }
-    if (q && !m.email.toLowerCase().includes(q)) return false;
+    if (q && !m.email.toLowerCase().includes(q) && !(m.member_no || "").toLowerCase().includes(q)) return false;
     return true;
   });
   renderMembersEmailRows(items, wrap);
@@ -9694,7 +9944,7 @@ function renderMembersGlobalSearchResults(query) {
   const wrap = document.getElementById("membersEmailList");
   if (!wrap) return;
   const q = (query || "").trim().toLowerCase();
-  const items = membersCache.filter(m => m.role !== "owner" && m.email.toLowerCase().includes(q));
+  const items = membersCache.filter(m => m.role !== "owner" && (m.email.toLowerCase().includes(q) || (m.member_no || "").toLowerCase().includes(q)));
   currentMembersCategory = null;
   renderMembersEmailRows(items, wrap);
   showMembersLevel("list");
@@ -9711,7 +9961,7 @@ function renderMembersEmailRows(items, wrap) {
     const row = document.createElement("div");
     row.className = "member-email-row";
     row.innerHTML = `
-      <span>${catBadge[categorizeMember(m)] || ""} ${m.email}</span>
+      <span>${catBadge[categorizeMember(m)] || ""} ${m.email} <bdi class="member-no-tag">${m.member_no || ""}</bdi></span>
       ${m.role === "admin" ? `<span class="mer-badge role-admin">🛡️ أدمن</span>` : ""}
       <span style="flex-shrink:0;">→</span>
     `;
@@ -9750,6 +10000,10 @@ async function renderMemberDetail(memberId) {
   content.innerHTML = `
     <div class="member-detail-card">
       <div class="member-detail-email">${m.email}</div>
+      <div class="member-detail-ids">
+        <span class="member-id-chip">🆔 <bdi>${m.member_no || "—"}</bdi></span>
+        <span class="member-id-chip">🗓️ اتسجّل: <bdi dir="ltr">${m.created_at ? new Date(m.created_at).toLocaleString("en-GB", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) : "—"}</bdi></span>
+      </div>
       <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:10px;">
         ${m.display_name || "بدون اسم"} · ${roleLabel(m.role, m.is_primary_owner)} · يوم ${trialDays} من التجربة ${expiresLabel}
       </div>
@@ -9970,6 +10224,7 @@ async function renderAdminFieldsList() {
         <label class="admin-checkbox-row"><input type="checkbox" class="admin-field-required" ${f.is_required ? "checked" : ""}> إجباري</label>
       </div>
       <textarea class="admin-textarea admin-field-help-input" rows="1" placeholder="شرح/مثال يظهر تحت الحقل">${f.help_text || ""}</textarea>
+      ${f.field_type === "select" ? `<label class="admin-label">الاختيارات</label><div class="admin-field-options-editor"></div>` : ""}
     `;
     const labelInput = row.querySelector(".admin-field-label-input");
     const reqCheckbox = row.querySelector(".admin-field-required");
@@ -9990,6 +10245,17 @@ async function renderAdminFieldsList() {
     reqCheckbox.addEventListener("change", saveField);
     helpInput.addEventListener("change", saveField);
 
+    const optsBox = row.querySelector(".admin-field-options-editor");
+    if (optsBox) {
+      buildOptionsEditor(optsBox, f.options || [], async (opts) => {
+        if (opts.length < 2) { showAuthError("adminFieldsWarning", "لازم اختيارين على الأقل"); return; }
+        const { error } = await supabaseClient.from("field_definitions")
+          .update({ options: opts, updated_at: new Date().toISOString() }).eq("id", f.id);
+        if (error) showAuthError("adminFieldsWarning", "معرفتش أحفظ الاختيارات — لازم صلاحية أدمن");
+        else { showAuthError("adminFieldsWarning", ""); showToast("✅ الاختيارات اتحفظت", 2000); }
+      });
+    }
+
     delBtn.addEventListener("click", async () => {
       const { error } = await supabaseClient.from("field_definitions").delete().eq("id", f.id);
       if (error) showAuthError("adminFieldsWarning", "معرفتش أحذف — لازم صلاحية أدمن");
@@ -10000,13 +10266,60 @@ async function renderAdminFieldsList() {
   });
 }
 
+/* محرر اختيارات: كل اختيار في خانة لوحده + إضافة/حذف — بدل الفصل بالفاصلة */
+function buildOptionsEditor(container, initial, onChange) {
+  container.innerHTML = "";
+  container.classList.add("opt-editor");
+  const rows = document.createElement("div");
+  rows.className = "opt-editor-rows";
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "opt-editor-add";
+  addBtn.textContent = "➕ إضافة خيار";
+  container.appendChild(rows);
+  container.appendChild(addBtn);
+
+  function getOptions() {
+    return Array.from(rows.querySelectorAll("input")).map(i => i.value.trim()).filter(Boolean);
+  }
+  function addRow(value, focus) {
+    const row = document.createElement("div");
+    row.className = "opt-editor-row";
+    row.innerHTML = `<span class="opt-editor-num"></span>
+      <input type="text" class="admin-input" dir="auto" placeholder="اكتب الخيار هنا">
+      <button type="button" class="admin-url-remove" aria-label="حذف الخيار">✕</button>`;
+    const input = row.querySelector("input");
+    input.value = value || "";
+    input.addEventListener("change", () => onChange && onChange(getOptions()));
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addRow("", true); } });
+    row.querySelector("button").addEventListener("click", () => {
+      if (rows.children.length <= 1) { input.value = ""; } else { row.remove(); }
+      renumber();
+      onChange && onChange(getOptions());
+    });
+    rows.appendChild(row);
+    renumber();
+    if (focus) input.focus();
+  }
+  function renumber() {
+    Array.from(rows.children).forEach((r, i) => { r.querySelector(".opt-editor-num").textContent = (i + 1) + "."; });
+  }
+  addBtn.addEventListener("click", () => addRow("", true));
+  const start = (initial && initial.length) ? initial : ["", ""];
+  start.forEach(v => addRow(v, false));
+  return { getOptions };
+}
+
+let newFieldOptionsEditor = null;
+
 function updateNewFieldExtra() {
   const typeEl = document.getElementById("newFieldType");
   const extra = document.getElementById("newFieldExtra");
   if (!typeEl || !extra) return;
   const type = typeEl.value;
   if (type === "select") {
-    extra.innerHTML = `<input type="text" class="admin-input" id="newFieldOptions" placeholder="اختيارات مفصولة بفاصلة، مثال: مقيم,مسافر" dir="rtl" style="width:100%;box-sizing:border-box;margin-bottom:8px;">`;
+    extra.innerHTML = `<label class="admin-label">الاختيارات (كل خيار في خانة)</label><div id="newFieldOptionsEditor"></div>`;
+    newFieldOptionsEditor = buildOptionsEditor(document.getElementById("newFieldOptionsEditor"), [], null);
   } else if (type === "country" || type === "phone_country_code") {
     extra.innerHTML = `<select class="admin-textarea" id="newFieldListKey">
       <option value="residence">قائمة دولة الإقامة</option>
@@ -10029,9 +10342,8 @@ async function handleAddField() {
 
   let options = null, listKey = null;
   if (type === "select") {
-    const optEl = document.getElementById("newFieldOptions");
-    options = optEl ? optEl.value.split(",").map(s => s.trim()).filter(Boolean) : [];
-    if (!options.length) { showAuthError("adminFieldsWarning", "اكتب الاختيارات الأول"); return; }
+    options = newFieldOptionsEditor ? newFieldOptionsEditor.getOptions() : [];
+    if (options.length < 2) { showAuthError("adminFieldsWarning", "اكتب اختيارين على الأقل — كل خيار في خانة"); return; }
   } else if (type === "country" || type === "phone_country_code") {
     const lkEl = document.getElementById("newFieldListKey");
     listKey = lkEl ? lkEl.value : "residence";
@@ -10053,6 +10365,7 @@ async function handleAddField() {
     document.getElementById("newFieldLabel").value = "";
     document.getElementById("newFieldHelp").value = "";
     document.getElementById("newFieldRequired").checked = false;
+    updateNewFieldExtra();
     renderAdminFieldsList();
   }
 }
@@ -10391,17 +10704,23 @@ function setupAdminForms() {
       if (monthKey !== lastMonth) { html += `<div class="admin-archive-month">📅 ${monthKey}</div>`; lastMonth = monthKey; }
       const time = `${d.getDate()}/${d.getMonth() + 1} — ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
       const t = n.target || "now";
-      const delivered = t === "now"
-        ? (typeof n.sent_count === "number" ? `📲 وصلت لـ ${n.sent_count} جهاز` : "📲 مفيش بيانات توصيل")
-        : "⏰ بتتبعت مع التذكير في ميعاده";
+      let deliveryChips;
+      if (t !== "now") {
+        deliveryChips = `<span class="admin-archive-chip chip-reminder">⏰ بتتبعت مع التذكير في ميعاده</span>`;
+      } else if (typeof n.sent_count === "number") {
+        deliveryChips = `<span class="admin-archive-chip chip-sent">📤 اتبعتت لـ ${n.sent_count} جهاز</span>
+          <span class="admin-archive-chip chip-delivered">✅ وصلت فعليًا لـ ${n.delivered_count || 0}</span>`;
+      } else {
+        deliveryChips = `<span class="admin-archive-chip chip-muted">— قبل نظام التتبع</span>`;
+      }
       html += `
         <div class="admin-archive-row">
           <div>${ndEscape(n.text)}</div>
           <div class="admin-archive-meta">
-            <span class="admin-archive-chip">🕒 ${time}</span>
-            <span class="admin-archive-chip">${TARGET_LABEL[t] || t}</span>
-            <span class="admin-archive-chip">${AUDIENCE_LABEL[n.audience] || AUDIENCE_LABEL.members}</span>
-            <span class="admin-archive-chip">${delivered}</span>
+            <span class="admin-archive-chip chip-time">🕒 ${time}</span>
+            <span class="admin-archive-chip ${t === "now" ? "chip-now" : "chip-reminder"}">${TARGET_LABEL[t] || t}</span>
+            <span class="admin-archive-chip chip-audience">${AUDIENCE_LABEL[n.audience] || AUDIENCE_LABEL.members}</span>
+            ${deliveryChips}
           </div>
         </div>`;
     });
@@ -10437,7 +10756,8 @@ function setupAdminForms() {
         textEl.value = "";
         if (target === "now") {
           const r = await sendRealPushNotification("New Day", text, { audience, notificationId: row.id });
-          showToast(`📲 الرسالة وصلت لـ ${r.sent || 0} جهاز${r.removed ? ` (واتشال ${r.removed} اشتراك منتهي)` : ""}`, 5000);
+          showToast(`📤 اتبعتت لـ ${r.sent || 0} جهاز — إيصالات الاستلام الفعلية هتظهر في الأرشيف خلال ثواني${r.removed ? ` (واتشال ${r.removed} اشتراك منتهي)` : ""}`, 6000);
+          if (notifArchiveList && notifArchiveList.style.display !== "none") setTimeout(renderAdminNotifArchive, 6000);
         } else {
           showToast(`⏰ اتحفظت — هتتبعت مع ${TARGET_LABEL[target].replace("⏰ مع ", "")} لكل عضو في ميعاده`, 5000);
         }
@@ -10752,6 +11072,7 @@ async function handleSignup() {
   await switchStorageNamespaceForCurrentUser();
   // حساب جديد تمامًا — لازم يبدأ نضيف، مش وارث بيانات حساب تاني كان شغال على الجهاز ده
   displayName = "Dr. You";
+  memberNo = null;
   trackColor = "#3DBE68";
   nameChangeCount = 0;
   onboardingCompleted = false;
@@ -10806,6 +11127,7 @@ async function handleLogin() {
   await switchStorageNamespaceForCurrentUser();
   // نرجّع الاسم/اللون للافتراضي أو لقيمة الحساب ده بالظبط
   displayName = (profile && profile.display_name) || "Dr. You";
+  memberNo = (profile && profile.member_no) || null;
   trackColor = (profile && profile.track_color) || "#3DBE68";
   nameChangeCount = (profile && typeof profile.name_change_count === "number") ? profile.name_change_count : 0;
   // لو عنده اسم متسجّل قبل كده (من أي جهاز)، يبقى خلص الأونبوردينج فعلاً
@@ -10828,7 +11150,7 @@ async function handleForgotPassword() {
   if (btn) btn.disabled = true;
 
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.href
+    redirectTo: window.location.origin + window.location.pathname
   });
 
   if (btn) btn.disabled = false;
@@ -10981,7 +11303,32 @@ function setupAuthScreens() {
   }
 
   const logoutRow = document.getElementById("profileLogoutSection");
-  if (logoutRow) logoutRow.addEventListener("click", handleLogout);
+  const logoutOverlay = document.getElementById("logoutConfirmOverlay");
+  const logoutMain = document.getElementById("logoutConfirmMain");
+  const logoutHint = document.getElementById("logoutConfirmCloseHint");
+  const closeLogoutDialog = () => logoutOverlay.classList.remove("open");
+  if (logoutRow) logoutRow.addEventListener("click", () => {
+    logoutMain.style.display = "";
+    logoutHint.style.display = "none";
+    logoutOverlay.classList.add("open");
+  });
+  // الضغط برّه النافذة أو السحب لتحت = رجوع للملف الشخصي (زي باقي النوافذ)
+  logoutOverlay.addEventListener("click", (e) => { if (e.target === logoutOverlay) closeLogoutDialog(); });
+  wireSheetDragToClose(["logoutConfirmHandle", "logoutConfirmIcon"], ".logout-confirm-card", "logoutConfirmOverlay");
+  document.getElementById("logoutConfirmBack").addEventListener("click", closeLogoutDialog);
+  document.getElementById("logoutConfirmHintOk").addEventListener("click", closeLogoutDialog);
+  document.getElementById("logoutConfirmCancel").addEventListener("click", () => {
+    try { window.close(); } catch (e) {} // بعض الأجهزة بتسمح للتطبيق يقفل نفسه
+    // لو ماتقفلش — نوريه بالشكل إزاي يقفله من أزرار الموبايل نفسه
+    setTimeout(() => {
+      logoutMain.style.display = "none";
+      logoutHint.style.display = "";
+    }, 300);
+  });
+  document.getElementById("logoutConfirmGo").addEventListener("click", () => {
+    closeLogoutDialog();
+    handleLogout();
+  });
 
   // --- نعيد التأكد من الإصدار وتصفير اليوم كل مرة المستخدم يرجع للتطبيق (مش بس أول فتحة) ---
   document.addEventListener("visibilitychange", async () => {
@@ -11323,6 +11670,20 @@ function buildActiveGrid(activeKey) {
   });
 }
 
+async function hydrateRemindersFromServer() {
+  if (isGuest || !currentUserId || !supabaseClient) return;
+  try {
+    const { data } = await withTimeout(
+      supabaseClient.from("users").select("reminder_1, reminder_2, reminder_3").eq("id", currentUserId).single(),
+      6000, "reminders");
+    if (!data) return;
+    const t = (v) => (v ? String(v).slice(0, 5) : null);
+    if (data.reminder_1 || data.reminder_2 || data.reminder_3) {
+      reminders = { r1: t(data.reminder_1), r2: t(data.reminder_2), r3: t(data.reminder_3) };
+    }
+  } catch (e) { /* من غير نت: نكمّل بالمحفوظ محليًا */ }
+}
+
 /* ============================================================
    27-a) IN-APP REMINDER ALERT (جرس داخلي لحظة وصول ميعاد التذكير، مش بس Push خارجي)
    ============================================================ */
@@ -11427,6 +11788,81 @@ function wireInstallAppSheet() {
     appleBack.addEventListener("click", () => {
       appleGuide.style.display = "none";
       chooser.style.display = "";
+    });
+  }
+}
+
+/* ============================================================
+   0-b) PASSWORD SHEET — تغيير كلمة السر (mode: "change") / كلمة سر جديدة بعد رابط الإيميل (mode: "recovery")
+   ============================================================ */
+let passwordSheetMode = "change";
+function openPasswordSheet(mode) {
+  passwordSheetMode = mode;
+  const isRecovery = mode === "recovery";
+  document.getElementById("passwordTitle").textContent = isRecovery ? "🔐 اختار كلمة سر جديدة" : "🔑 تغيير كلمة السر";
+  document.getElementById("passwordIntro").textContent = isRecovery
+    ? "أهلًا بيك تاني 👋 اكتب كلمة السر الجديدة اللي هتدخل بيها من هنا ورايح."
+    : "للأمان، اكتب كلمة السر الحالية الأول، وبعدين الجديدة مرتين.";
+  document.getElementById("pwCurrentWrap").style.display = isRecovery ? "none" : "";
+  ["pwCurrent", "pwNew", "pwConfirm"].forEach(id => { const el = document.getElementById(id); el.value = ""; el.type = "password"; });
+  document.getElementById("pwShow").checked = false;
+  showAuthError("pwError", "");
+  document.getElementById("passwordOverlay").classList.add("open");
+}
+function closePasswordSheet() {
+  document.getElementById("passwordOverlay").classList.remove("open");
+}
+
+async function handlePasswordSave() {
+  const btn = document.getElementById("pwSave");
+  const current = document.getElementById("pwCurrent").value;
+  const next = document.getElementById("pwNew").value;
+  const confirm2 = document.getElementById("pwConfirm").value;
+  showAuthError("pwError", "");
+  if (passwordSheetMode === "change" && !current) return showAuthError("pwError", "اكتب كلمة السر الحالية الأول");
+  if (next.length < 6) return showAuthError("pwError", "كلمة السر الجديدة لازم تكون 6 حروف أو أرقام على الأقل");
+  if (next !== confirm2) return showAuthError("pwError", "كلمة السر الجديدة والتأكيد مش زي بعض");
+  if (passwordSheetMode === "change" && next === current) return showAuthError("pwError", "كلمة السر الجديدة لازم تختلف عن الحالية");
+
+  btn.disabled = true;
+  const oldLabel = btn.textContent;
+  btn.textContent = "⏳ بيتحفظ...";
+  try {
+    const { data: u } = await supabaseClient.auth.getUser();
+    if (!u || !u.user) throw new Error("الجلسة انتهت — سجّل دخول تاني");
+    if (passwordSheetMode === "change") {
+      // نتأكد إن اللي بيغيّر هو صاحب الحساب فعلًا
+      const { error: reauthErr } = await supabaseClient.auth.signInWithPassword({ email: u.user.email, password: current });
+      if (reauthErr) { showAuthError("pwError", "كلمة السر الحالية مش صحيحة"); return; }
+    }
+    const { error } = await supabaseClient.auth.updateUser({ password: next });
+    if (error) { showAuthError("pwError", translateAuthError(error)); return; }
+    closePasswordSheet();
+    window.__ndRecovery = false;
+    showToast("✅ كلمة السر اتغيّرت بنجاح بفضل الله", 4500);
+  } catch (e) {
+    showGlobalError(passwordSheetMode === "recovery" ? "تعيين كلمة سر جديدة" : "تغيير كلمة السر", e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldLabel;
+  }
+}
+
+function wirePasswordSheet() {
+  const row = document.getElementById("profilePasswordRow");
+  if (row) row.addEventListener("click", () => openPasswordSheet("change"));
+  document.getElementById("pwSave").addEventListener("click", handlePasswordSave);
+  document.getElementById("pwBack").addEventListener("click", closePasswordSheet);
+  document.getElementById("passwordClose").addEventListener("click", closePasswordSheet);
+  document.getElementById("passwordOverlay").addEventListener("click", (e) => { if (e.target.id === "passwordOverlay") closePasswordSheet(); });
+  document.getElementById("pwShow").addEventListener("change", (e) => {
+    ["pwCurrent", "pwNew", "pwConfirm"].forEach(id => { document.getElementById(id).type = e.target.checked ? "text" : "password"; });
+  });
+  wireSheetDragToClose(["passwordHandle", "passwordHeader"], ".password-sheet", "passwordOverlay");
+  // احتياطي: لو المكتبة بلّغت إن الدخول جاي من رابط استعادة
+  if (supabaseClient) {
+    supabaseClient.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") { window.__ndRecovery = true; setTimeout(() => openPasswordSheet("recovery"), 600); }
     });
   }
 }
@@ -11538,6 +11974,7 @@ async function init() {
   // 0) وصّل زرار "حدّث دلوقتي" وصندوق الخطأ العام قبل أي حاجة تانية —
   // لازم يشتغلوا حتى لو التطبيق هيقف بعد كده على شاشة "فيه تحديث مهم"
   wireCriticalGlobalUI();
+  wirePasswordSheet();
 
   // 1) ابنِ المشهد
   buildGrass();
@@ -11593,8 +12030,9 @@ async function init() {
   // نرجّع الاسم/اللون من قيم Supabase (لو حساب مسجّل) بعد التحميل — عشان مايفضلش
   // فيه اسم حساب تاني كان شغال على نفس الجهاز قبل كده من صندوقه المحلي
   if (!isGuest && currentUserId) {
-    const { data: profile2 } = await supabaseClient.from("users").select("display_name, track_color, name_change_count, reminder_1, reminder_2, reminder_3").eq("id", currentUserId).single();
+    const { data: profile2 } = await supabaseClient.from("users").select("display_name, track_color, name_change_count, reminder_1, reminder_2, reminder_3, member_no").eq("id", currentUserId).single();
     if (profile2) {
+      memberNo = profile2.member_no || null;
       displayName = profile2.display_name || "Dr. You";
       trackColor = profile2.track_color || "#3DBE68";
       nameChangeCount = typeof profile2.name_change_count === "number" ? profile2.name_change_count : 0;
@@ -11617,6 +12055,17 @@ async function init() {
   // 2-a-3) تأكد إن إصدار التطبيق ده لسه مسموح — لو الأدمن فرض تحديث، اعرض شاشة التحديث ووقف هنا
   const updateOk = await checkForcedUpdate();
   if (!updateOk) return;
+
+  // جاي من رابط "استعادة كلمة السر" في الإيميل؟
+  if (window.__ndAuthLinkError) {
+    setTimeout(() => showToast("⚠️ رابط استعادة كلمة السر انتهى أو اتستخدم قبل كده — اطلب رابط جديد من شاشة الدخول", 7000), 1200);
+  } else if (window.__ndRecovery) {
+    setTimeout(async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) openPasswordSheet("recovery");
+      else showToast("⚠️ معرفناش نفتح رابط الاستعادة — اطلب رابط جديد من شاشة الدخول", 7000);
+    }, 1200);
+  }
 
   // 2-b) شغّل التايمرين (تايمر السؤال + تايمر الجلسة) — يعدّوا طول ما التطبيق مفتوح
   buildRetinaStrip();
