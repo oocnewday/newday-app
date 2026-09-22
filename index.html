@@ -2619,6 +2619,13 @@ body{
 .profile-row-link{ cursor:pointer; }
 .profile-row-link:active{ background:var(--q-teal-soft); }
 
+.profile-edit-btn-row{ display:flex; gap:8px; }
+.profile-edit-btn-row .profile-edit-save{ flex:1; }
+.profile-edit-cancel{
+  flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--q-rule);
+  background:#fff; color:var(--q-ink-soft, #678); font-weight:700; font-size:14px;
+  cursor:pointer; font-family:inherit;
+}
 .push-enable-btn{
   display:block; width:100%; margin:10px 0 4px; padding:10px 14px;
   background:var(--q-teal-soft); border:1px solid var(--q-teal); border-radius:10px;
@@ -3499,7 +3506,7 @@ body{
       <div class="motivation-media" id="motivationMedia"></div>
       <div class="motivation-links" id="motivationLinks"></div>
       <button class="motivation-btn" id="motivationNext">
-        <span>يلا نبدأ</span><span>←</span>
+        <span>←</span><span>يلا نبدأ</span>
       </button>
     </div>
   </div>
@@ -3515,7 +3522,7 @@ body{
         للمنافسة والحصول على نقاط يومية، يجب عليك استخدام التطبيق من خلال تسجيل الدخول.
       </p>
       <button class="motivation-btn" id="authGoLogin">
-        <span>تسجيل الدخول</span><span>←</span>
+        <span>←</span><span>تسجيل الدخول</span>
       </button>
       <p class="auth-switch-text">مالكش حساب؟ <span class="auth-link" id="authGoSignupFromGate">إنشاء حساب جديد</span></p>
       <button class="auth-guest-btn" id="authContinueGuest">استمرار من غير حساب</button>
@@ -3534,7 +3541,7 @@ body{
       <input type="password" class="onboarding-input" id="loginPassword" placeholder="كلمة السر" autocomplete="current-password">
       <p class="auth-error" id="loginError"></p>
       <button class="motivation-btn" id="loginSubmit">
-        <span>دخول</span><span>←</span>
+        <span>←</span><span>دخول</span>
       </button>
       <p class="auth-switch-text"><span class="auth-link" id="loginGoForgot">نسيت كلمة السر؟</span></p>
       <p class="auth-switch-text">مالكش حساب؟ <span class="auth-link" id="loginGoSignup">إنشاء حساب جديد</span></p>
@@ -3557,7 +3564,7 @@ body{
 
       <p class="auth-error" id="signupError"></p>
       <button class="motivation-btn" id="signupSubmit">
-        <span>إنشاء الحساب</span><span>←</span>
+        <span>←</span><span>إنشاء الحساب</span>
       </button>
       <p class="auth-switch-text">عندك حساب؟ <span class="auth-link" id="signupGoLogin">تسجيل الدخول</span></p>
       <p class="auth-switch-text"><span class="auth-link" id="signupGoBack">← رجوع</span></p>
@@ -3576,7 +3583,7 @@ body{
       <p class="auth-error" id="forgotError"></p>
       <p class="auth-success" id="forgotSuccess"></p>
       <button class="motivation-btn" id="forgotSubmit">
-        <span>ابعت الرابط</span><span>←</span>
+        <span>←</span><span>ابعت الرابط</span>
       </button>
       <p class="auth-switch-text"><span class="auth-link" id="forgotGoLogin">← رجوع لتسجيل الدخول</span></p>
     </div>
@@ -3645,7 +3652,7 @@ body{
         <input type="text" class="onboarding-input" id="obNameInput" maxlength="20" placeholder="مثال: د. أحمد">
         <p class="onboarding-hint">💡 تقدر تغيّره مرة واحدة بس بعدين من الملف الشخصي</p>
         <button class="motivation-btn" id="obNext1" disabled>
-          <span>التالي</span><span>←</span>
+          <span>←</span><span>التالي</span>
         </button>
       </div>
 
@@ -3656,7 +3663,7 @@ body{
         <p class="motivation-text">اللون اللي هيمثلك في المضمار</p>
         <div class="onboarding-colors" id="obColors"></div>
         <button class="motivation-btn" id="obNext2">
-          <span>التالي</span><span>←</span>
+          <span>←</span><span>التالي</span>
         </button>
       </div>
 
@@ -4060,7 +4067,7 @@ body{
     <h2 class="welcome-title">⏳ قبل ما تبدأ...</h2>
     <div class="welcome-text" id="welcomeMessageTextEl"></div>
     <button class="motivation-btn welcome-agree-btn" id="welcomeAgreeBtn">
-      <span>أوافق، لنبدأ</span><span>←</span>
+      <span>←</span><span>أوافق لنبدأ مستعينين بالله</span>
     </button>
   </div>
 </div>
@@ -4466,7 +4473,10 @@ body{
         <input type="text" class="profile-edit-input" id="profileNameInput" maxlength="20" placeholder="مثال: د. أحمد">
         <div class="name-change-warning">⚠️ تنويه: قدامك فرصة واحدة بس لتغيير اسمك، وهي دي الفرصة الحالية. بمجرد الحفظ، مش هتقدر تغيّره تاني أبدًا — وده للمحافظة على الشفافية بين الكل في المنافسة.</div>
         <div class="admin-auth-warning" id="profileNameEditError"></div>
-        <button class="profile-edit-save" id="profileNameSave">حفظ</button>
+        <div class="profile-edit-btn-row">
+          <button class="profile-edit-save" id="profileNameSave">حفظ</button>
+          <button class="profile-edit-cancel" id="profileNameCancel" type="button">إلغاء</button>
+        </div>
       </div>
 
       <div class="profile-row profile-row-editable" id="profileColorRow">
@@ -4494,8 +4504,6 @@ body{
           <label for="profileR3">التذكير الثالث</label>
           <input type="time" class="onboarding-time" id="profileR3">
         </div>
-        <button class="push-enable-btn" id="profilePushEnable" type="button">🔔 فعّل إشعارات الموبايل</button>
-        <div class="push-enable-note" id="profilePushNote"></div>
         <button class="profile-edit-save" id="profileRemindersSave">حفظ</button>
       </div>
 
@@ -4509,6 +4517,7 @@ body{
       <div class="profile-row profile-row-link" id="profileChapterStatsLink"><span class="profile-row-label">📈 Chapter Stats</span><span class="profile-row-value">→</span></div>
       <div class="profile-row profile-row-link" id="profileRaceLink"><span class="profile-row-label">🏁 Race Track</span><span class="profile-row-value">→</span></div>
       <div class="profile-row profile-row-link" id="profileInstallAppLink"><span class="profile-row-label">📲 فتح كتطبيق كامل</span><span class="profile-row-value">→</span></div>
+      <div class="profile-row profile-row-link" id="profilePushEnableRow"><span class="profile-row-label">🔔 فعّل إشعارات الموبايل</span><span class="profile-row-value" id="profilePushEnableRowValue">→</span></div>
       <div class="profile-row profile-row-editable" id="profileContactRow"><span class="profile-row-label">📞 تواصل معنا</span><span class="profile-row-value">→</span></div>
       <div class="profile-edit-panel" id="profileContactEdit">
         <a class="profile-contact-btn profile-contact-messenger" href="https://m.me/6.6.4.ooc" target="_blank" rel="noopener">
@@ -4543,7 +4552,7 @@ body{
         <div class="profile-about-text">
           بفضل الله إحدى خدمات<br>
           <span class="ag-word" id="agWordOnline">Online</span> <span class="ag-word" id="agWordOphthalmology">Ophthalmology</span> <span class="ag-word" id="agWordCorporation">Corporation</span> 6/6<br>
-          Version 3.0
+          Version <span id="profileAppVersionLabel"></span>
         </div>
       </div>
     </div>
@@ -4563,7 +4572,7 @@ body{
 
     <!-- الشاشة الأولى: اختيار نوع الجهاز -->
     <div id="installAppChooser">
-      <p class="install-app-intro">اختار نوع جهازك، وهنساعدك تحط أيقونة "New Day" على شاشتك زي أي تطبيق تاني — بدون نت في أي وقت بعد كده بإذن الله.</p>
+      <p class="install-app-intro">اختار نوع جهازك، وهنساعدك تحط أيقونة <span dir="ltr" style="unicode-bidi:isolate;">"New Day"</span> على شاشتك زي أي تطبيق تاني — بدون نت في أي وقت بعد كده بإذن الله.</p>
       <button class="install-app-choice" id="installAppAndroidBtn">
         <span class="install-app-choice-icon">🤖</span>
         <span class="install-app-choice-text">
@@ -5226,6 +5235,7 @@ async function switchStorageNamespaceForCurrentUser() {
   STORAGE_KEY = (isGuest || !currentUserId)
     ? "newday_state_v3_guest"
     : "newday_state_v3_" + currentUserId;
+  await loadMemberState(); // لازم نجيب حالة العضو من قاعدة البيانات قبل أي تحميل تاني
   await loadState();
   // تايمر السؤال وتايمر الجلسة بيبدأوا من الصفر مع أي حساب جديد — مش هيستمروا من حساب لحساب
   qTimerSeconds = 0;
@@ -5339,7 +5349,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 2.1;
+const APP_VERSION = 4.4;
 
 const CONFIG = {
   DAILY_LIMIT: 149,         // أقصى عدد أسئلة جديدة/يوم تأخذ نقاط
@@ -5394,6 +5404,56 @@ const rawStorage = {
 };
 
 /* ============================================================
+   3-b) CLOUD STATE (تخزين حقيقي في Supabase لكل عضو مسجّل)
+   ------------------------------------------------------------
+   نفس فكرة rawStorage بالضبط (get/set بمفتاح)، لكن بدل localStorage
+   بيتخزن في عمود واحد (app_state JSONB) في صف المستخدم على Supabase.
+   بنحمّله مرة واحدة بالكامل وقت تسجيل الدخول، وبعد كل تعديل بنبعت
+   نسخة محدّثة (بتأخير قصير عشان نجمّع كذا تعديل في طلب واحد بدل ما
+   نبعت طلب لكل حرف/ضغطة).
+   ضيوف التطبيق (Guests) فاضل شغلهم محلي بس زي الأول، مفيش حساب
+   يتبع عليه أصلاً.
+   ============================================================ */
+let memberState = {};
+let memberStateLoaded = false;
+let memberStateSaveTimer = null;
+
+async function loadMemberState() {
+  memberState = {};
+  memberStateLoaded = false;
+  if (!supabaseClient || !currentUserId) return;
+  try {
+    const { data } = await supabaseClient.from("users").select("app_state").eq("id", currentUserId).maybeSingle();
+    memberState = (data && data.app_state && typeof data.app_state === "object") ? data.app_state : {};
+  } catch (e) {
+    memberState = {};
+  }
+  memberStateLoaded = true;
+}
+
+function cloudGet(key, def) {
+  return memberState && Object.prototype.hasOwnProperty.call(memberState, key) ? memberState[key] : def;
+}
+
+function cloudSet(key, val) {
+  memberState[key] = val;
+  clearTimeout(memberStateSaveTimer);
+  memberStateSaveTimer = setTimeout(persistMemberState, 900);
+}
+
+async function persistMemberState() {
+  if (!supabaseClient || !currentUserId) return;
+  try {
+    await supabaseClient.from("users").update({ app_state: memberState }).eq("id", currentUserId);
+  } catch (e) { /* من غير نت، هيتحفظ في المحاولة الجاية اللي فيها كل آخر تحديث برضو */ }
+}
+
+// بترجع true لو المستخدم عضو مسجّل وحالته السحابية جاهزة نستخدمها (بدل rawStorage المحلي)
+function useCloudState() {
+  return !isGuest && !!currentUserId;
+}
+
+/* ============================================================
    4) HIGH-LEVEL STORAGE FUNCTIONS
    ------------------------------------------------------------
    كل دالة async (عشان تتحوّل لـ Supabase بسهولة)
@@ -5401,166 +5461,191 @@ const rawStorage = {
 
 /* --- FAVORITES --- */
 async function loadFavorites() {
-  if (DEV_MODE) return rawStorage.get("favorites", []);
-  return [];
+  if (useCloudState()) return cloudGet("favorites", []);
+  return rawStorage.get("favorites", []);
 }
 async function saveFavorites(arr) {
-  if (DEV_MODE) { rawStorage.set("favorites", arr); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("favorites", arr); return true; }
+  rawStorage.set("favorites", arr);
+  return true;
 }
 
 /* --- WRONG SET (Set من qCode) --- */
 async function loadWrongSet() {
-  if (DEV_MODE) return rawStorage.get("wrongSet", []);
-  return [];
+  if (useCloudState()) return cloudGet("wrongSet", []);
+  return rawStorage.get("wrongSet", []);
 }
 async function saveWrongSet(arr) {
-  if (DEV_MODE) { rawStorage.set("wrongSet", arr); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("wrongSet", arr); return true; }
+  rawStorage.set("wrongSet", arr);
+  return true;
 }
 
 /* --- SOLVED SET (Set من qCode) --- */
 async function loadSolvedSet() {
-  if (DEV_MODE) return rawStorage.get("solvedSet", []);
-  return [];
+  if (useCloudState()) return cloudGet("solvedSet", []);
+  return rawStorage.get("solvedSet", []);
 }
 async function saveSolvedSet(arr) {
-  if (DEV_MODE) { rawStorage.set("solvedSet", arr); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("solvedSet", arr); return true; }
+  rawStorage.set("solvedSet", arr);
+  return true;
 }
 
 /* --- QUESTION STATE (لكل سؤال: state + lastScoredAt + earnedPoints) --- */
 async function loadQuestionState() {
-  if (DEV_MODE) return rawStorage.get("questionState", {});
-  return {};
+  if (useCloudState()) return cloudGet("questionState", {});
+  return rawStorage.get("questionState", {});
 }
 async function saveQuestionState(obj) {
-  if (DEV_MODE) { rawStorage.set("questionState", obj); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("questionState", obj); return true; }
+  rawStorage.set("questionState", obj);
+  return true;
 }
 
 /* --- DAILY NEW IDS --- */
 async function loadDailyNewIds() {
-  if (DEV_MODE) return rawStorage.get("dailyNewIds", []);
-  return [];
+  if (useCloudState()) return cloudGet("dailyNewIds", []);
+  return rawStorage.get("dailyNewIds", []);
 }
 async function saveDailyNewIds(arr) {
-  if (DEV_MODE) { rawStorage.set("dailyNewIds", arr); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("dailyNewIds", arr); return true; }
+  rawStorage.set("dailyNewIds", arr);
+  return true;
 }
 
 /* --- DAILY DATE --- */
 async function loadDailyDate() {
-  if (DEV_MODE) return rawStorage.get("dailyDate", null);
-  return null;
+  if (useCloudState()) return cloudGet("dailyDate", null);
+  return rawStorage.get("dailyDate", null);
 }
 async function saveDailyDate(val) {
-  if (DEV_MODE) { rawStorage.set("dailyDate", val); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("dailyDate", val); return true; }
+  rawStorage.set("dailyDate", val);
+  return true;
 }
 
 /* --- DAILY PROGRESS (0-10) --- */
 async function loadDailyProgress() {
-  if (DEV_MODE) return rawStorage.get("dailyProgress", 0);
-  return 0;
+  if (useCloudState()) return cloudGet("dailyProgress", 0);
+  return rawStorage.get("dailyProgress", 0);
 }
 async function saveDailyProgress(val) {
-  if (DEV_MODE) { rawStorage.set("dailyProgress", val); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("dailyProgress", val); return true; }
+  rawStorage.set("dailyProgress", val);
+  return true;
 }
 
 /* --- DAILY 10 REWARD SHOWN --- */
 async function loadDaily10RewardShown() {
-  if (DEV_MODE) return rawStorage.get("daily10RewardShown", null);
-  return null;
+  if (useCloudState()) return cloudGet("daily10RewardShown", null);
+  return rawStorage.get("daily10RewardShown", null);
 }
 async function saveDaily10RewardShown(val) {
-  if (DEV_MODE) { rawStorage.set("daily10RewardShown", val); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("daily10RewardShown", val); return true; }
+  rawStorage.set("daily10RewardShown", val);
+  return true;
 }
 
 /* --- LAST ACTIVE DATE --- */
 async function loadLastActiveDate() {
-  if (DEV_MODE) return rawStorage.get("lastActiveDate", null);
-  return null;
+  if (useCloudState()) return cloudGet("lastActiveDate", null);
+  return rawStorage.get("lastActiveDate", null);
 }
 async function saveLastActiveDate(val) {
-  if (DEV_MODE) { rawStorage.set("lastActiveDate", val); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("lastActiveDate", val); return true; }
+  rawStorage.set("lastActiveDate", val);
+  return true;
 }
 
 /* --- POINTS --- */
 async function loadPoints() {
-  if (DEV_MODE) return rawStorage.get("totalPoints", 0);
-  return 0;
+  if (useCloudState()) return cloudGet("totalPoints", 0);
+  return rawStorage.get("totalPoints", 0);
 }
 async function savePoints(val) {
-  if (DEV_MODE) { rawStorage.set("totalPoints", val); return true; }
-  return false;
+  if (useCloudState()) {
+    cloudSet("totalPoints", val);
+    // نسخة منفصلة وسريعة في عمود خاص (بدل قراءة JSONB) — أساسًا لقائمة المنافسة
+    if (supabaseClient && currentUserId) {
+      supabaseClient.from("users").update({ total_points: val }).eq("id", currentUserId).then(() => {}, () => {});
+    }
+    return true;
+  }
+  rawStorage.set("totalPoints", val);
+  return true;
 }
 
 /* --- SESSIONS --- */
 async function loadSessions() {
-  if (DEV_MODE) return rawStorage.get("totalSessions", 0);
-  return 0;
+  if (useCloudState()) return cloudGet("totalSessions", 0);
+  return rawStorage.get("totalSessions", 0);
 }
 async function saveSessions(val) {
-  if (DEV_MODE) { rawStorage.set("totalSessions", val); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("totalSessions", val); return true; }
+  rawStorage.set("totalSessions", val);
+  return true;
 }
 
 /* --- JOINED AT --- */
 async function loadJoinedAt() {
-  if (DEV_MODE) {
-    let j = rawStorage.get("joinedAt", null);
-    if (!j) { j = Date.now(); rawStorage.set("joinedAt", j); }
+  if (useCloudState()) {
+    let j = cloudGet("joinedAt", null);
+    if (!j) { j = Date.now(); cloudSet("joinedAt", j); }
     return j;
   }
-  return Date.now();
+  let j = rawStorage.get("joinedAt", null);
+  if (!j) { j = Date.now(); rawStorage.set("joinedAt", j); }
+  return j;
 }
 async function saveJoinedAt(val) {
-  if (DEV_MODE) { rawStorage.set("joinedAt", val); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("joinedAt", val); return true; }
+  rawStorage.set("joinedAt", val);
+  return true;
 }
 
 /* --- BONUS COUNTER --- */
 async function loadBonusCounter() {
-  if (DEV_MODE) return rawStorage.get("bonusCounter", { lastBonusAt: 0 });
-  return { lastBonusAt: 0 };
+  if (useCloudState()) return cloudGet("bonusCounter", { lastBonusAt: 0 });
+  return rawStorage.get("bonusCounter", { lastBonusAt: 0 });
 }
 async function saveBonusCounter(obj) {
-  if (DEV_MODE) { rawStorage.set("bonusCounter", obj); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("bonusCounter", obj); return true; }
+  rawStorage.set("bonusCounter", obj);
+  return true;
 }
 
 /* --- Q HISTORY (browser back) --- */
 async function loadQHistory() {
-  if (DEV_MODE) return rawStorage.get("qHistory", []);
-  return [];
+  if (useCloudState()) return cloudGet("qHistory", []);
+  return rawStorage.get("qHistory", []);
 }
 async function saveQHistory(arr) {
-  if (DEV_MODE) { rawStorage.set("qHistory", arr); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("qHistory", arr); return true; }
+  rawStorage.set("qHistory", arr);
+  return true;
 }
 
 /* --- Q MODE (allq/fav/wrong/remaining) --- */
 async function loadQMode() {
-  if (DEV_MODE) return rawStorage.get("qMode", "allq");
-  return "allq";
+  if (useCloudState()) return cloudGet("qMode", "allq");
+  return rawStorage.get("qMode", "allq");
 }
 async function saveQMode(val) {
-  if (DEV_MODE) { rawStorage.set("qMode", val); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("qMode", val); return true; }
+  rawStorage.set("qMode", val);
+  return true;
 }
 
 /* --- ANNOTATIONS (تظليل/كتابة محفوظة لكل سؤال في وضع Study) --- */
 async function loadAnnotations() {
-  if (DEV_MODE) return rawStorage.get("annotations", {});
-  return {};
+  if (useCloudState()) return cloudGet("annotations", {});
+  return rawStorage.get("annotations", {});
 }
 async function saveAnnotationsMap(map) {
-  if (DEV_MODE) { rawStorage.set("annotations", map); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("annotations", map); return true; }
+  rawStorage.set("annotations", map);
+  return true;
 }
 async function saveAnnotationForQuestion(qCode, dataURL) {
   const map = await loadAnnotations();
@@ -5612,56 +5697,65 @@ if (typeof window !== "undefined") {
 
 /* --- Q SUB-MODE (study/test/review) --- */
 async function loadQSubMode() {
-  if (DEV_MODE) return rawStorage.get("qSubMode", "study");
-  return "study";
+  if (useCloudState()) return cloudGet("qSubMode", "study");
+  return rawStorage.get("qSubMode", "study");
 }
 async function saveQSubMode(val) {
-  if (DEV_MODE) { rawStorage.set("qSubMode", val); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("qSubMode", val); return true; }
+  rawStorage.set("qSubMode", val);
+  return true;
 }
 
 /* --- Q IDX (آخر سؤال) --- */
 async function loadQIdx() {
-  if (DEV_MODE) return rawStorage.get("qIdx", 0);
-  return 0;
+  if (useCloudState()) return cloudGet("qIdx", 0);
+  return rawStorage.get("qIdx", 0);
 }
 async function saveQIdx(val) {
-  if (DEV_MODE) { rawStorage.set("qIdx", val); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("qIdx", val); return true; }
+  rawStorage.set("qIdx", val);
+  return true;
 }
 
 /* --- Q STATE (picked/revealed/submitted/more) --- */
 async function loadQState() {
-  if (DEV_MODE) return rawStorage.get("qState", {});
-  return {};
+  if (useCloudState()) return cloudGet("qState", {});
+  return rawStorage.get("qState", {});
 }
 async function saveQState(obj) {
-  if (DEV_MODE) { rawStorage.set("qState", obj); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("qState", obj); return true; }
+  rawStorage.set("qState", obj);
+  return true;
 }
 
 /* --- CURRENT CONTEXT (chapter/exam/folder) --- */
 async function loadContext() {
-  if (DEV_MODE) return rawStorage.get("context", {
+  if (useCloudState()) return cloudGet("context", {
     chapter: "GLA",
     exam: "ARB",
     folder: "MCQ"
   });
-  return { chapter: "GLA", exam: "ARB", folder: "MCQ" };
+  return rawStorage.get("context", {
+    chapter: "GLA",
+    exam: "ARB",
+    folder: "MCQ"
+  });
 }
 async function saveContext(obj) {
-  if (DEV_MODE) { rawStorage.set("context", obj); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("context", obj); return true; }
+  rawStorage.set("context", obj);
+  return true;
 }
 
 /* --- ONBOARDING (اسم + لون + تذكيرات) --- */
 async function loadOnboardingCompleted() {
-  if (DEV_MODE) return rawStorage.get("onboardingCompleted", false);
-  return false;
+  if (useCloudState()) return cloudGet("onboardingCompleted", false);
+  return rawStorage.get("onboardingCompleted", false);
 }
 async function saveOnboardingCompleted(v) {
-  if (DEV_MODE) { rawStorage.set("onboardingCompleted", v); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("onboardingCompleted", v); return true; }
+  rawStorage.set("onboardingCompleted", v);
+  return true;
 }
 async function loadDisplayName() {
   if (DEV_MODE) return rawStorage.get("displayName", "Dr. You");
@@ -5698,22 +5792,24 @@ async function saveReminders(v) {
 
 /* --- DAILY LOG (سجل يومي دائم للـStreak والـCommitment Rate) --- */
 async function loadDailyLog() {
-  if (DEV_MODE) return rawStorage.get("dailyLog", {});
-  return {};
+  if (useCloudState()) return cloudGet("dailyLog", {});
+  return rawStorage.get("dailyLog", {});
 }
 async function saveDailyLog(obj) {
-  if (DEV_MODE) { rawStorage.set("dailyLog", obj); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("dailyLog", obj); return true; }
+  rawStorage.set("dailyLog", obj);
+  return true;
 }
 
 /* --- WELCOME MESSAGE (رسالة بائع الثلج — مرة واحدة كل يوم) --- */
 async function loadWelcomeShownDate() {
-  if (DEV_MODE) return rawStorage.get("welcomeShownDate", null);
-  return null;
+  if (useCloudState()) return cloudGet("welcomeShownDate", null);
+  return rawStorage.get("welcomeShownDate", null);
 }
 async function saveWelcomeShownDate(v) {
-  if (DEV_MODE) { rawStorage.set("welcomeShownDate", v); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("welcomeShownDate", v); return true; }
+  rawStorage.set("welcomeShownDate", v);
+  return true;
 }
 
 /* --- WELCOME MESSAGE CONTENT (نص بائع الثلج — قابل للتعديل من الأدمن) --- */
@@ -5798,22 +5894,24 @@ async function saveComingSoonItems(arr) {
 
 /* --- عدد الإشعارات اللي المستخدم شافها آخر مرة فتح فيها الصندوق --- */
 async function loadNotificationsSeenCount() {
-  if (DEV_MODE) return rawStorage.get("notificationsSeenCount", 0);
-  return 0;
+  if (useCloudState()) return cloudGet("notificationsSeenCount", 0);
+  return rawStorage.get("notificationsSeenCount", 0);
 }
 async function saveNotificationsSeenCount(v) {
-  if (DEV_MODE) { rawStorage.set("notificationsSeenCount", v); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("notificationsSeenCount", v); return true; }
+  rawStorage.set("notificationsSeenCount", v);
+  return true;
 }
 
 /* --- إجمالي وقت المذاكرة التراكمي (بالثواني) عبر كل الجلسات --- */
 async function loadTotalStudyTimeSeconds() {
-  if (DEV_MODE) return rawStorage.get("totalStudyTimeSeconds", 0);
-  return 0;
+  if (useCloudState()) return cloudGet("totalStudyTimeSeconds", 0);
+  return rawStorage.get("totalStudyTimeSeconds", 0);
 }
 async function saveTotalStudyTimeSeconds(v) {
-  if (DEV_MODE) { rawStorage.set("totalStudyTimeSeconds", v); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("totalStudyTimeSeconds", v); return true; }
+  rawStorage.set("totalStudyTimeSeconds", v);
+  return true;
 }
 
 const DEFAULT_COMING_SOON_ITEMS = [
@@ -5822,18 +5920,24 @@ const DEFAULT_COMING_SOON_ITEMS = [
 
 /* --- BEST STREAK --- */
 async function loadBestStreak() {
-  if (DEV_MODE) return rawStorage.get("bestStreak", 0);
-  return 0;
+  if (useCloudState()) return cloudGet("bestStreak", 0);
+  return rawStorage.get("bestStreak", 0);
 }
 async function saveBestStreak(v) {
-  if (DEV_MODE) { rawStorage.set("bestStreak", v); return true; }
-  return false;
+  if (useCloudState()) { cloudSet("bestStreak", v); return true; }
+  rawStorage.set("bestStreak", v);
+  return true;
 }
 
 /* --- RESET --- */
 async function resetAll() {
-  if (DEV_MODE) { rawStorage.clear(); return true; }
-  return false;
+  rawStorage.clear();
+  if (useCloudState()) {
+    memberState = {};
+    clearTimeout(memberStateSaveTimer);
+    try { await supabaseClient.from("users").update({ app_state: {} }).eq("id", currentUserId); } catch (e) {}
+  }
+  return true;
 }
 
 /* ============================================================
@@ -7096,6 +7200,10 @@ function showReward(type) {
 const letters = ["A", "B", "C", "D", "E"];
 
 function renderQuestion() {
+  // 0) هيّئ نظافة الشاشة قبل رسم السؤال الجديد — عشان المسطرة/الأداة بتاعة السؤال اللي قبله متفضلش عالقة
+  hideAnnotateRuler();
+  document.querySelectorAll(".q-annotate-tool[data-tool]").forEach(btn => btn.classList.remove("active"));
+
   // 1) احسب الـ Pool الحالي
   currentPool = getPool();
   clampQIdx();
@@ -7888,20 +7996,38 @@ function renderFolders() {
 /* ============================================================
    23) RENDER RACE
    ============================================================ */
-const RACE_DATA = [
-  { name: "Sarah",  points: 1200, days: 30,  isMe: false },
-  { name: "Omar",   points: 800,  days: 20,  isMe: false },
-  { name: "Khaled", points: 600,  days: 15,  isMe: false },
-  { name: "Ahmed",  points: 1500, days: 100, isMe: false }
-];
 
-function renderRace() {
+const RACE_CACHE_MS = 30000;
+let raceCache = { data: null, at: 0 };
+
+async function renderRace() {
   const list = document.getElementById("raceList");
   if (!list) return;
 
   const myDays = getDaysSinceJoin(joinedAt);
   const myData = { name: displayName || "You", points: totalPoints, days: myDays, isMe: true, color: trackColor };
-  const combined = [...RACE_DATA, myData];
+
+  let others = [];
+  if (supabaseClient) {
+    try {
+      // كاش بسيط 30 ثانية عشان مانضربش القاعدة بكل فتحة للشاشة
+      if (raceCache.data && Date.now() - raceCache.at < RACE_CACHE_MS) {
+        others = raceCache.data;
+      } else {
+        const { data } = await supabaseClient.from("leaderboard_view").select("*");
+        others = (data || []).map(u => ({
+          name: u.display_name,
+          points: Number(u.total_points) || 0,
+          days: Math.max(1, getDaysSinceJoin(new Date(u.joined_at).getTime())),
+          isMe: u.id === currentUserId,
+          color: u.track_color || "#3DBE68",
+        })).filter(u => !u.isMe); // نفسي هضيفه بمصدر أدق (myData) تحت
+        raceCache = { data: others, at: Date.now() };
+      }
+    } catch (e) { others = []; }
+  }
+
+  const combined = isGuest ? [myData, ...others] : [...others, myData];
 
   const ranked = combined.sort((a, b) => {
     const aAvg = a.points / Math.max(a.days, 1);
@@ -7989,6 +8115,8 @@ function renderProfile() {
     const el = document.getElementById(id);
     if (el) el.textContent = val;
   };
+
+  setTxt("profileAppVersionLabel", APP_VERSION); // دايمًا من الثابت الحقيقي، مش رقم مكتوب بالإيد
 
   if (isGuest) {
     // الزائر معندوش حساب فعلي — مفيش إحصائيات حقيقية نوريهاله
@@ -8299,6 +8427,15 @@ function setupProfileEditing() {
   const nameRow = document.getElementById("profileNameRow");
   const nameInput = document.getElementById("profileNameInput");
   const nameSave = document.getElementById("profileNameSave");
+  const nameCancel = document.getElementById("profileNameCancel");
+  if (nameCancel) {
+    nameCancel.addEventListener("click", () => {
+      nameInput.value = "";
+      const errEl = document.getElementById("profileNameEditError");
+      if (errEl) errEl.textContent = "";
+      document.getElementById("profileNameEdit").classList.remove("open");
+    });
+  }
   if (nameRow) {
     nameRow.addEventListener("click", () => {
       if (!requireAccount()) return;
@@ -8385,27 +8522,27 @@ function setupProfileEditing() {
     });
   }
 
-  // --- زرار تفعيل إشعارات الموبايل الحقيقية ---
-  const pushBtn = document.getElementById("profilePushEnable");
-  const pushNote = document.getElementById("profilePushNote");
+  // --- زرار تفعيل إشعارات الموبايل الحقيقية (صف مستقل في البروفايل) ---
+  const pushRow = document.getElementById("profilePushEnableRow");
+  const pushRowValue = document.getElementById("profilePushEnableRowValue");
   async function refreshPushButtonState() {
-    if (!pushBtn) return;
+    if (!pushRowValue) return;
     const on = await isPushSubscribed();
-    pushBtn.classList.toggle("is-on", on);
-    pushBtn.textContent = on ? "🔔 الإشعارات مفعّلة على الجهاز ده" : "🔔 فعّل إشعارات الموبايل";
+    pushRowValue.textContent = on ? "✅ مفعّلة" : "→";
   }
-  if (pushBtn) {
-    pushBtn.addEventListener("click", async () => {
-      pushBtn.disabled = true;
+  if (pushRow) {
+    pushRow.addEventListener("click", async () => {
+      if (await isPushSubscribed()) return; // مفعّلة أصلًا، مفيش داعي نكرر
+      pushRowValue.textContent = "...";
       const result = await enablePushNotifications();
-      pushBtn.disabled = false;
       if (result.ok) {
-        if (pushNote) pushNote.textContent = "تمام! هتوصلك الإشعارات على الجهاز ده.";
         await refreshPushButtonState();
-      } else if (pushNote) {
-        pushNote.textContent = result.reason || "معرفناش نفعّل الإشعارات";
+      } else {
+        pushRowValue.textContent = "→";
+        alert(result.reason || "معرفناش نفعّل الإشعارات");
       }
     });
+    refreshPushButtonState();
   }
 
   // --- تواصل معنا (Messenger + Telegram) ---
@@ -10442,10 +10579,13 @@ function setupAuthScreens() {
     });
   }
 
-  // --- نعيد التأكد من الإصدار كل مرة المستخدم يرجع للتطبيق (مش بس أول فتحة) ---
+  // --- نعيد التأكد من الإصدار وتصفير اليوم كل مرة المستخدم يرجع للتطبيق (مش بس أول فتحة) ---
   document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible") {
       await checkForcedUpdate();
+      await checkDailyReset();
+      updatePointsDisplay(false);
+      renderQuestion();
     }
   });
 
@@ -10806,9 +10946,8 @@ function wireInstallAppSheet() {
     overlay.classList.remove("open");
   }
 
-  // زرار "فتح كتطبيق كامل" في الملف الشخصي
+  // زرار "فتح كتطبيق كامل" في الملف الشخصي — بيتفتح فوق نفس شاشة البروفايل (مش بيقفلها) عشان لما نرجع نلاقي نفسنا في البروفايل تاني، مش في صفحة الأسئلة
   link.addEventListener("click", () => {
-    profileOverlay.classList.remove("open");
     openOverlay();
   });
   if (closeBtn) closeBtn.addEventListener("click", closeOverlay);
