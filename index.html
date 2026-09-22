@@ -2662,6 +2662,27 @@ body{
 .reminder-alert-text{ font-size:15.5px; line-height:1.7; color:var(--q-ink, #1a2c2c); margin-bottom:18px; font-weight:700; }
 
 .profile-edit-btn-row{ display:flex; gap:8px; }
+.profile-edit-back{ width:100%; margin-top:10px; flex:none; }
+.push-row-note{ font-size:12px; line-height:1.6; color:var(--q-ink-soft, #678); padding:4px 14px 10px; }
+.profile-row.row-flash{ animation:rowFlash 1.6s ease; }
+@keyframes rowFlash{ 0%,100%{ box-shadow:none; } 25%,75%{ box-shadow:0 0 0 3px var(--q-teal); background:var(--q-teal-soft); } }
+.reminders-push-hint{ font-size:12.5px; line-height:1.6; color:#8a5a00; background:#fff4d6; border:1px solid #f0d896; border-radius:10px; padding:10px 12px; margin:8px 0; display:flex; flex-direction:column; gap:8px; }
+.reminders-push-hint-btn{ align-self:flex-start; background:var(--q-teal); color:#fff; border:none; border-radius:8px; padding:7px 12px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; }
+.force-update-status{ text-align:center; font-size:13.5px; font-weight:700; color:#f5d67a; margin:0 0 12px; animation:statusPulse 1.2s ease-in-out infinite; }
+@keyframes statusPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.45; } }
+.notif-tabs{ display:flex; gap:8px; margin-bottom:10px; }
+.notif-tab{ flex:1; padding:9px 10px; border-radius:10px; border:1px solid var(--q-rule); background:#fff; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; color:var(--q-ink-soft, #567); }
+.notif-tab.active{ background:var(--q-teal); color:#fff; border-color:var(--q-teal); }
+.notif-hint{ font-size:12px; color:var(--q-muted, #789); text-align:center; margin:0 0 10px; }
+.notification-row.notif-tappable{ cursor:pointer; transition:opacity .25s, transform .25s; }
+.notification-row.notif-leaving{ opacity:0; transform:translateX(30px); }
+.notif-action{ font-size:12px; font-weight:700; color:var(--q-teal); margin-top:4px; }
+.admin-archive-toggle{ width:100%; margin-top:10px; padding:10px; border-radius:10px; border:1px dashed rgba(255,255,255,.25); background:transparent; color:inherit; font-weight:700; cursor:pointer; font-family:inherit; }
+.admin-notif-archive{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+.admin-archive-month{ font-size:12px; font-weight:800; opacity:.7; margin-top:6px; }
+.admin-archive-row{ border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:10px 12px; font-size:13px; line-height:1.6; }
+.admin-archive-meta{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.admin-archive-chip{ font-size:11px; padding:2px 8px; border-radius:999px; background:rgba(255,255,255,.08); }
 .profile-edit-btn-row .profile-edit-save{ flex:1; }
 .profile-edit-cancel{
   flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--q-rule);
@@ -3641,7 +3662,8 @@ body{
       <p class="motivation-text">
         النسخة اللي معاك من التطبيق قديمة، ولازم تاخد النسخة الجديدة عشان تكمل الاستخدام.
       </p>
-      <button class="profile-edit-save" id="forceUpdateReloadBtn" style="width:100%; margin-bottom:12px;">🔄 حدّث دلوقتي</button>
+      <button class="profile-edit-save" id="forceUpdateReloadBtn" style="width:100%; margin-bottom:8px;">🔄 حدّث دلوقتي</button>
+      <p class="force-update-status" id="forceUpdateStatus" style="display:none;"></p>
       <p class="motivation-text" style="font-size:12px; opacity:.8;">لو التحديث مكملش، تواصل معانا:</p>
       <a class="profile-contact-btn profile-contact-messenger" href="https://m.me/6.6.4.ooc" target="_blank" rel="noopener">
         <span>💬</span><span>تواصل عبر Messenger للتحديث</span>
@@ -4192,17 +4214,24 @@ body{
         <div class="app-guide-header"><span class="app-guide-icon">🔔</span><span class="app-guide-title">Notifications</span><span class="app-guide-chevron">▾</span></div>
         <div class="app-guide-content-wrap">
           <div class="app-guide-content admin-form">
-            <span class="ag-note">⚠️ الرسالة بتُحفظ في "صندوق الإشعارات" جوه التطبيق (تجربة على هذا الجهاز). الإرسال الحقيقي لكل المستخدمين لسه محتاج ربط Supabase.</span>
-            <label class="admin-label">مرتبطة بتذكير</label>
+            <span class="ag-note">✅ الرسالة بتتحفظ في صندوق الإشعارات جوه التطبيق. "إرسال فوري" بيوصل كإشعار حقيقي على الموبايلات في نفس اللحظة. ولو ربطتها بتذكير، هتتبعت مع التذكير ده لكل عضو في ميعاده بدل الرسالة الافتراضية.</span>
+            <label class="admin-label">نوع الإرسال</label>
             <select class="admin-textarea" id="adminNotifTarget">
-              <option value="r1">التذكير الأول</option>
-              <option value="r2">التذكير الثاني</option>
-              <option value="r3">التذكير الثالث</option>
-              <option value="now">إرسال فوري (خارج أي تذكير)</option>
+              <option value="now">📨 إرسال فوري (دلوقتي)</option>
+              <option value="r1">⏰ مع التذكير الأول</option>
+              <option value="r2">⏰ مع التذكير الثاني</option>
+              <option value="r3">⏰ مع التذكير الثالث</option>
+            </select>
+            <label class="admin-label">الجمهور</label>
+            <select class="admin-textarea" id="adminNotifAudience">
+              <option value="members">👤 الأعضاء المسجّلين بس</option>
+              <option value="all">🌍 الكل (أعضاء + زوار فعّلوا الإعلانات العامة)</option>
             </select>
             <label class="admin-label">نص الرسالة</label>
             <textarea class="admin-textarea" id="adminNotifText" rows="3" placeholder="مثال: فاكر تحل أسئلتك النهاردة؟ 🔥"></textarea>
-            <button class="admin-save-btn" id="adminNotifSend">💾 حفظ في صندوق الإشعارات</button>
+            <button class="admin-save-btn" id="adminNotifSend">📨 إرسال</button>
+            <button class="admin-archive-toggle" id="adminNotifArchiveToggle" type="button">📦 أرشيف الرسائل المرسلة ▾</button>
+            <div class="admin-notif-archive" id="adminNotifArchiveList" style="display:none;"></div>
           </div>
         </div>
       </div>
@@ -4537,6 +4566,7 @@ body{
       </div>
       <div class="profile-edit-panel" id="profileColorEdit">
         <div class="onboarding-colors profile-colors" id="profileColors"></div>
+        <button class="profile-edit-cancel profile-edit-back" id="profileColorBack" type="button">↩️ رجوع للملف الشخصي</button>
       </div>
 
       <div class="profile-row profile-row-editable" id="profileRemindersRow">
@@ -4556,7 +4586,14 @@ body{
           <label for="profileR3">التذكير الثالث</label>
           <input type="time" class="onboarding-time" id="profileR3">
         </div>
-        <button class="profile-edit-save" id="profileRemindersSave">حفظ</button>
+        <div class="reminders-push-hint" id="remindersPushHint" style="display:none;">
+          <span>⚠️ يجب تفعيل الإشعارات حتى تصل التذكيرات لحضرتك.</span>
+          <button type="button" class="reminders-push-hint-btn" id="remindersPushHintBtn">🔔 فعّل الإشعارات</button>
+        </div>
+        <div class="profile-edit-btn-row">
+          <button class="profile-edit-save" id="profileRemindersSave">حفظ</button>
+          <button class="profile-edit-cancel" id="profileRemindersBack" type="button">↩️ رجوع</button>
+        </div>
       </div>
 
       <div class="profile-row"><span class="profile-row-label">Language</span><span class="profile-row-value">English</span></div>
@@ -4570,6 +4607,7 @@ body{
       <div class="profile-row profile-row-link" id="profileRaceLink"><span class="profile-row-label">🏁 Race Track</span><span class="profile-row-value">→</span></div>
       <div class="profile-row profile-row-link" id="profileInstallAppLink"><span class="profile-row-label">📲 فتح كتطبيق كامل</span><span class="profile-row-value">→</span></div>
       <div class="profile-row profile-row-link" id="profilePushEnableRow"><span class="profile-row-label">🔔 فعّل إشعارات الموبايل</span><span class="profile-row-value" id="profilePushEnableRowValue">→</span></div>
+      <div class="push-row-note" id="profilePushNote"></div>
       <div class="profile-row profile-row-editable" id="profileContactRow"><span class="profile-row-label">📞 تواصل معنا</span><span class="profile-row-value">→</span></div>
       <div class="profile-edit-panel" id="profileContactEdit">
         <a class="profile-contact-btn profile-contact-messenger" href="https://m.me/6.6.4.ooc" target="_blank" rel="noopener">
@@ -4714,7 +4752,7 @@ body{
   <div class="reminder-alert-card">
     <div class="reminder-alert-icon">🔔</div>
     <div class="reminder-alert-text" id="reminderAlertText"></div>
-    <button class="motivation-btn" id="reminderAlertOkBtn">تمام يا رب</button>
+    <button class="motivation-btn" id="reminderAlertOkBtn">الحمد لله</button>
   </div>
 </div>
 
@@ -5401,7 +5439,16 @@ function withTimeout(promise, ms, label) {
   ]);
 }
 
-// بيجيب اشتراك الجهاز (أو يعمل واحد جديد) ويسجّله على السيرفر للحساب الحالي
+// وضع الإشعارات الحالي على الجهاز:
+//  - عضو داخل بحساب ← إشعارات حسابه + تذكيراته (العلم nd_push_wanted)
+//  - زائر / مش داخل ← الإعلانات العامة بس (العلم nd_push_wanted_guest)
+function pushModeIsGuest() { return isGuest || !currentUserId; }
+function pushWantedKey() { return pushModeIsGuest() ? "nd_push_wanted_guest" : "nd_push_wanted"; }
+function pushSupported() {
+  return ("serviceWorker" in navigator) && ("PushManager" in window) && ("Notification" in window);
+}
+
+// بيجيب اشتراك الجهاز (أو يعمل واحد جديد) ويسجّله على السيرفر — للحساب الحالي أو كزائر
 async function subscribeAndRegisterPush() {
   const reg = await withTimeout(navigator.serviceWorker.ready, 8000, "تجهيز الخدمة الخلفية");
   let sub = await reg.pushManager.getSubscription();
@@ -5415,7 +5462,8 @@ async function subscribeAndRegisterPush() {
   if (!j.endpoint || !j.keys || !j.keys.p256dh || !j.keys.auth) {
     throw new Error("المتصفح رجّع اشتراك ناقص البيانات");
   }
-  const { error } = await supabaseClient.rpc("register_push_subscription", {
+  const rpcName = pushModeIsGuest() ? "register_guest_push_subscription" : "register_push_subscription";
+  const { error } = await supabaseClient.rpc(rpcName, {
     p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth,
   });
   if (error) throw new Error(`تسجيل الاشتراك على السيرفر: ${error.message}`);
@@ -5423,56 +5471,56 @@ async function subscribeAndRegisterPush() {
 }
 
 async function enablePushNotifications() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+  if (!pushSupported()) {
     return { ok: false, reason: "متصفحك الحالي مش بيدعم الإشعارات — على آيفون لازم التطبيق يكون مثبّت على الشاشة الرئيسية، وعلى أندرويد جرّب Chrome" };
   }
-  if (isGuest || !currentUserId) {
-    return { ok: false, reason: "لازم تسجّل دخول بحساب الأول" };
-  }
+  if (!supabaseClient) return { ok: false, reason: "مفيش اتصال بالسيرفر" };
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
       return { ok: false, reason: "إذن الإشعارات مرفوض — فعّله من إعدادات الموبايل ← التطبيقات ← New Day ← الإشعارات" };
     }
     await subscribeAndRegisterPush();
-    try { localStorage.setItem("nd_push_wanted", "1"); } catch (e) {}
+    try { localStorage.setItem(pushWantedKey(), "1"); } catch (e) {}
     return { ok: true };
   } catch (e) {
     return { ok: false, reason: (e && e.message) || String(e) };
   }
 }
 
-// إصلاح ذاتي صامت: كل ما التطبيق يفتح بحساب، لو المستخدم كان مفعّل الإشعارات والإذن لسه مسموح،
-// نتأكد إن الاشتراك موجود وشغال ومسجّل على السيرفر (لو اتمسح لأي سبب، بيترجع لوحده من غير ما يحس)
+// إصلاح ذاتي صامت: كل ما التطبيق يفتح (أو الحساب يتغيّر)، لو الوضع الحالي كان مفعّل والإذن لسه مسموح،
+// نتأكد إن الاشتراك موجود وشغال ومسجّل على السيرفر (لو اتمسح لأي سبب، بيرجع لوحده)
 async function ensurePushSubscriptionSynced() {
   try {
-    if (isGuest || !currentUserId || !supabaseClient) return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
+    if (!supabaseClient || !pushSupported()) return;
     if (Notification.permission !== "granted") return;
-    if (localStorage.getItem("nd_push_wanted") !== "1") {
-      // ترحيل من النسخ القديمة: لو الجهاز كان مفعّل فعلًا قبل كده (فيه اشتراك في المتصفح)، اعتبره مفعّل
+    const key = pushWantedKey();
+    if (localStorage.getItem(key) !== "1") {
+      if (pushModeIsGuest()) return; // الزائر لازم يختار الإعلانات العامة بنفسه
+      // ترحيل من النسخ القديمة: عضو كان مفعّل فعلًا (فيه اشتراك في المتصفح) — اعتبره مفعّل
       const reg = await withTimeout(navigator.serviceWorker.ready, 8000, "sw");
       const existing = await reg.pushManager.getSubscription();
       if (!existing) return;
-      localStorage.setItem("nd_push_wanted", "1");
+      localStorage.setItem(key, "1");
     }
     await subscribeAndRegisterPush();
   } catch (e) { /* صامت — هيتحاول تاني الفتحة الجاية */ }
 }
 
 async function disablePushNotifications() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return { ok: true };
+  if (!pushSupported()) return { ok: true };
   try {
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await withTimeout(navigator.serviceWorker.ready, 5000, "تجهيز الخدمة الخلفية");
     const sub = await reg.pushManager.getSubscription();
-    if (sub) {
-      const endpoint = sub.endpoint;
-      await sub.unsubscribe();
-      try { localStorage.removeItem("nd_push_wanted"); } catch (e) {}
-      if (supabaseClient) {
-        await supabaseClient.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    try { localStorage.removeItem(pushWantedKey()); } catch (e) {}
+    if (sub && supabaseClient) {
+      if (pushModeIsGuest()) {
+        await supabaseClient.rpc("unregister_guest_push_subscription", { p_endpoint: sub.endpoint });
+      } else {
+        await supabaseClient.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
       }
     }
+    // منفصلش الاشتراك من المتصفح نفسه — عشان لو حساب تاني على نفس الجهاز مفعّل، يفضل شغال له
     return { ok: true };
   } catch (e) {
     return { ok: false, reason: `حصل خطأ: ${(e && e.message) || e}` };
@@ -5480,25 +5528,44 @@ async function disablePushNotifications() {
 }
 
 async function isPushSubscribed() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  if (!pushSupported()) return false;
   try {
+    if (localStorage.getItem(pushWantedKey()) !== "1") return false;
+    if (Notification.permission !== "granted") return false;
     const reg = await withTimeout(navigator.serviceWorker.ready, 5000, "تجهيز الخدمة الخلفية");
     const sub = await reg.pushManager.getSubscription();
-    return !!sub && localStorage.getItem("nd_push_wanted") === "1";
+    return !!sub;
   } catch (e) {
     return false;
   }
 }
 
-// بتتنادى من لوحة الأدمن بعد ما يبعت إشعار — بتوصّل الإشعار فعليًا كـPush حقيقي
-async function sendRealPushNotification(title, body, userIds) {
+// تذكرة دخول صالحة دايمًا (بتتجدد لو قربت تنتهي) — ده كان سبب خطأ "unauthorized"
+async function getFreshAccessToken() {
+  let { data: { session } } = await supabaseClient.auth.getSession();
+  const expMs = session && session.expires_at ? session.expires_at * 1000 : 0;
+  if (!session || expMs - Date.now() < 5 * 60 * 1000) {
+    const r = await supabaseClient.auth.refreshSession();
+    session = r && r.data ? r.data.session : null;
+  }
+  if (!session) throw new Error("انتهت جلسة الدخول — سجّل خروج ودخول تاني");
+  return session.access_token;
+}
+
+// بتتنادى من لوحة الأدمن — بتوصّل الإشعار فعليًا كـPush حقيقي، وبتسجّل عدد الأجهزة في الأرشيف
+async function sendRealPushNotification(title, body, opts) {
+  opts = opts || {};
   if (!supabaseClient) throw new Error("مفيش اتصال بالسيرفر");
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) throw new Error("لازم تكون داخل بحساب أدمن");
+  const token = await getFreshAccessToken();
   const res = await withTimeout(fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-    body: JSON.stringify({ title, body, user_ids: userIds || undefined }),
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      title, body,
+      user_ids: opts.userIds || undefined,
+      audience: opts.audience || "members",
+      notification_id: opts.notificationId || undefined,
+    }),
   }), 15000, "إرسال الإشعار");
   let out = {};
   try { out = await res.json(); } catch (e) {}
@@ -5522,7 +5589,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 5.0;
+const APP_VERSION = 5.1;
 
 const CONFIG = {
   DAILY_LIMIT: 149,         // أقصى عدد أسئلة جديدة/يوم تأخذ نقاط
@@ -6063,6 +6130,20 @@ async function saveComingSoonItems(arr) {
   if (!supabaseClient) return { error: "no-client" };
   const { error } = await supabaseClient.from("app_settings").upsert({ key: "coming_soon_items", value: JSON.stringify(arr), updated_at: new Date().toISOString() });
   return { error };
+}
+
+/* --- الرسائل اللي المستخدم أرشفها من صندوقه (لكل حساب لوحده، وللزائر على جهازه) --- */
+async function loadArchivedNotifIds() {
+  if (useCloudState()) return cloudGet("archivedNotifIds", []);
+  return rawStorage.get("archivedNotifIds", []);
+}
+async function saveArchivedNotifIds(arr) {
+  if (useCloudState()) { cloudSet("archivedNotifIds", arr); return true; }
+  rawStorage.set("archivedNotifIds", arr);
+  return true;
+}
+function ndEscape(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 }
 
 /* --- عدد الإشعارات اللي المستخدم شافها آخر مرة فتح فيها الصندوق --- */
@@ -8317,6 +8398,7 @@ function renderProfile() {
   };
 
   setTxt("profileAppVersionLabel", APP_VERSION); // دايمًا من الثابت الحقيقي، مش رقم مكتوب بالإيد
+  if (window.refreshPushButtonState) window.refreshPushButtonState();
 
   if (isGuest) {
     // الزائر معندوش حساب فعلي — مفيش إحصائيات حقيقية نوريهاله
@@ -8726,13 +8808,46 @@ function setupProfileEditing() {
   const pushRow = document.getElementById("profilePushEnableRow");
   const pushRowLabel = pushRow ? pushRow.querySelector(".profile-row-label") : null;
   const pushRowValue = document.getElementById("profilePushEnableRowValue");
+  const pushNote = document.getElementById("profilePushNote");
+  const remindersHint = document.getElementById("remindersPushHint");
   async function refreshPushButtonState() {
     if (!pushRowValue) return;
     const on = await isPushSubscribed();
+    const guestMode = pushModeIsGuest();
     pushRowValue.textContent = on ? "✅ مفعّلة" : "→";
-    if (pushRowLabel) pushRowLabel.textContent = on ? "🔕 إلغاء إشعارات الموبايل" : "🔔 فعّل إشعارات الموبايل";
+    if (pushRowLabel) {
+      pushRowLabel.textContent = guestMode
+        ? (on ? "🔕 إلغاء الإعلانات العامة" : "🔔 فعّل الإعلانات العامة")
+        : (on ? "🔕 إلغاء تفعيل إشعارات الموبايل" : "🔔 تفعيل إشعارات الموبايل");
+    }
+    if (pushNote) {
+      pushNote.textContent = guestMode
+        ? "ℹ️ كزائر هتوصلك الإعلانات العامة بس — سجّل دخول عشان توصلك تذكيراتك وإشعارات حسابك كمان."
+        : "ℹ️ في حال تسجيل الخروج من التطبيق، لن تصل حضرتك إشعارات أو تذكيرات — يمكن حضرتك فقط غلق النافذة للخروج.";
+    }
+    if (remindersHint) remindersHint.style.display = (on || guestMode) ? "none" : "flex";
     return on;
   }
+  window.refreshPushButtonState = refreshPushButtonState;
+
+  // زرار "فعّل الإشعارات" جوه لوحة التذكيرات — بيقفل اللوحة وينقلك لصف الإشعارات ويلفت نظرك ليه
+  const remHintBtn = document.getElementById("remindersPushHintBtn");
+  if (remHintBtn && pushRow) {
+    remHintBtn.addEventListener("click", () => {
+      document.getElementById("profileRemindersEdit").classList.remove("open");
+      pushRow.scrollIntoView({ behavior: "smooth", block: "center" });
+      pushRow.classList.remove("row-flash");
+      void pushRow.offsetWidth;
+      pushRow.classList.add("row-flash");
+      setTimeout(() => pushRow.classList.remove("row-flash"), 1700);
+    });
+  }
+
+  // أزرار الرجوع للملف الشخصي (اللون + التذكيرات)
+  const colorBack = document.getElementById("profileColorBack");
+  if (colorBack) colorBack.addEventListener("click", () => document.getElementById("profileColorEdit").classList.remove("open"));
+  const remBack = document.getElementById("profileRemindersBack");
+  if (remBack) remBack.addEventListener("click", () => document.getElementById("profileRemindersEdit").classList.remove("open"));
   if (pushRow) {
     pushRow.addEventListener("click", async () => {
       const alreadyOn = await isPushSubscribed();
@@ -8786,6 +8901,7 @@ function setupProfileEditing() {
       const notificationsOverlay = document.getElementById("notificationsOverlay");
       if (profileOverlay) profileOverlay.classList.remove("open");
       sheetReturnsToProfile = true;
+      notifInboxView = "inbox";
       renderNotificationsList();
       if (notificationsOverlay) notificationsOverlay.classList.add("open");
       // اعتبر كل الإشعارات "متشافة" دلوقتي، وشيل الشارة
@@ -8810,27 +8926,56 @@ function setupProfileEditing() {
   }
 }
 
-async function renderNotificationsList() {
+let notifInboxView = "inbox"; // "inbox" | "archive"
+let archivedNotifIds = new Set();
+
+async function renderNotificationsList(skipFetch) {
   const list = document.getElementById("notificationsList");
   if (!list) return;
-  list.innerHTML = `<div style="text-align:center;color:var(--q-muted);font-size:13px;padding:24px 0;">بيتحمّل...</div>`;
-
-  notificationsInbox = await loadNotificationsInbox(); // نجيبها طازة من Supabase كل مرة تتفتح
-
-  if (!notificationsInbox || notificationsInbox.length === 0) {
-    list.innerHTML = `<div style="text-align:center;color:var(--q-muted);font-size:13px;padding:24px 0;">لسه مفيش إشعارات</div>`;
-    return;
+  if (!skipFetch) {
+    list.innerHTML = `<div style="text-align:center;color:var(--q-muted);font-size:13px;padding:24px 0;">بيتحمّل...</div>`;
+    notificationsInbox = await loadNotificationsInbox(); // نجيبها طازة من Supabase كل مرة تتفتح
+    archivedNotifIds = new Set(await loadArchivedNotifIds());
   }
-  list.innerHTML = notificationsInbox.map(n => {
-    const d = new Date(n.created_at);
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    return `
-      <div class="notification-row">
-        <div class="notification-text">${n.text}</div>
-        <div class="notification-date">${dateStr}</div>
-      </div>
-    `;
-  }).join("");
+  const all = notificationsInbox || [];
+  const inbox = all.filter(n => !archivedNotifIds.has(n.id));
+  const archived = all.filter(n => archivedNotifIds.has(n.id));
+  const showing = notifInboxView === "archive" ? archived : inbox;
+
+  const tabs = `
+    <div class="notif-tabs">
+      <button class="notif-tab ${notifInboxView === "inbox" ? "active" : ""}" data-notif-tab="inbox">📥 الوارد (${inbox.length})</button>
+      <button class="notif-tab ${notifInboxView === "archive" ? "active" : ""}" data-notif-tab="archive">📦 الأرشيف (${archived.length})</button>
+    </div>
+    <p class="notif-hint">${notifInboxView === "archive" ? "اضغط على أي رسالة لإرجاعها للوارد" : "اضغط على أي رسالة لأرشفتها وتنضيف صندوقك"}</p>`;
+
+  if (showing.length === 0) {
+    list.innerHTML = tabs + `<div style="text-align:center;color:var(--q-muted);font-size:13px;padding:24px 0;">${notifInboxView === "archive" ? "الأرشيف فاضي" : "صندوقك نضيف ✨"}</div>`;
+  } else {
+    list.innerHTML = tabs + showing.map(n => {
+      const d = new Date(n.created_at);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return `
+        <div class="notification-row notif-tappable" data-notif-id="${ndEscape(n.id)}">
+          <div class="notification-text">${ndEscape(n.text)}</div>
+          <div class="notification-date">${dateStr}</div>
+          <div class="notif-action">${notifInboxView === "archive" ? "↩️ إرجاع للوارد" : "📦 أرشفة"}</div>
+        </div>`;
+    }).join("");
+  }
+
+  list.querySelectorAll("[data-notif-tab]").forEach(btn => {
+    btn.addEventListener("click", () => { notifInboxView = btn.dataset.notifTab; renderNotificationsList(true); });
+  });
+  list.querySelectorAll("[data-notif-id]").forEach(row => {
+    row.addEventListener("click", async () => {
+      const id = row.dataset.notifId;
+      row.classList.add("notif-leaving");
+      if (notifInboxView === "archive") archivedNotifIds.delete(id); else archivedNotifIds.add(id);
+      await saveArchivedNotifIds(Array.from(archivedNotifIds));
+      setTimeout(() => renderNotificationsList(true), 250);
+    });
+  });
 }
 
 function updateNotificationsBadge() {
@@ -10225,25 +10370,83 @@ function setupAdminForms() {
     });
   }
 
-  // --- الإشعارات: إضافة رسالة جديدة (Supabase — بتوصل لكل المستخدمين فعليًا) ---
+  // --- الإشعارات: إرسال رسالة (صندوق التطبيق + Push حقيقي) مع أرشيف منظم ---
   const notifSendBtn = document.getElementById("adminNotifSend");
+  const notifArchiveToggle = document.getElementById("adminNotifArchiveToggle");
+  const notifArchiveList = document.getElementById("adminNotifArchiveList");
+  const TARGET_LABEL = { now: "📨 إرسال فوري", r1: "⏰ مع التذكير الأول", r2: "⏰ مع التذكير الثاني", r3: "⏰ مع التذكير الثالث" };
+  const AUDIENCE_LABEL = { members: "👤 الأعضاء", all: "🌍 الكل" };
+  const MONTHS_AR = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+
+  async function renderAdminNotifArchive() {
+    if (!notifArchiveList) return;
+    notifArchiveList.innerHTML = `<div style="opacity:.7;font-size:13px;">بيتحمّل...</div>`;
+    const { data, error } = await supabaseClient.from("notifications").select("*").order("created_at", { ascending: false }).limit(200);
+    if (error) { notifArchiveList.innerHTML = `<div style="opacity:.7;font-size:13px;">معرفتش أحمّل الأرشيف</div>`; return; }
+    if (!data || data.length === 0) { notifArchiveList.innerHTML = `<div style="opacity:.7;font-size:13px;">لسه مفيش رسائل مرسلة</div>`; return; }
+    let html = "", lastMonth = "";
+    data.forEach(n => {
+      const d = new Date(n.created_at);
+      const monthKey = `${MONTHS_AR[d.getMonth()]} ${d.getFullYear()}`;
+      if (monthKey !== lastMonth) { html += `<div class="admin-archive-month">📅 ${monthKey}</div>`; lastMonth = monthKey; }
+      const time = `${d.getDate()}/${d.getMonth() + 1} — ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+      const t = n.target || "now";
+      const delivered = t === "now"
+        ? (typeof n.sent_count === "number" ? `📲 وصلت لـ ${n.sent_count} جهاز` : "📲 مفيش بيانات توصيل")
+        : "⏰ بتتبعت مع التذكير في ميعاده";
+      html += `
+        <div class="admin-archive-row">
+          <div>${ndEscape(n.text)}</div>
+          <div class="admin-archive-meta">
+            <span class="admin-archive-chip">🕒 ${time}</span>
+            <span class="admin-archive-chip">${TARGET_LABEL[t] || t}</span>
+            <span class="admin-archive-chip">${AUDIENCE_LABEL[n.audience] || AUDIENCE_LABEL.members}</span>
+            <span class="admin-archive-chip">${delivered}</span>
+          </div>
+        </div>`;
+    });
+    notifArchiveList.innerHTML = html;
+  }
+
+  if (notifArchiveToggle && notifArchiveList) {
+    notifArchiveToggle.addEventListener("click", () => {
+      const open = notifArchiveList.style.display === "none";
+      notifArchiveList.style.display = open ? "flex" : "none";
+      notifArchiveToggle.textContent = open ? "📦 أرشيف الرسائل المرسلة ▴" : "📦 أرشيف الرسائل المرسلة ▾";
+      if (open) renderAdminNotifArchive();
+    });
+  }
+
   if (notifSendBtn) {
     notifSendBtn.addEventListener("click", async () => {
       const textEl = document.getElementById("adminNotifText");
       const targetEl = document.getElementById("adminNotifTarget");
+      const audienceEl = document.getElementById("adminNotifAudience");
       const text = (textEl.value || "").trim();
       if (!text) return;
+      const target = targetEl.value;
+      const audience = audienceEl ? audienceEl.value : "members";
+      notifSendBtn.disabled = true;
+      const oldLabel = notifSendBtn.textContent;
+      notifSendBtn.textContent = "⏳ بيتبعت...";
       showAuthError("adminMembersWarning", "");
-      const { error } = await supabaseClient.from("notifications").insert({ text, target: targetEl.value });
-      if (error) {
-        showAuthError("adminMembersWarning", "معرفتش أضيف — محتاج صلاحية الإشعارات");
-      } else {
+      try {
+        const { data: row, error } = await supabaseClient.from("notifications")
+          .insert({ text, target, audience }).select("id").single();
+        if (error) throw new Error(`حفظ الرسالة: ${error.message}`);
         textEl.value = "";
-        notifSendBtn.classList.add("saved-flash");
-        setTimeout(() => notifSendBtn.classList.remove("saved-flash"), 600);
-        sendRealPushNotification("New Day", text)
-          .then((r) => showToast(`📲 الإشعار وصل لـ ${r.sent || 0} جهاز${r.removed ? ` (واتشال ${r.removed} اشتراك منتهي)` : ""}`, 5000))
-          .catch((e) => showGlobalError("إرسال الإشعار للموبايلات", e));
+        if (target === "now") {
+          const r = await sendRealPushNotification("New Day", text, { audience, notificationId: row.id });
+          showToast(`📲 الرسالة وصلت لـ ${r.sent || 0} جهاز${r.removed ? ` (واتشال ${r.removed} اشتراك منتهي)` : ""}`, 5000);
+        } else {
+          showToast(`⏰ اتحفظت — هتتبعت مع ${TARGET_LABEL[target].replace("⏰ مع ", "")} لكل عضو في ميعاده`, 5000);
+        }
+        if (notifArchiveList && notifArchiveList.style.display !== "none") renderAdminNotifArchive();
+      } catch (e) {
+        showGlobalError("إرسال الإشعار", e);
+      } finally {
+        notifSendBtn.disabled = false;
+        notifSendBtn.textContent = oldLabel;
       }
     });
   }
@@ -11240,8 +11443,21 @@ function wireCriticalGlobalUI() {
   if (forceUpdateBtn) {
     forceUpdateBtn.addEventListener("click", () => {
       forceUpdateBtn.disabled = true;
-      forceUpdateBtn.textContent = "بيحدّث...";
+      forceUpdateBtn.textContent = "⏳ بيحدّث...";
+      const statusEl = document.getElementById("forceUpdateStatus");
+      if (statusEl) { statusEl.style.display = "block"; statusEl.textContent = "⏳ جاري تحميل أحدث نسخة... ثواني بإذن الله"; }
       try { localStorage.setItem("nd_pending_update_attempt", "1"); } catch (e) {}
+
+      // لو بعد 10 ثواني لسه واقفين هنا (الصفحة ماتحمّلتش) — نقول بوضوح إن فيه مشكلة ونرجّع الزرار
+      setTimeout(() => {
+        forceUpdateBtn.disabled = false;
+        forceUpdateBtn.textContent = "🔄 حاول تاني";
+        if (statusEl) { statusEl.style.animation = "none"; statusEl.textContent = "⚠️ التحميل اتأخر — تأكد من النت ودوس \"حاول تاني\"، أو اقفل التطبيق وافتحه"; }
+        const failBlock = document.getElementById("forceUpdateFailBlock");
+        const diagText = document.getElementById("forceUpdateDiagText");
+        if (failBlock) failBlock.style.display = "block";
+        if (diagText) diagText.value = `New Day — التحديث اتأخر\nالنسخة الحالية: ${APP_VERSION}\nحجم الشاشة: ${window.innerWidth}×${window.innerHeight}\nالمتصفح: ${navigator.userAgent}\nالتوقيت: ${new Date().toISOString()}`;
+      }, 10000);
 
       let done = false;
       const finish = () => {

@@ -9,7 +9,7 @@
    بدل الجديدة.
    ============================================================ */
 
-const CACHE_NAME = "newday-cache-v11";
+const CACHE_NAME = "newday-cache-v12";
 
 const APP_SHELL = [
   "./index.html",
