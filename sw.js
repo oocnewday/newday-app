@@ -9,7 +9,7 @@
    بدل الجديدة.
    ============================================================ */
 
-const CACHE_NAME = "newday-cache-v18";
+const CACHE_NAME = "newday-cache-v20";
 
 const APP_SHELL = [
   "./index.html",
@@ -50,12 +50,7 @@ self.addEventListener("push", (event) => {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch (e) {}
 
-  const show = self.registration.showNotification(data.title, {
-    body: data.body,
-    icon: "./icon-192.png",
-    badge: "./icon-192.png",
-    data: { url: data.url || "/" },
-  });
+  const show = showOrForward(data);
 
   const ack = data.nid
     ? fetch(`${ND_SUPABASE_URL}/rest/v1/rpc/ack_notification_delivery`, {
@@ -68,14 +63,52 @@ self.addEventListener("push", (event) => {
   event.waitUntil(Promise.all([show, ack]));
 });
 
+// 3-b) أ6: منع التذكير المكرر — لو التطبيق مفتوح قدام المستخدم وقت التذكير، بيظهر له جوه التطبيق،
+//      فمنعرضش الإشعار برّه كمان. ده على كروم/أندرويد بس: آيفون/سفاري وفايرفوكس ممكن يلغوا اشتراك
+//      الإشعارات لو وصل إشعار ومتعرضش، فهناك بنعرضه دايمًا. وده للتذكيرات بس — رسايل الأدمن زي ما هي.
+function canSkipNotificationWhenVisible() {
+  const ua = (self.navigator && self.navigator.userAgent) || "";
+  if (/iPhone|iPad|iPod|CriOS|FxiOS|Firefox/i.test(ua)) return false;
+  return /Chrome\/|Chromium\//.test(ua);
+}
+
+async function showOrForward(data) {
+  if (data.kind === "reminder" && canSkipNotificationWhenVisible()) {
+    try {
+      const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
+      const visible = list.filter((c) => c.visibilityState === "visible");
+      if (visible.length > 0) {
+        visible.forEach((c) => c.postMessage({ type: "nd-reminder", slot: data.slot || null }));
+        return;
+      }
+    } catch (e) { /* لو حصل أي خطأ، نعرض الإشعار عادي */ }
+  }
+  return self.registration.showNotification(data.title, {
+    body: data.body,
+    icon: "./icon-192.png",
+    badge: "./icon-192.png",
+    data: { url: data.url || "/", nid: data.nid || null },
+  });
+}
+
 // 4) لما المستخدم يدوس على الإشعار — يفتح/يركّز التطبيق
+//    ب3: لو الإشعار مربوط برسالة، التطبيق بيفتح على صفحة تفاصيلها مباشرة
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = (event.notification.data && event.notification.data.url) || "./index.html";
+  const d = event.notification.data || {};
+  let notifId = d.nid || null;
+  if (!notifId && d.url) {
+    try { notifId = new URL(d.url, self.location.origin).searchParams.get("notif"); } catch (e) {}
+  }
+  const targetUrl = notifId ? `./index.html?notif=${encodeURIComponent(notifId)}` : (d.url || "./index.html");
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if ("focus" in client) return client.focus();
+        if ("focus" in client) {
+          // التطبيق مفتوح أصلًا ← نركّزه ونقوله يفتح الرسالة
+          if (notifId) client.postMessage({ type: "nd-open-notif", id: notifId });
+          return client.focus();
+        }
       }
       if (clients.openWindow) return clients.openWindow(targetUrl);
     })

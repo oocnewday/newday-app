@@ -2699,6 +2699,32 @@ body{
 }
 .list-removal-note.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
+/* أ3 — نافذة "آخر سؤال في الفولدر" (نفس شكل شيتات التطبيق) */
+.lqd-sheet .race-title{ letter-spacing:0; }
+.lqd-text{
+  font-family:'Cairo',sans-serif; font-size:17px; font-weight:800;
+  color:#FFE9A8; line-height:1.7; margin:2px 0 8px; text-align:center;
+}
+.lqd-sub{
+  font-family:'Cairo',sans-serif; font-size:14px; line-height:1.85;
+  color:rgba(255,255,255,.78); margin:0 0 18px; text-align:center;
+}
+.lqd-actions{ display:flex; flex-direction:column; gap:10px; }
+.lqd-btn{
+  width:100%; padding:14px; border-radius:14px; cursor:pointer;
+  font-family:'Cairo',sans-serif; font-size:15.5px; font-weight:800;
+}
+.lqd-yes{ background:#1f7a4c; color:#fff; border:none; }
+.lqd-later{ background:transparent; color:#fff; border:1px solid rgba(255,255,255,.2); }
+.lqd-btn:active{ transform:scale(.98); }
+
+/* أ4 — سطر "الجهاز مسجّل باسم" تحت صف الإشعارات */
+.push-device-line{
+  font-size:12.5px; line-height:1.6; font-weight:700;
+  color:var(--q-teal, #1B4B43); padding:6px 14px 0;
+}
+.push-device-line.is-off{ color:#b3261e; }
+
 .update-success-toast{
   position:fixed; top:16px; left:50%; transform:translateX(-50%) translateY(-20px);
   background:#1f7a4c; color:#fff; padding:12px 20px; border-radius:12px;
@@ -2733,7 +2759,9 @@ p, li, h1, h2, h3, h4, label, textarea, blockquote,
 .install-app-note, .install-app-choice-title, .install-app-choice-sub, .name-change-warning, .push-row-note,
 .notif-hint, .admin-archive-row > div:first-child, .phone-nav-steps > div, .profile-row-label, .profile-title,
 .auth-field-help, .admin-auth-warning, .admin-label, .reminders-push-hint span, .welcome-title,
-.update-success-toast, .force-update-status, .member-answer-row .mar-label{
+.update-success-toast, .force-update-status, .member-answer-row .mar-label,
+.list-removal-note, .lqd-text, .lqd-sub, .push-device-line,
+.nd-detail-text, .nd-detail-body, .nd-trash-note, .nd-link-btn, .nd-img-fallback{
   unicode-bidi: plaintext;
 }
 bdi{ unicode-bidi: isolate; }
@@ -2791,6 +2819,55 @@ bdi{ unicode-bidi: isolate; }
 .chip-sent{ color:#e9d9a6; background:rgba(233,217,166,.10); }
 .chip-delivered{ color:#1a1a1a; background:#f5c542; font-weight:800; }
 .chip-muted{ opacity:.55; }
+
+/* ============ ب1/ب2 — صندوق الإشعارات بـ4 فولدرات + صفحة تفاصيل الرسالة ============ */
+.notif-tabs.nd4{ gap:6px; direction:ltr; }
+.notif-tabs.nd4 .notif-tab{ padding:7px 2px; font-size:11.5px; white-space:nowrap; display:flex; flex-direction:column; align-items:center; gap:1px; line-height:1.3; }
+.notif-tabs.nd4 .nd-count{ opacity:.7; font-weight:600; font-size:11px; }
+.notification-row.nd-row{ position:relative; touch-action:pan-y; user-select:none; -webkit-user-select:none;
+  cursor:pointer; transition:transform .23s ease, opacity .23s ease; }
+.notification-row.nd-row.nd-dragging{ transition:none; }
+.notification-row.nd-row.nd-out-right{ transform:translateX(110%); opacity:0; }
+.notification-row.nd-row.nd-out-left{ transform:translateX(-110%); opacity:0; }
+.nd-row-meta{ display:flex; align-items:center; justify-content:space-between; gap:8px; direction:ltr; }
+.nd-media{ font-size:12px; color:rgba(255,255,255,.75); }
+.nd-trash-note{ font-size:11px; color:rgba(255,255,255,.55); margin-top:4px; }
+.nd-row-actions{ display:flex; justify-content:space-between; gap:8px; margin-top:8px; direction:ltr; }
+.nd-move-btn{ padding:5px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.05);
+  color:#fff; font-family:'Cairo',sans-serif; font-size:11.5px; font-weight:700; cursor:pointer; }
+.nd-move-btn[disabled]{ visibility:hidden; }
+.nd-detail-back{ margin-bottom:12px; padding:7px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.06); color:#fff; font-family:'Cairo',sans-serif; font-size:12.5px; font-weight:700; cursor:pointer; }
+.nd-detail-text{ font-family:'Cairo',sans-serif; font-size:15.5px; font-weight:800; color:#fff; line-height:1.75; white-space:pre-wrap; }
+.nd-detail-body{ font-family:'Cairo',sans-serif; font-size:14px; color:rgba(255,255,255,.88); line-height:1.9; white-space:pre-wrap; margin-top:10px; word-break:break-word; }
+.nd-detail-body a{ color:#8fd3ff; }
+.nd-detail-imgs a{ display:block; }
+.nd-img-fallback{ display:block; margin-top:10px; padding:14px; border-radius:12px; border:1px dashed rgba(143,211,255,.4);
+  color:#8fd3ff; text-align:center; font-weight:700; font-size:13px; font-family:'Cairo',sans-serif; }
+.nd-detail-imgs img{ display:block; width:100%; height:auto; border-radius:12px; margin-top:10px; background:rgba(255,255,255,.05); }
+.nd-video{ position:relative; width:100%; aspect-ratio:16/9; margin-top:12px; border-radius:12px; overflow:hidden; background:#000; }
+.nd-video iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+.nd-links{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.nd-link-btn{ display:block; padding:10px 12px; border-radius:10px; border:1px solid rgba(143,211,255,.35); background:rgba(143,211,255,.08);
+  color:#8fd3ff; text-decoration:none; font-weight:700; font-size:13px; word-break:break-all; }
+.nd-detail-date{ font-size:11px; color:rgba(255,255,255,.5); margin-top:14px; direction:ltr; text-align:left; }
+.nd-detail-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.08); }
+
+/* ب2/ب4/ب5 — لوحة الأدمن */
+.admin-row2{ display:flex; gap:8px; }
+.admin-row2 > div{ flex:1; min-width:0; }
+.admin-img-previews{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.admin-img-previews img{ width:64px; height:64px; object-fit:cover; border-radius:8px; }
+.admin-archive-actions{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.admin-archive-actions button{ padding:5px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.05);
+  color:#fff; font-size:12px; font-weight:700; cursor:pointer; font-family:'Cairo',sans-serif; }
+.admin-archive-row.is-hidden{ opacity:.6; }
+.chip-hidden{ color:#c9c9c9; border-color:rgba(255,255,255,.25); }
+.chip-cancelled{ color:#ff9a9a; background:rgba(255,120,120,.1); border-color:rgba(255,120,120,.35); }
+.chip-validity{ color:#a8e6b8; background:rgba(120,220,150,.08); border-color:rgba(120,220,150,.3); }
+.admin-storage-line{ font-size:12px; opacity:.8; }
+.admin-subsection{ margin-top:18px; padding-top:12px; border-top:1px dashed rgba(255,255,255,.18); }
+
 .profile-edit-btn-row .profile-edit-save{ flex:1; }
 .profile-edit-cancel{
   flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--q-rule);
@@ -4335,10 +4412,11 @@ bdi{ unicode-bidi: isolate; }
       </div>
 
       <!-- 3) Notifications — بقت جاهزة تصميميًا، الإرسال الفعلي محتاج Supabase -->
-      <div class="app-guide-item admin-item" data-perm="notifications">
+      <div class="app-guide-item admin-item" data-perm="notifications notif_manage reminder_texts">
         <div class="app-guide-header"><span class="app-guide-icon">🔔</span><span class="app-guide-title">Notifications</span><span class="app-guide-chevron">▾</span></div>
         <div class="app-guide-content-wrap">
           <div class="app-guide-content admin-form">
+            <div data-perm="notifications">
             <span class="ag-note">✅ الرسالة بتتحفظ في صندوق الإشعارات جوه التطبيق. "إرسال فوري" بيوصل كإشعار حقيقي على الموبايلات في نفس اللحظة. ولو ربطتها بتذكير، هتتبعت مع التذكير ده لكل عضو في ميعاده بدل الرسالة الافتراضية.</span>
             <label class="admin-label">نوع الإرسال</label>
             <select class="admin-textarea" id="adminNotifTarget">
@@ -4354,9 +4432,52 @@ bdi{ unicode-bidi: isolate; }
             </select>
             <label class="admin-label">نص الرسالة</label>
             <textarea class="admin-textarea" id="adminNotifText" rows="3" placeholder="مثال: فاكر تحل أسئلتك النهاردة؟ 🔥"></textarea>
+            <span class="ag-note">النص ده هو اللي بيظهر في الإشعار وفي سطر المعاينة في الصندوق.</span>
+            <label class="admin-label">تفاصيل الرسالة (اختياري — بتظهر لما العضو يضغط على الرسالة)</label>
+            <textarea class="admin-textarea" id="adminNotifBody" rows="4" placeholder="اكتب التفاصيل هنا... وأي رابط هيتحوّل لرابط يتضغط عليه"></textarea>
+            <label class="admin-label">روابط (اختياري — كل رابط في سطر، وممكن تكتب عنوان قبله: العنوان | الرابط)</label>
+            <textarea class="admin-textarea" id="adminNotifLinks" rows="2" dir="ltr" placeholder="Registration form | https://..."></textarea>
+            <label class="admin-label">صور (اختياري — لحد 4 صور، بتتصغّر على الجهاز قبل الرفع)</label>
+            <input type="file" class="admin-textarea" id="adminNotifImages" accept="image/*" multiple>
+            <div class="admin-img-previews" id="adminNotifImagesPreview"></div>
+            <label class="admin-label">أو روابط صور (اختياري — درايف أو رابط صورة مباشر، كل رابط في سطر، لحد 6)</label>
+            <textarea class="admin-textarea" id="adminNotifImageLinks" rows="2" dir="ltr" placeholder="https://drive.google.com/file/d/..."></textarea>
+            <span class="ag-note">صورة درايف لازم تكون متشاركة "أي حد معاه الرابط". الروابط دي مابتاخدش من مساحتنا خالص.</span>
+            <div class="admin-img-previews" id="adminNotifImageLinksPreview"></div>
+            <label class="admin-label">فيديو (اختياري — رابط يوتيوب أو جوجل درايف)</label>
+            <input type="url" class="admin-textarea" id="adminNotifVideo" dir="ltr" placeholder="https://youtu.be/...">
+            <div id="adminNotifValidityWrap" style="display:none;">
+              <label class="admin-label">فترة صلاحية الرسالة مع التذكير</label>
+              <div class="admin-row2">
+                <div><label class="admin-label">من</label><input type="date" class="admin-textarea" id="adminNotifValidFrom"></div>
+                <div><label class="admin-label">إلى</label><input type="date" class="admin-textarea" id="adminNotifValidUntil"></div>
+              </div>
+              <span class="ag-note">بعد آخر يوم، التذكير بيرجع تلقائيًا لرسالته الأساسية. لو سبت "إلى" فاضية، هتفضل شغالة لحد ما تلغيها من الأرشيف.</span>
+            </div>
             <button class="admin-save-btn" id="adminNotifSend">📨 إرسال</button>
+            </div>
+            <div data-perm="notifications notif_manage">
             <button class="admin-archive-toggle" id="adminNotifArchiveToggle" type="button">📦 أرشيف الرسائل المرسلة ▾</button>
+            <select class="admin-textarea" id="adminNotifFilter" style="display:none; margin-top:8px;">
+              <option value="all">كل الرسائل</option>
+              <option value="now">📨 الفورية بس</option>
+              <option value="linked">⏰ المربوطة بتذكير</option>
+              <option value="hidden">🙈 المخفية</option>
+              <option value="cancelled">⛔ الملغية</option>
+            </select>
             <div class="admin-notif-archive" id="adminNotifArchiveList" style="display:none;"></div>
+            </div>
+            <div class="admin-subsection" data-perm="reminder_texts">
+              <label class="admin-label">✍️ الرسالة الأساسية لكل تذكير</label>
+              <span class="ag-note">بتتبعت مع التذكير لما مايكونش فيه رسالة مربوطة سارية. سيبها فاضية عشان يتبعت الحديث الافتراضي.</span>
+              <label class="admin-label">التذكير الأول</label>
+              <textarea class="admin-textarea" id="adminReminderBase_r1" rows="2"></textarea>
+              <label class="admin-label">التذكير الثاني</label>
+              <textarea class="admin-textarea" id="adminReminderBase_r2" rows="2"></textarea>
+              <label class="admin-label">التذكير الثالث</label>
+              <textarea class="admin-textarea" id="adminReminderBase_r3" rows="2"></textarea>
+              <button class="admin-save-btn" id="adminReminderBaseSave" type="button">💾 حفظ الرسائل الأساسية</button>
+            </div>
           </div>
         </div>
       </div>
@@ -4588,6 +4709,26 @@ bdi{ unicode-bidi: isolate; }
 </div>
 
 <!-- ============================================================
+     أ3 — آخر سؤال في Wrong / Remaining
+     بتظهر بعد دقيقة ونص من حل آخر سؤال في الفولدر (لو لسه واقف عليه)
+     ============================================================ -->
+<div class="race-overlay" id="lastQDoneOverlay">
+  <div class="race-sheet lqd-sheet">
+    <div class="race-handle" id="lastQDoneHandle"></div>
+    <div class="race-header" id="lastQDoneHeader">
+      <div class="race-title"><span>🎉</span><span>أكملت الفولدر</span></div>
+      <button class="race-close" id="lastQDoneClose" aria-label="رجوع">✕</button>
+    </div>
+    <p class="lqd-text">قد أكملت بفضل الله أسئلة هذا الفولدر بنجاح.</p>
+    <p class="lqd-sub">هل انتهيت من السؤال الأخير لإزالته من هنا؟ (مع العلم إنه موجود داخل فولدر <bdi dir="ltr">ALL</bdi>)</p>
+    <div class="lqd-actions">
+      <button class="lqd-btn lqd-yes" id="lastQDoneYes">✅ نعم الحمد لله</button>
+      <button class="lqd-btn lqd-later" id="lastQDoneLater">⏳ ليس بعد</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
      NOTIFICATIONS SHEET (رسائل من الأدمن)
      ============================================================ -->
 <div class="race-overlay" id="notificationsOverlay">
@@ -4737,6 +4878,7 @@ bdi{ unicode-bidi: isolate; }
       <div class="profile-row profile-row-link" id="profileRaceLink"><span class="profile-row-label">🏁 Race Track</span><span class="profile-row-value">→</span></div>
       <div class="profile-row profile-row-link" id="profileInstallAppLink"><span class="profile-row-label">📲 فتح كتطبيق كامل</span><span class="profile-row-value">→</span></div>
       <div class="profile-row profile-row-link" id="profilePushEnableRow"><span class="profile-row-label">🔔 فعّل إشعارات الموبايل</span><span class="profile-row-value" id="profilePushEnableRowValue">→</span></div>
+      <div class="push-device-line" id="profilePushDeviceLine" style="display:none;"></div>
       <div class="push-row-note" id="profilePushNote"></div>
       <div class="profile-row profile-row-editable" id="profileContactRow"><span class="profile-row-label">📞 تواصل معنا</span><span class="profile-row-value">→</span></div>
       <div class="profile-edit-panel" id="profileContactEdit">
@@ -5554,6 +5696,8 @@ async function switchStorageNamespaceForCurrentUser() {
   qTimerSeconds = 0;
   sessionTimerSeconds = 0;
   lastTimerQCode = null;
+  // أ7: حساب جديد ← مفيش سؤال مثبّت ولا نافذة "آخر سؤال" من الحساب اللي قبله
+  try { stickyQCode = null; cancelLastQDoneTimer(); } catch (e) {}
   renderQuestionTimer();
   renderSessionTimer();
 }
@@ -5727,17 +5871,59 @@ async function disablePushNotifications() {
   }
 }
 
-async function isPushSubscribed() {
-  if (!pushSupported()) return false;
+// أ4: حالة الإشعارات الحقيقية على الجهاز ده — من السيرفر مش من المتصفح بس.
+// المتصفح ممكن يكون عنده اشتراك، بس السيرفر شايفه لحساب تاني (الجهاز بيتبع آخر حساب دخل عليه)،
+// ساعتها التطبيق كان بيقول "مفعّلة" والتذكيرات مش بتوصل. دلوقتي بنسأل السيرفر، ولو مش مسجّل لحسابك بنصلّحه تلقائيًا.
+// state: mine = مسجّل لحسابك | missing = مش مسجّل ليك (حتى بعد محاولة الإصلاح) |
+//        unknown = مقدرناش نوصل للسيرفر (بنعتمد على المتصفح مؤقتًا) | guest = زائر | off = مش مفعّلة
+async function getPushDeviceStatus() {
+  if (!pushSupported()) return { on: false, state: "off" };
   try {
-    if (localStorage.getItem(pushWantedKey()) !== "1") return false;
-    if (Notification.permission !== "granted") return false;
+    if (localStorage.getItem(pushWantedKey()) !== "1") return { on: false, state: "off" };
+    if (Notification.permission !== "granted") return { on: false, state: "off" };
     const reg = await withTimeout(navigator.serviceWorker.ready, 5000, "تجهيز الخدمة الخلفية");
-    const sub = await reg.pushManager.getSubscription();
-    return !!sub;
+    let sub = await reg.pushManager.getSubscription();
+    if (pushModeIsGuest()) return { on: !!sub, state: sub ? "guest" : "off" };
+    if (!supabaseClient || !currentUserId) return { on: !!sub, state: "unknown" };
+
+    // صلاحيات القاعدة (RLS) بترجّع الصف بس لو هو بتاع الحساب الحالي — فلو مسجّل لحساب تاني هيرجع فاضي
+    const isMine = async (endpoint) => {
+      const { data, error } = await supabaseClient.from("push_subscriptions")
+        .select("id").eq("endpoint", endpoint).eq("user_id", currentUserId).maybeSingle();
+      if (error) throw error;
+      return !!data;
+    };
+
+    let registered = false;
+    if (sub) {
+      try { registered = await isMine(sub.endpoint); }
+      catch (e) { return { on: true, state: "unknown" }; } // غالبًا مفيش نت — منقولش "غير مفعّل" من غير ما نتأكد
+    }
+    if (!registered) {
+      // إصلاح ذاتي: إنت مفعّلها والإذن موجود، بس السيرفر مش شايف الجهاز ده لحسابك
+      try {
+        await subscribeAndRegisterPush();
+        sub = await reg.pushManager.getSubscription();
+        registered = sub ? await isMine(sub.endpoint) : false;
+      } catch (e) { /* هنحاول تاني المرة الجاية */ }
+    }
+    if (!registered) return { on: false, state: "missing" };
+
+    let name = null, memberNo = null;
+    try {
+      const { data: me } = await supabaseClient.from("users")
+        .select("display_name, member_no").eq("id", currentUserId).maybeSingle();
+      if (me) { name = me.display_name || null; memberNo = me.member_no || null; }
+    } catch (e) {}
+    return { on: true, state: "mine", name, memberNo };
   } catch (e) {
-    return false;
+    return { on: false, state: "off" };
   }
+}
+
+async function isPushSubscribed() {
+  const st = await getPushDeviceStatus();
+  return st.on;
 }
 
 // تذكرة دخول صالحة دايمًا (بتتجدد لو قربت تنتهي) — ده كان سبب خطأ "unauthorized"
@@ -5789,7 +5975,8 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 5.7;
+const APP_VERSION = 6.0;
+const APP_VERSION_LABEL = Number(APP_VERSION).toFixed(1); // للعرض بس (6.0 مش 6)
 
 const CONFIG = {
   DAILY_LIMIT: 149,         // أقصى عدد أسئلة جديدة/يوم تأخذ نقاط
@@ -5858,17 +6045,83 @@ let memberState = {};
 let memberStateLoaded = false;
 let memberStateSaveTimer = null;
 
+// ------------------------------------------------------------
+// أ8 — حماية تقدّم العضو لما النت يقطع:
+//  1) نسخة من الحالة على الجهاز نفسه (localStorage) — عشان جلسة من غير نت ماتضيعش لو قفل التطبيق
+//  2) لو فتح التطبيق من غير نت ومفيش نسخة على الجهاز، الحالة بتبقى فاضية — ساعتها ممنوع نكتب على السيرفر
+//     (قبل كده أول حفظ بعد رجوع النت كان ممكن يكتب الفاضي فوق تقدّمه كله)
+//  3) لو الحفظ على السيرفر فشل، بنعيده تلقائيًا أول ما النت يرجع، وبنطمّنه برسالة
+// ------------------------------------------------------------
+let memberStateSafeToUpload = false; // true = الحالة اللي معانا كاملة (من السيرفر أو من نسخة الجهاز) ومسموح نرفعها
+let memberStatePendingSync = false;  // فيه تغييرات لسه موصلتش السيرفر
+let memberSyncHadFailure = false;    // حفظ فشل (غالبًا مفيش نت) — لما ينجح نطمّنه
+let memberMirrorQueued = false;
+
+function memberMirrorKey() { return "nd_member_state_" + currentUserId; }
+function readMemberMirror() {
+  try {
+    const raw = localStorage.getItem(memberMirrorKey());
+    const m = raw ? JSON.parse(raw) : null;
+    return (m && m.state && typeof m.state === "object") ? m : null;
+  } catch (e) { return null; }
+}
+function writeMemberMirror() {
+  if (!currentUserId || !memberStateSafeToUpload) return; // منخزّنش حالة ناقصة على الجهاز
+  try {
+    localStorage.setItem(memberMirrorKey(), JSON.stringify({ state: memberState, pending: memberStatePendingSync }));
+  } catch (e) {
+    // المساحة مش كفاية: نمسح النسخة القديمة بدل ما تفضل قديمة وتتحسب بعدين كأنها أحدث
+    try { localStorage.removeItem(memberMirrorKey()); } catch (e2) {}
+  }
+}
+function queueMemberMirror() {
+  if (memberMirrorQueued) return;
+  memberMirrorQueued = true;
+  // saveState بتنادي cloudSet حوالي 25 مرة ورا بعض — نكتب النسخة مرة واحدة بعدهم
+  Promise.resolve().then(() => { memberMirrorQueued = false; writeMemberMirror(); });
+}
+const memberSavedAt = (st) => (st && typeof st.__savedAt === "number") ? st.__savedAt : 0;
+
 async function loadMemberState() {
   memberState = {};
   memberStateLoaded = false;
+  memberStateSafeToUpload = false;
+  memberStatePendingSync = false;
+  memberSyncHadFailure = false;
   if (!supabaseClient || !currentUserId) return;
+
+  const mirror = readMemberMirror();
+  let server = null;
   try {
-    const { data } = await supabaseClient.from("users").select("app_state").eq("id", currentUserId).maybeSingle();
-    memberState = (data && data.app_state && typeof data.app_state === "object") ? data.app_state : {};
-  } catch (e) {
-    memberState = {};
+    const { data, error } = await withTimeout(
+      supabaseClient.from("users").select("app_state").eq("id", currentUserId).maybeSingle(),
+      8000, "تحميل التقدّم");
+    if (!error) server = (data && data.app_state && typeof data.app_state === "object") ? data.app_state : {};
+  } catch (e) { /* من غير نت */ }
+
+  if (server) {
+    memberStateSafeToUpload = true;
+    if (mirror && mirror.pending && memberSavedAt(mirror.state) > memberSavedAt(server)) {
+      // الجهاز عليه تقدّم أحدث لسه مااترفعش (جلسة من غير نت) ← نكمّل منه ونرفعه
+      memberState = mirror.state;
+      memberStatePendingSync = true;
+    } else {
+      memberState = server;
+    }
+    writeMemberMirror();
+  } else if (mirror) {
+    // من غير نت: نكمّل من نسخة الجهاز (كاملة) — ومسموح نرفعها لما النت يرجع
+    memberState = mirror.state;
+    memberStateSafeToUpload = true;
+    memberStatePendingSync = !!mirror.pending;
+  } else {
+    memberState = {}; // مفيش نت ولا نسخة ← حالة مؤقتة، ممنوع تتكتب على السيرفر
   }
   memberStateLoaded = true;
+  if (memberStatePendingSync && memberStateSafeToUpload && navigator.onLine) {
+    memberSyncHadFailure = true; // عشان لما يترفع نطمّنه
+    persistMemberState();
+  }
 }
 
 function cloudGet(key, def) {
@@ -5877,15 +6130,61 @@ function cloudGet(key, def) {
 
 function cloudSet(key, val) {
   memberState[key] = val;
+  memberState.__savedAt = Date.now();
+  memberStatePendingSync = true;
+  queueMemberMirror();
   clearTimeout(memberStateSaveTimer);
   memberStateSaveTimer = setTimeout(persistMemberState, 900);
 }
 
 async function persistMemberState() {
   if (!supabaseClient || !currentUserId) return;
+  if (!memberStateSafeToUpload) return; // أ8: الحالة دي مش متحمّلة من السيرفر — منكتبش فوق تقدّمه
+  if (!memberStatePendingSync) return;
+  const userAtStart = currentUserId;
+  const snapshotAt = memberState.__savedAt;
   try {
-    await supabaseClient.from("users").update({ app_state: memberState }).eq("id", currentUserId);
-  } catch (e) { /* من غير نت، هيتحفظ في المحاولة الجاية اللي فيها كل آخر تحديث برضو */ }
+    const { error } = await supabaseClient.from("users").update({ app_state: memberState }).eq("id", userAtStart);
+    if (error) throw error;
+    if (currentUserId !== userAtStart) return; // الحساب اتغيّر في النص
+    if (memberState.__savedAt === snapshotAt) {
+      memberStatePendingSync = false;
+      writeMemberMirror();
+    }
+    if (memberSyncHadFailure) {
+      memberSyncHadFailure = false;
+      showToast("☁️ رجع النت واتحفظ تقدّمك على السيرفر بفضل الله", 3500);
+    }
+  } catch (e) {
+    memberSyncHadFailure = true; // هيتعاد تلقائيًا أول ما النت يرجع (وكل التقدّم محفوظ على الجهاز لحد كده)
+  }
+}
+
+// فتح التطبيق من غير نت ومن غير نسخة على الجهاز ← أول ما النت يرجع نحمّل تقدّمه الحقيقي من السيرفر
+async function recoverMemberStateAfterOffline() {
+  if (isGuest || !currentUserId || memberStateSafeToUpload) return;
+  await loadMemberState();
+  if (!memberStateSafeToUpload) return;
+  await loadState();
+  try { renderModeTabs(); } catch (e) {}
+  const active = document.querySelector(".screen.active");
+  if (active && active.id === "questions") { try { renderQuestion(); } catch (e) {} }
+  showToast("☁️ رجع النت واتحمّل تقدّمك من السيرفر بفضل الله", 3500);
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("online", () => {
+    if (isGuest || !currentUserId) return;
+    if (!memberStateSafeToUpload) { recoverMemberStateAfterOffline(); return; }
+    if (memberStatePendingSync) { clearTimeout(memberStateSaveTimer); persistMemberState(); }
+  });
+  // لما يسيب التطبيق (يقفله أو ينقل لتطبيق تاني) ← نحفظ فورًا بدل ما نستنى
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && memberStatePendingSync) {
+      clearTimeout(memberStateSaveTimer);
+      persistMemberState();
+    }
+  });
 }
 
 // بترجع true لو المستخدم عضو مسجّل وحالته السحابية جاهزة نستخدمها (بدل rawStorage المحلي)
@@ -6007,7 +6306,8 @@ async function savePoints(val) {
   if (useCloudState()) {
     cloudSet("totalPoints", val);
     // نسخة منفصلة وسريعة في عمود خاص (بدل قراءة JSONB) — أساسًا لقائمة المنافسة
-    if (supabaseClient && currentUserId) {
+    // أ8: لو التقدّم مااتحمّلش من السيرفر (فتح من غير نت)، منكتبش رقم مؤقت في قايمة المنافسة
+    if (supabaseClient && currentUserId && memberStateSafeToUpload) {
       supabaseClient.from("users").update({ total_points: val }).eq("id", currentUserId).then(() => {}, () => {});
     }
     return true;
@@ -6316,7 +6616,14 @@ function saveAdminUnlocked(v) {
 async function loadNotificationsInbox() {
   if (!supabaseClient) return [];
   const { data } = await supabaseClient.from("notifications").select("*").order("created_at", { ascending: false });
-  return data || [];
+  const today = ndTodayISO();
+  // المخفي مايظهرش (حتى للأدمن في صندوقه الشخصي)، والمربوطة بتذكير مابتظهرش قبل أول يوم في صلاحيتها
+  return (data || []).filter(n => !n.hidden_at &&
+    !(n.target && n.target !== "now" && n.valid_from && String(n.valid_from) > today));
+}
+function ndTodayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /* --- COMING SOON ITEMS (Supabase — مشترك لكل الأجهزة) --- */
@@ -6340,6 +6647,16 @@ async function loadArchivedNotifIds() {
 async function saveArchivedNotifIds(arr) {
   if (useCloudState()) { cloudSet("archivedNotifIds", arr); return true; }
   rawStorage.set("archivedNotifIds", arr);
+  return true;
+}
+/* --- ب1: فولدرات صندوق الإشعارات (لكل حساب — سحابي بحماية أ8 — وللزائر على جهازه) --- */
+async function loadNotifBox() {
+  const box = useCloudState() ? cloudGet("notifBox", null) : rawStorage.get("notifBox", null);
+  return (box && typeof box === "object" && box.f && typeof box.f === "object") ? box : null;
+}
+async function saveNotifBox(box) {
+  if (useCloudState()) { cloudSet("notifBox", box); return true; }
+  rawStorage.set("notifBox", box);
   return true;
 }
 function ndEscape(s) {
@@ -6388,7 +6705,9 @@ async function resetAll() {
   rawStorage.clear();
   if (useCloudState()) {
     memberState = {};
+    memberStatePendingSync = false;
     clearTimeout(memberStateSaveTimer);
+    try { localStorage.removeItem(memberMirrorKey()); } catch (e) {} // أ8: ونسخة الجهاز كمان
     try { await supabaseClient.from("users").update({ app_state: {} }).eq("id", currentUserId); } catch (e) {}
   }
   return true;
@@ -6646,13 +6965,24 @@ async function checkForcedUpdate() {
   return true;
 }
 
-function showListRemovalNote(text) {
+// رسالة "السؤال ده هيتشال من القايمة" — مربوطة بالسؤال اللي ظهرت عليه (qCode):
+// بتفضل ظاهرة طول ما نفس السؤال معروض، وبتختفي أول ما سؤال تاني يظهر (renderQuestion بيتأكد من ده)
+// html هنا نصوص ثابتة من الكود بس (مفيش أي مدخلات من المستخدم)
+function showListRemovalNote(html, qCode) {
   const el = document.getElementById("listRemovalNote");
   if (!el) return;
-  el.textContent = text;
+  el.innerHTML = html;
+  el.dataset.qcode = qCode || "";
   el.classList.add("show");
   clearTimeout(showListRemovalNote._t);
-  showListRemovalNote._t = setTimeout(() => el.classList.remove("show"), 4200);
+  showListRemovalNote._t = setTimeout(hideListRemovalNote, 5000);
+}
+function hideListRemovalNote() {
+  const el = document.getElementById("listRemovalNote");
+  if (!el) return;
+  clearTimeout(showListRemovalNote._t);
+  el.classList.remove("show");
+  el.dataset.qcode = "";
 }
 
 function showToast(msg, ms) {
@@ -7152,12 +7482,10 @@ async function awardPoints(qCode, isCorrect) {
   if (isCorrect && wasInWrong) {
     wrongSet.delete(qCode);
   }
-  // نوضّح للمستخدم إن السؤال ده هيختفي من القايمة أول ما يعدّيه (بدل ما يختفي فجأة من غير سبب)
-  if (qMode === "wrong" && isCorrect && wasInWrong) {
-    showListRemovalNote("✅ تمام! السؤال ده هيتشال من قايمة Wrong أول ما تعدّيه");
-  } else if (qMode === "remaining" && !solvedSet.has(qCode)) {
-    showListRemovalNote("✅ اتحل! السؤال ده هيتشال من قايمة Remaining أول ما تعدّيه");
-  }
+  // هل السؤال ده هيخرج من الفولدر المفتوح دلوقتي؟ — لازم تتحسب هنا قبل ما solvedSet يتحدّث في الخطوة 6
+  const leavingOpenList =
+    (qMode === "wrong" && isCorrect && wasInWrong) ||
+    (qMode === "remaining" && !solvedSet.has(qCode));
 
   // 5) لو الإجابة غلط → ضيف في Wrong Set
   if (!isCorrect) {
@@ -7172,6 +7500,17 @@ async function awardPoints(qCode, isCorrect) {
   // 6) ضيف للـ solvedSet (لو أول مرة يتحل)
   if (!solvedSet.has(qCode)) {
     solvedSet.add(qCode);
+  }
+
+  // 6-b) نوضّح للمستخدم إن السؤال ده هيختفي من القايمة (بدل ما يختفي فجأة من غير سبب)
+  //      ولو ده كان آخر سؤال فيها، نجهّز نافذة "أكملت الفولدر" بعد دقيقة ونص
+  if (leavingOpenList) {
+    announceLeavingOpenList(qCode);
+  } else if (getPool(true).some(q => q.qCode === qCode)) {
+    // السؤال رجع للقايمة تاني (مثلًا اتصلّح في Wrong وبعدين اتجاوب غلط تاني) ← الرسالة والتايمر مابقاش ليهم لازمة
+    const lrnEl = document.getElementById("listRemovalNote");
+    if (lrnEl && lrnEl.dataset.qcode === qCode) hideListRemovalNote();
+    if (lastQDoneTimer && lastQDoneTimer.qCode === qCode) cancelLastQDoneTimer();
   }
 
   // 7) لو ده سؤال جديد النهاردة → ضيفه للـ dailyNewIds
@@ -7257,12 +7596,14 @@ function getAllQuestionsInContext() {
  * يرجع الـ Pool الحالي حسب qMode
  */
 let stickyQCode = null;
-function getPool() {
+// ignoreSticky = true ← القايمة الحقيقية من غير السؤال المثبّت (عشان نعرف هل فاضل أسئلة تانية فعلًا)
+function getPool(ignoreSticky) {
   const all = getAllQuestionsInContext();
 
   // السؤال المعروض حاليًا بيفضل في القايمة لحد ما تسيبه بنفسك — عشان لما تحلّه أو تكشف إجابته
-  // تشوف الإجابة والشرح بدل ما يختفي فجأة وتتنقل للي بعده
-  const keep = (q) => q.qCode === stickyQCode;
+  // تشوف الإجابة والشرح بدل ما يختفي فجأة وتتنقل للي بعده.
+  // مهم: التثبيت ده خاص بالوضع الحالي بس — بيتصفّر مع تغيير الوضع/الفولدر/الحساب (أ7)
+  const keep = (q) => !ignoreSticky && q.qCode === stickyQCode;
 
   if (qMode === "fav") {
     return all.filter(q => favorites.has(q.qCode) || keep(q));
@@ -7278,6 +7619,88 @@ function getPool() {
 
   // allq
   return all;
+}
+
+/* ------------------------------------------------------------
+   أ1 + أ3 — خروج سؤال من Wrong/Remaining + نافذة "آخر سؤال"
+   ------------------------------------------------------------ */
+const LAST_Q_DONE_DELAY_MS = 90 * 1000; // دقيقة ونص
+let lastQDoneTimer = null;               // { t, qCode, mode }
+
+function announceLeavingOpenList(qCode) {
+  const listName = qMode === "wrong" ? "Wrong" : "Remaining";
+  const listHtml = `<bdi dir="ltr">${listName}</bdi>`;
+  const othersLeft = getPool(true).some(q => q.qCode !== qCode);
+  if (othersLeft) {
+    const lead = qMode === "wrong" ? "✅ تمام!" : "✅ اتحل!";
+    showListRemovalNote(`${lead} السؤال ده هيتشال من قايمة ${listHtml} أول ما تعدّيه`, qCode);
+  } else {
+    showListRemovalNote(`🎉 ده كان آخر سؤال في قايمة ${listHtml} بفضل الله`, qCode);
+    scheduleLastQDonePrompt(qCode, qMode);
+  }
+}
+
+function cancelLastQDoneTimer() {
+  if (lastQDoneTimer) {
+    clearTimeout(lastQDoneTimer.t);
+    lastQDoneTimer = null;
+  }
+}
+
+function scheduleLastQDonePrompt(qCode, mode) {
+  cancelLastQDoneTimer();
+  const info = { qCode, mode, t: null };
+  info.t = setTimeout(() => tryShowLastQDonePrompt(info), LAST_Q_DONE_DELAY_MS);
+  lastQDoneTimer = info;
+}
+
+// وقت ما الدقيقة ونص تخلص: نتأكد إن كل حاجة لسه زي ما هي قبل ما نفتح النافذة
+function tryShowLastQDonePrompt(info) {
+  if (lastQDoneTimer !== info) return; // اتلغى أو اتبدّل
+  const qScreen = document.getElementById("questions");
+  const cur = getCurrentQuestion();
+  const stillValid =
+    qMode === info.mode &&
+    qScreen && qScreen.classList.contains("active") &&
+    cur && cur.qCode === info.qCode &&
+    stickyQCode === info.qCode &&
+    getPool(true).length === 0; // الفولدر فاضي فعلًا من غير السؤال المثبّت
+  if (!stillValid) { lastQDoneTimer = null; return; }
+  // لو التطبيق في الخلفية أو فيه نافذة تانية مفتوحة — نستنى شوية ونحاول تاني (منفتحش فوق حاجة)
+  const busy = document.visibilityState === "hidden" ||
+    !!document.querySelector('[class*="overlay"].open');
+  if (busy) {
+    info.t = setTimeout(() => tryShowLastQDonePrompt(info), 5000);
+    return;
+  }
+  lastQDoneTimer = null;
+  const ov = document.getElementById("lastQDoneOverlay");
+  if (!ov) return;
+  ov.dataset.qcode = info.qCode;
+  ov.dataset.mode = info.mode;
+  sheetReturnsToProfile = false;
+  ov.classList.add("open");
+}
+
+function closeLastQDoneSheet() {
+  const ov = document.getElementById("lastQDoneOverlay");
+  if (ov) ov.classList.remove("open");
+}
+
+// "نعم الحمد لله" ← السؤال يتشال فورًا ويظهر إن الفولدر خلص
+function confirmLastQDone() {
+  const ov = document.getElementById("lastQDoneOverlay");
+  const code = ov ? ov.dataset.qcode : null;
+  const mode = ov ? ov.dataset.mode : null;
+  closeLastQDoneSheet();
+  if (!code || mode !== qMode || stickyQCode !== code) return; // الوضع اتغيّر في النص — مفيش حاجة نشيلها
+  stickyQCode = null;
+  qState.picked = null;
+  qState.revealed = false;
+  qState.submitted = false;
+  qState.more = false;
+  hideListRemovalNote();
+  renderQuestion();
 }
 
 /**
@@ -7705,8 +8128,6 @@ const letters = ["A", "B", "C", "D", "E"];
 function renderQuestion() {
   // 0) هيّئ نظافة الشاشة قبل رسم السؤال الجديد — عشان المسطرة/الأداة بتاعة السؤال اللي قبله متفضلش عالقة
   hideAnnotateRuler();
-  const lrn = document.getElementById("listRemovalNote");
-  if (lrn) lrn.classList.remove("show");
   document.querySelectorAll(".q-annotate-tool[data-tool]").forEach(btn => btn.classList.remove("active"));
 
   // 1) احسب الـ Pool الحالي
@@ -7722,6 +8143,14 @@ function renderQuestion() {
       qIdx = i >= 0 ? i : 0;
     }
   }
+
+  // أ1: رسالة الإزالة كانت بتتقفل في أول سطر هنا مع كل إعادة رسم — وإعادة الرسم بتحصل فورًا بعد
+  // كشف الإجابة/التسليم، فكانت بتختفي في نفس اللحظة اللي بتظهر فيها. دلوقتي بتختفي بس لو السؤال المعروض اتغيّر.
+  // وتايمر نافذة "آخر سؤال" (أ3) بيتلغي بنفس المنطق لو السؤال أو الوضع اتغيّر.
+  const shownNowCode = currentPool[qIdx] ? currentPool[qIdx].qCode : null;
+  const lrn = document.getElementById("listRemovalNote");
+  if (lrn && lrn.dataset.qcode && lrn.dataset.qcode !== shownNowCode) hideListRemovalNote();
+  if (lastQDoneTimer && (lastQDoneTimer.mode !== qMode || lastQDoneTimer.qCode !== shownNowCode)) cancelLastQDoneTimer();
 
   const body = document.getElementById("qBody");
   if (!body) return;
@@ -7744,7 +8173,7 @@ function renderQuestion() {
         <div style="font-size:16px; font-weight:700; color:var(--q-teal); margin-bottom:8px;">No ${modeName} questions</div>
         <div style="font-size:13px; color:var(--q-muted); line-height:1.7;">
           ${qMode === "fav" ? "Tap ☆ on any question to add it here." :
-            qMode === "wrong" ? "Your wrong answers will appear here." :
+            qMode === "wrong" ? (solvedSet.size > 0 ? "All your wrong answers are corrected! 🎉<br>New mistakes will appear here." : "Your wrong answers will appear here.") :
             qMode === "remaining" ? "You've solved all questions! 🎉" :
             "No questions available."}
         </div>
@@ -8496,6 +8925,7 @@ function renderFolders() {
           qHistory = [];
           qMode = "allq";
           qSubMode = "study";
+          stickyQCode = null; // أ7: فولدر جديد ← مفيش سؤال مثبّت من الفولدر اللي فات
           saveState();
         }
 
@@ -8631,7 +9061,7 @@ function renderProfile() {
     if (el) el.textContent = val;
   };
 
-  setTxt("profileAppVersionLabel", APP_VERSION); // دايمًا من الثابت الحقيقي، مش رقم مكتوب بالإيد
+  setTxt("profileAppVersionLabel", APP_VERSION_LABEL); // دايمًا من الثابت الحقيقي، مش رقم مكتوب بالإيد
   if (window.refreshPushButtonState) window.refreshPushButtonState();
   const memberNoRow = document.getElementById("profileMemberNoRow");
   if (memberNoRow) memberNoRow.style.display = (!isGuest && memberNo) ? "" : "none";
@@ -8991,16 +9421,21 @@ function setupProfileEditing() {
       await saveState();
       renderProfile();
       document.getElementById("profileNameEdit").classList.remove("open");
+      showToast("✅ اتحفظ اسمك بفضل الله", 2800); // أ2
     });
   }
 
   // --- اللون (في أي وقت) ---
   const colorRow = document.getElementById("profileColorRow");
+  let colorToastTimer = null;
   buildColorPicker(document.getElementById("profileColors"), trackColor, async (hex) => {
     trackColor = hex;
     await saveState();
     await syncProfileToSupabase();
     renderProfile();
+    // أ2: رسالة واحدة بعد ما يستقر على لون (مش مع كل ضغطة وهو بيجرّب)
+    clearTimeout(colorToastTimer);
+    colorToastTimer = setTimeout(() => showToast("🎨 لونك الجديد اتحفظ", 2400), 900);
   });
   if (colorRow) {
     colorRow.addEventListener("click", () => {
@@ -9038,6 +9473,7 @@ function setupProfileEditing() {
           reminder_1: r1, reminder_2: r2, reminder_3: r3,
         }).eq("id", currentUserId);
       }
+      showToast((r1 || r2 || r3) ? "⏰ اتحفظت مواعيدك — هنفكّرك بإذن الله" : "⏰ اتشالت كل مواعيد التذكير", 3200); // أ2
       renderProfile();
       document.getElementById("profileRemindersEdit").classList.remove("open");
     });
@@ -9048,10 +9484,38 @@ function setupProfileEditing() {
   const pushRowLabel = pushRow ? pushRow.querySelector(".profile-row-label") : null;
   const pushRowValue = document.getElementById("profilePushEnableRowValue");
   const pushNote = document.getElementById("profilePushNote");
+  const pushDeviceLine = document.getElementById("profilePushDeviceLine");
   const remindersHint = document.getElementById("remindersPushHint");
+  const escHtml = (v) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  // أ4: "📱 الجهاز ده مسجّل للإشعارات باسم: ..." — الاسم ورقم العضوية جايين من السيرفر
+  function renderPushDeviceLine(st) {
+    if (!pushDeviceLine) return;
+    if (pushModeIsGuest() || st.state === "guest") { pushDeviceLine.style.display = "none"; return; }
+    pushDeviceLine.style.display = "block";
+    pushDeviceLine.classList.toggle("is-off", !st.on);
+    if (st.state === "mine") {
+      const who = [st.name, st.memberNo].filter(Boolean).map(v => `<bdi>${escHtml(v)}</bdi>`).join(" / ");
+      pushDeviceLine.innerHTML = `📱 الجهاز ده مسجّل للإشعارات باسم: ${who || "حسابك"}`;
+    } else if (st.state === "unknown") {
+      pushDeviceLine.textContent = "📱 مقدرناش نتأكد من السيرفر دلوقتي (غالبًا مفيش نت) — هنتأكد تاني أول ما تفتح الملف الشخصي";
+    } else {
+      pushDeviceLine.textContent = "📱 الجهاز ده غير مفعّل للإشعارات على حسابك";
+    }
+  }
+  let pushRefreshSeq = 0;
   async function refreshPushButtonState() {
     if (!pushRowValue) return;
-    const on = await isPushSubscribed();
+    const mySeq = ++pushRefreshSeq;
+    if (pushDeviceLine && !pushModeIsGuest() && !pushDeviceLine.textContent) {
+      pushDeviceLine.style.display = "block";
+      pushDeviceLine.classList.remove("is-off");
+      pushDeviceLine.textContent = "📱 بنتأكد من تسجيل الجهاز ده...";
+    }
+    const st = await getPushDeviceStatus();
+    if (mySeq !== pushRefreshSeq) return st.on; // فيه تحديث أحدث اشتغل بعدنا — سيبه هو اللي يرسم
+    const on = st.on;
+    if (pushRow) pushRow.dataset.on = on ? "1" : "0";
+    renderPushDeviceLine(st);
     const guestMode = pushModeIsGuest();
     pushRowValue.textContent = on ? "✅ مفعّلة" : "→";
     if (pushRowLabel) {
@@ -9099,17 +9563,21 @@ function setupProfileEditing() {
   if (remBack) remBack.addEventListener("click", () => document.getElementById("profileRemindersEdit").classList.remove("open"));
   if (pushRow) {
     pushRow.addEventListener("click", async () => {
-      const alreadyOn = await isPushSubscribed();
+      // بناخد الحالة اللي ظاهرة قدامه (مش نفحص من جديد) — لأن الفحص فيه إصلاح ذاتي ممكن يقلب الحالة
+      // في نفس اللحظة، فالضغطة اللي قصده بيها "فعّل" كانت ممكن تتحوّل "إلغاء"
+      const alreadyOn = pushRow.dataset.on === "1";
       pushRowValue.textContent = "...";
       if (alreadyOn) {
         const result = await disablePushNotifications();
         await refreshPushButtonState();
         if (!result.ok) showGlobalError("إلغاء إشعارات الموبايل", result.reason);
+        else showToast("🔕 اتلغت الإشعارات على الجهاز ده", 3000); // أ2
         return;
       }
       const result = await enablePushNotifications();
       if (result.ok) {
         await refreshPushButtonState();
+        showToast("✅ الإشعارات اتفعّلت — تذكيراتك هتوصلك بإذن الله", 4000); // أ2 (نفس رسالة زرار لوحة التذكيرات)
       } else {
         await refreshPushButtonState();
         showGlobalError("تفعيل إشعارات الموبايل", result.reason);
@@ -9150,7 +9618,8 @@ function setupProfileEditing() {
       const notificationsOverlay = document.getElementById("notificationsOverlay");
       if (profileOverlay) profileOverlay.classList.remove("open");
       sheetReturnsToProfile = true;
-      notifInboxView = "inbox";
+      notifInboxView = "current";
+      notifDetailId = null;
       renderNotificationsList();
       if (notificationsOverlay) notificationsOverlay.classList.add("open");
       // اعتبر كل الإشعارات "متشافة" دلوقتي، وشيل الشارة
@@ -9175,40 +9644,155 @@ function setupProfileEditing() {
   }
 }
 
-let notifInboxView = "inbox"; // "inbox" | "archive"
-let archivedNotifIds = new Set();
+/* ============================================================
+   ب1/ب2 — صندوق الإشعارات: 4 فولدرات + سحب يمين/شمال + صفحة تفاصيل
+   الترتيب على الشاشة (من اليمين للشمال): ⭐ Favorites | 📥 Inbox | 📦 Archive | 🗑️ Trash
+   السحب يمين ← الفولدر اللي على اليمين (ناحية المفضلة)، والسحب شمال ← اللي على الشمال (ناحية السلة)
+   ============================================================ */
+const ND_FOLDERS = ["trash", "archive", "current", "fav"]; // بترتيب الشاشة من الشمال لليمين
+const ND_LABELS = { fav: "⭐ Favorites", current: "📥 Inbox", archive: "📦 Archive", trash: "🗑️ Trash" };
+const ND_TRASH_DAYS = 7;
+let notifInboxView = "current";
+let notifDetailId = null;              // لو فيه رقم ← صفحة تفاصيل الرسالة دي
+let notifBox = { v: 1, f: {}, t: {} }; // f: id → fav/archive/trash/gone (الحالي = مش موجود) | t: وقت دخول السلة
+let archivedNotifIds = new Set();      // (النظام القديم — بيترحّل مرة واحدة للأرشيف الجديد)
+
+async function ensureNotifBoxLoaded() {
+  let box = await loadNotifBox();
+  if (!box) {
+    box = { v: 1, f: {}, t: {} };
+    const old = await loadArchivedNotifIds();
+    (Array.isArray(old) ? old : []).forEach(id => { box.f[id] = "archive"; });
+    await saveNotifBox(box);
+  }
+  box.f = box.f || {};
+  box.t = box.t || {};
+  // السلة بتتفضى لوحدها بعد أسبوع (من صندوقك إنت بس — الرسالة بتفضل عند الباقيين)
+  const now = Date.now();
+  let changed = false;
+  Object.keys(box.f).forEach(id => {
+    if (box.f[id] === "trash" && box.t[id] && now - box.t[id] > ND_TRASH_DAYS * 864e5) {
+      box.f[id] = "gone"; delete box.t[id]; changed = true;
+    }
+  });
+  // رسائل اتحذفت نهائي من الأدمن ← نشيل أثرها (بس لو الصندوق اتحمّل فعلًا، عشان خطأ نت مايمسحش كل حاجة)
+  if (Array.isArray(notificationsInbox) && notificationsInbox.length > 0) {
+    const alive = new Set(notificationsInbox.map(n => n.id));
+    Object.keys(box.f).forEach(id => { if (!alive.has(id)) { delete box.f[id]; delete box.t[id]; changed = true; } });
+  }
+  notifBox = box;
+  if (changed) await saveNotifBox(notifBox);
+}
+
+function notifFolderOf(id) {
+  const f = notifBox.f[id];
+  return (f === "fav" || f === "archive" || f === "trash" || f === "gone") ? f : "current";
+}
+
+async function moveNotifToFolder(id, folder) {
+  if (folder === "current") delete notifBox.f[id]; else notifBox.f[id] = folder;
+  if (folder === "trash") notifBox.t[id] = Date.now(); else delete notifBox.t[id];
+  await saveNotifBox(notifBox);
+}
+
+function ndMediaBadges(n) {
+  const parts = [];
+  if (n.body) parts.push("📄");
+  if (Array.isArray(n.images) && n.images.length) parts.push("📷" + (n.images.length > 1 ? n.images.length : ""));
+  if (n.video_url) parts.push("🎬");
+  if (Array.isArray(n.links) && n.links.length) parts.push("🔗");
+  return parts.join(" ");
+}
+
+function ndDateStr(iso, withTime) {
+  const d = new Date(iso);
+  const base = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return withTime ? `${base}  ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : base;
+}
+
+// نص عادي ← HTML آمن، والروابط بتتحوّل لروابط يتضغط عليها
+function ndLinkify(text) {
+  return ndEscape(text).replace(/https?:\/\/[^\s<]+/g, (m) => {
+    const trail = (m.match(/[).,،!?؟:;]+$/) || [""])[0];
+    const u = trail ? m.slice(0, -trail.length) : m;
+    return `<a href="${u}" target="_blank" rel="noopener"><bdi dir="ltr">${u}</bdi></a>${trail}`;
+  });
+}
+
+function ndIsHttpUrl(u) { return typeof u === "string" && /^https?:\/\/\S+$/i.test(u.trim()); }
+
+// صورة من رابط: لينك درايف العادي بيفتح صفحة مش صورة، فبنحوّله لرابط صورة مصغّرة مباشر من جوجل (أخف وأسرع).
+// الطريقة دي شغالة بس مش رسمية من جوجل — عشان كده لو ماحمّلتش، التفاصيل بتعرض زرار "افتح الصورة" بدلها
+function ndImageFromLink(raw) {
+  const u = String(raw || "").trim();
+  if (!ndIsHttpUrl(u)) return null;
+  const m = u.match(/(?:drive|docs)\.google\.com\/(?:file\/d\/|open\?(?:[^#]*&)?id=|uc\?(?:[^#]*&)?id=|thumbnail\?(?:[^#]*&)?id=)([A-Za-z0-9_-]{10,})/);
+  if (m) return { url: `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1280`, src: u, ext: "drive" };
+  return { url: u, src: u, ext: "link" };
+}
+
+// فيديو: يوتيوب/درايف بيتعرض جوه الرسالة، وأي رابط تاني ← زرار يفتحه
+function ndVideoHtml(url) {
+  if (!ndIsHttpUrl(url)) return "";
+  let m, src = null;
+  if ((m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/))([A-Za-z0-9_-]{6,})/))) {
+    src = `https://www.youtube-nocookie.com/embed/${m[1]}`;
+  } else if ((m = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([A-Za-z0-9_-]+)/))) {
+    src = `https://drive.google.com/file/d/${m[1]}/preview`;
+  }
+  const openBtn = `<a class="nd-link-btn" href="${ndEscape(url)}" target="_blank" rel="noopener">🎬 افتح الفيديو</a>`;
+  if (!src) return `<div class="nd-links">${openBtn}</div>`;
+  return `<div class="nd-video"><iframe src="${src}" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+    <div class="nd-links">${openBtn}</div>`;
+}
 
 async function renderNotificationsList(skipFetch) {
   const list = document.getElementById("notificationsList");
   if (!list) return;
   if (!skipFetch) {
     list.innerHTML = `<div style="text-align:center;color:var(--q-muted);font-size:13px;padding:24px 0;">بيتحمّل...</div>`;
-    notificationsInbox = await loadNotificationsInbox(); // نجيبها طازة من Supabase كل مرة تتفتح
-    archivedNotifIds = new Set(await loadArchivedNotifIds());
+    notificationsInbox = await loadNotificationsInbox(); // طازة من Supabase كل مرة تتفتح
+    await ensureNotifBoxLoaded();
   }
-  const all = notificationsInbox || [];
-  const inbox = all.filter(n => !archivedNotifIds.has(n.id));
-  const archived = all.filter(n => archivedNotifIds.has(n.id));
-  const showing = notifInboxView === "archive" ? archived : inbox;
+  if (notifDetailId) { renderNotificationDetail(list, notifDetailId); return; }
 
-  const tabs = `
-    <div class="notif-tabs">
-      <button class="notif-tab ${notifInboxView === "inbox" ? "active" : ""}" data-notif-tab="inbox">📥 الوارد (${inbox.length})</button>
-      <button class="notif-tab ${notifInboxView === "archive" ? "active" : ""}" data-notif-tab="archive">📦 الأرشيف (${archived.length})</button>
-    </div>
-    <p class="notif-hint">${notifInboxView === "archive" ? "اضغط على أي رسالة لإرجاعها للوارد" : "اضغط على أي رسالة لأرشفتها وتنضيف صندوقك"}</p>`;
+  const byFolder = { fav: [], current: [], archive: [], trash: [] };
+  (notificationsInbox || []).forEach(n => {
+    const f = notifFolderOf(n.id);
+    if (byFolder[f]) byFolder[f].push(n);
+  });
+  if (!byFolder[notifInboxView]) notifInboxView = "current";
+  const showing = byFolder[notifInboxView];
+  const idx = ND_FOLDERS.indexOf(notifInboxView);
+  const leftF = ND_FOLDERS[idx - 1] || null;
+  const rightF = ND_FOLDERS[idx + 1] || null;
 
+  const tabs = `<div class="notif-tabs nd4">` + ND_FOLDERS.map(f =>
+      `<button class="notif-tab ${notifInboxView === f ? "active" : ""}" data-notif-tab="${f}"><span>${ND_LABELS[f]}</span><span class="nd-count">${byFolder[f].length}</span></button>`
+    ).join("") + `</div>
+    <p class="notif-hint">${notifInboxView === "trash"
+      ? "🗑️ الرسائل هنا بتتمسح تلقائيًا بعد أسبوع"
+      : "اضغط على الرسالة لتفاصيلها — واسحبها يمين أو شمال لنقلها"}</p>`;
+
+  const EMPTY = { fav: "مفيش رسائل في المفضلة — اسحب أي رسالة لحد هنا ⭐", current: "صندوقك نضيف ✨", archive: "الأرشيف فاضي", trash: "السلة فاضية" };
   if (showing.length === 0) {
-    list.innerHTML = tabs + `<div style="text-align:center;color:var(--q-muted);font-size:13px;padding:24px 0;">${notifInboxView === "archive" ? "الأرشيف فاضي" : "صندوقك نضيف ✨"}</div>`;
+    list.innerHTML = tabs + `<div style="text-align:center;color:var(--q-muted);font-size:13px;padding:24px 0;">${EMPTY[notifInboxView]}</div>`;
   } else {
     list.innerHTML = tabs + showing.map(n => {
-      const d = new Date(n.created_at);
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      let trashNote = "";
+      if (notifInboxView === "trash") {
+        const left = Math.max(0, Math.ceil((ND_TRASH_DAYS * 864e5 - (Date.now() - (notifBox.t[n.id] || Date.now()))) / 864e5));
+        trashNote = `<div class="nd-trash-note">هتتمسح نهائي من صندوقك خلال ${left} يوم</div>`;
+      }
       return `
-        <div class="notification-row notif-tappable" data-notif-id="${ndEscape(n.id)}">
+        <div class="notification-row nd-row" data-notif-id="${ndEscape(n.id)}">
           <div class="notification-text">${ndEscape(n.text)}</div>
-          <div class="notification-date">${dateStr}</div>
-          <div class="notif-action">${notifInboxView === "archive" ? "↩️ إرجاع للوارد" : "📦 أرشفة"}</div>
+          <div class="nd-row-meta"><span class="notification-date">${ndDateStr(n.created_at)}</span><span class="nd-media">${ndMediaBadges(n)}</span></div>
+          ${trashNote}
+          <div class="nd-row-actions">
+            <button class="nd-move-btn" data-move="${leftF || ""}" ${leftF ? "" : "disabled"}>◀ ${leftF ? ND_LABELS[leftF] : ""}</button>
+            <button class="nd-move-btn" data-move="${rightF || ""}" ${rightF ? "" : "disabled"}>${rightF ? ND_LABELS[rightF] : ""} ▶</button>
+          </div>
         </div>`;
     }).join("");
   }
@@ -9216,15 +9800,176 @@ async function renderNotificationsList(skipFetch) {
   list.querySelectorAll("[data-notif-tab]").forEach(btn => {
     btn.addEventListener("click", () => { notifInboxView = btn.dataset.notifTab; renderNotificationsList(true); });
   });
-  list.querySelectorAll("[data-notif-id]").forEach(row => {
-    row.addEventListener("click", async () => {
-      const id = row.dataset.notifId;
-      row.classList.add("notif-leaving");
-      if (notifInboxView === "archive") archivedNotifIds.delete(id); else archivedNotifIds.add(id);
-      await saveArchivedNotifIds(Array.from(archivedNotifIds));
-      setTimeout(() => renderNotificationsList(true), 250);
+
+  const animateMove = (row, id, target, dir) => {
+    row.style.transform = "";
+    row.style.opacity = "";
+    row.classList.add(dir === "right" ? "nd-out-right" : "nd-out-left");
+    setTimeout(async () => {
+      await moveNotifToFolder(id, target);
+      renderNotificationsList(true);
+    }, 230);
+  };
+
+  list.querySelectorAll(".nd-row").forEach(row => {
+    const id = row.dataset.notifId;
+    row.querySelectorAll(".nd-move-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const target = btn.dataset.move;
+        if (!target) return;
+        animateMove(row, id, target, ND_FOLDERS.indexOf(target) > idx ? "right" : "left");
+      });
+    });
+    row.addEventListener("click", () => {
+      if (row.dataset.swiped) return; // الضغطة دي كانت نهاية سحب
+      notifDetailId = id;
+      renderNotificationsList(true);
+      const sheet = list.closest(".race-sheet");
+      if (sheet) sheet.scrollTop = 0;
+    });
+    wireNotifRowSwipe(row, (dir) => {
+      const target = dir === "right" ? rightF : leftF;
+      if (!target) return false;
+      animateMove(row, id, target, dir);
+      return true;
     });
   });
+}
+
+// سحب الرسالة يمين/شمال (Pointer Events — بيشتغل باللمس والماوس). السحب لتحت/فوق بيسيب الصفحة تتحرك عادي
+function wireNotifRowSwipe(row, onSwipe) {
+  let sx = 0, sy = 0, dx = 0, mode = null, pid = null;
+  row.addEventListener("pointerdown", (e) => {
+    if (e.button) return;
+    if (e.target.closest(".nd-move-btn")) return;
+    sx = e.clientX; sy = e.clientY; dx = 0; mode = "maybe"; pid = e.pointerId;
+  });
+  row.addEventListener("pointermove", (e) => {
+    if (!mode || e.pointerId !== pid) return;
+    const mx = e.clientX - sx, my = e.clientY - sy;
+    if (mode === "maybe") {
+      if (Math.abs(mx) > 12 && Math.abs(mx) > Math.abs(my) * 1.3) {
+        mode = "swipe";
+        row.classList.add("nd-dragging");
+        try { row.setPointerCapture(pid); } catch (err) {}
+      } else if (Math.abs(my) > 12) { mode = null; return; }
+      else return;
+    }
+    dx = mx;
+    row.style.transform = `translateX(${dx}px)`;
+    row.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / 320));
+  });
+  const end = () => {
+    if (mode === "swipe") {
+      row.classList.remove("nd-dragging");
+      row.dataset.swiped = "1";
+      setTimeout(() => { delete row.dataset.swiped; }, 350);
+      const moved = Math.abs(dx) > 80 && onSwipe(dx > 0 ? "right" : "left");
+      if (!moved) { row.style.transform = ""; row.style.opacity = ""; }
+    }
+    mode = null; pid = null;
+  };
+  row.addEventListener("pointerup", end);
+  row.addEventListener("pointercancel", end);
+}
+
+function renderNotificationDetail(list, id) {
+  const n = (notificationsInbox || []).find(x => x.id === id);
+  const back = `<button class="nd-detail-back" id="ndDetailBack" type="button">↩️ رجوع للصندوق</button>`;
+  if (!n) {
+    list.innerHTML = back + `<div style="text-align:center;color:var(--q-muted);font-size:13px;padding:24px 0;">الرسالة دي مبقتش موجودة</div>`;
+  } else {
+    const imgs = (Array.isArray(n.images) ? n.images : []).filter(im => im && ndIsHttpUrl(im.url));
+    const links = (Array.isArray(n.links) ? n.links : []).filter(l => l && ndIsHttpUrl(l.url));
+    const folder = notifFolderOf(n.id);
+    const moves = ND_FOLDERS.filter(f => f !== folder)
+      .map(f => `<button class="nd-move-btn" data-detail-move="${f}" type="button">${ND_LABELS[f]}</button>`).join("");
+    list.innerHTML = back + `
+      <div class="nd-detail-text">${ndEscape(n.text)}</div>
+      ${n.body ? `<div class="nd-detail-body">${ndLinkify(n.body)}</div>` : ""}
+      ${imgs.length ? `<div class="nd-detail-imgs">${imgs.map(im =>
+          `<a href="${ndEscape(ndIsHttpUrl(im.src) ? im.src : im.url)}" target="_blank" rel="noopener"><img src="${ndEscape(im.url)}" alt="" loading="lazy"${im.w && im.h ? ` width="${Number(im.w)}" height="${Number(im.h)}"` : ""}></a>`).join("")}</div>` : ""}
+      ${n.video_url ? ndVideoHtml(n.video_url) : ""}
+      ${links.length ? `<div class="nd-links">${links.map(l =>
+          `<a class="nd-link-btn" href="${ndEscape(l.url)}" target="_blank" rel="noopener">🔗 ${ndEscape(l.title || l.url)}</a>`).join("")}</div>` : ""}
+      <div class="nd-detail-date">${ndDateStr(n.created_at, true)}</div>
+      ${folder !== "gone" ? `<div class="nd-detail-actions">${moves}</div>` : ""}`;
+    // صورة من رابط خارجي (درايف مثلًا) ماحمّلتش ← زرار يفتحها بدل مكان فاضي
+    list.querySelectorAll(".nd-detail-imgs img").forEach(img => {
+      img.addEventListener("error", () => {
+        const s2 = document.createElement("span");
+        s2.className = "nd-img-fallback";
+        s2.textContent = "🖼️ افتح الصورة";
+        img.replaceWith(s2);
+      });
+    });
+    list.querySelectorAll("[data-detail-move]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const target = btn.dataset.detailMove;
+        await moveNotifToFolder(n.id, target);
+        notifDetailId = null;
+        notifInboxView = target;
+        renderNotificationsList(true);
+        showToast(`✅ اتنقلت لـ ${ND_LABELS[target]}`, 1800);
+      });
+    });
+  }
+  const bb = document.getElementById("ndDetailBack");
+  if (bb) bb.addEventListener("click", () => { notifDetailId = null; renderNotificationsList(true); });
+}
+
+// ب3: فتح رسالة معيّنة (من الضغط على إشعار برّه التطبيق، أو رابط ?notif=)
+async function openNotificationFromOutside(id) {
+  if (!id) return;
+  const ov = document.getElementById("notificationsOverlay");
+  const po = document.getElementById("profileOverlay");
+  if (po) po.classList.remove("open");
+  sheetReturnsToProfile = false;
+  notifDetailId = id;
+  if (ov) ov.classList.add("open");
+  await renderNotificationsList(false);
+  if (!(notificationsInbox || []).some(n => n.id === id) && supabaseClient) {
+    // مش في الصندوق (مثلًا لسه ماتحمّلش) ← نجيبها لوحدها
+    try {
+      const { data } = await supabaseClient.from("notifications").select("*").eq("id", id).maybeSingle();
+      if (data && !data.hidden_at) {
+        notificationsInbox = [data].concat(notificationsInbox || []);
+        renderNotificationsList(true);
+      }
+    } catch (e) {}
+  }
+  try {
+    notificationsSeenCount = (notificationsInbox || []).length;
+    await saveNotificationsSeenCount(notificationsSeenCount);
+    updateNotificationsBadge();
+  } catch (e) {}
+}
+
+let ndPendingNotifId = null;
+(function captureNotifDeepLink() {
+  try {
+    const u = new URL(window.location.href);
+    const id = u.searchParams.get("notif");
+    if (!id) return;
+    ndPendingNotifId = id;
+    u.searchParams.delete("notif");
+    history.replaceState(null, "", u.pathname + u.search + u.hash); // نشيله من الرابط عشان الريفرش مايفتحهاش تاني
+  } catch (e) {}
+})();
+function tryOpenPendingNotif(attempt) {
+  if (!ndPendingNotifId) return;
+  const n = attempt || 0;
+  const active = document.querySelector(".screen.active");
+  const blocked = ["splash", "forceUpdate", "authGate", "authLogin", "authSignup", "authForgot", "onboarding", "trialBlocked"];
+  const ready = supabaseClient && active && blocked.indexOf(active.id) === -1 && (isGuest || memberStateLoaded);
+  if (!ready) {
+    if (n < 60) setTimeout(() => tryOpenPendingNotif(n + 1), 500);
+    return;
+  }
+  const id = ndPendingNotifId;
+  ndPendingNotifId = null;
+  openNotificationFromOutside(id);
 }
 
 function updateNotificationsBadge() {
@@ -9768,8 +10513,9 @@ function renderAdminUrlList(containerId, arr, onRemove) {
 function renderAdminPanel() {
   // فلترة الأقسام: الأدمن العادي يشوف بس اللي المالك سمحله بيه، المالك (أساسي أو ثانوي) يشوف كل حاجة
   document.querySelectorAll("#adminSectionsList [data-perm]").forEach(section => {
-    const perm = section.dataset.perm;
-    const allowed = (currentUserRole === "owner") || currentUserPermissions.includes(perm);
+    // data-perm ممكن يبقى فيه أكتر من صلاحية (مفصولين بمسافة) ← يظهر لو معاه أي واحدة منهم
+    const perms = (section.dataset.perm || "").split(/\s+/).filter(Boolean);
+    const allowed = (currentUserRole === "owner") || perms.some(p => currentUserPermissions.includes(p));
     section.style.display = allowed ? "" : "none";
   });
 
@@ -9780,10 +10526,10 @@ function renderAdminPanel() {
       .then(({ data }) => {
         const liveRequired = data && data.value ? parseFloat(data.value) : 1;
         if (liveRequired >= APP_VERSION) {
-          versionNote.textContent = `✅ الملف ده (إصدار ${APP_VERSION}) هو المنشور حاليًا على الكل.`;
+          versionNote.textContent = `✅ الملف ده (إصدار ${APP_VERSION_LABEL}) هو المنشور حاليًا على الكل.`;
           if (publishBtn) publishBtn.disabled = true;
         } else {
-          versionNote.textContent = `⚠️ المنشور حاليًا إصدار ${liveRequired}. الملف اللي بين إيديك إصدار ${APP_VERSION} (أحدث) — دوس نشر عشان تفرضه على كل الأجهزة.`;
+          versionNote.textContent = `⚠️ المنشور حاليًا إصدار ${liveRequired}. الملف اللي بين إيديك إصدار ${APP_VERSION_LABEL} (أحدث) — دوس نشر عشان تفرضه على كل الأجهزة.`;
           if (publishBtn) publishBtn.disabled = false;
         }
       });
@@ -9833,7 +10579,9 @@ const ADMIN_SECTIONS = [
   { key: "welcome", label: "رسالة الترحيب" },
   { key: "fields", label: "حقول التسجيل" },
   { key: "countries", label: "قوائم الدول" },
-  { key: "notifications", label: "الإشعارات" },
+  { key: "notifications", label: "الإشعارات — إرسال رسائل" },
+  { key: "notif_manage", label: "الإشعارات — إدارة الأرشيف (إخفاء/إلغاء/حذف)" },
+  { key: "reminder_texts", label: "الإشعارات — رسائل التذكيرات الأساسية" },
   { key: "comingsoon", label: "قريبًا" },
   { key: "points", label: "إعدادات نظام النقاط" },
   { key: "members", label: "الأعضاء" },
@@ -10634,7 +11382,7 @@ function setupAdminForms() {
         publishVersionBtn.classList.add("saved-flash");
         publishVersionBtn.disabled = true;
         const versionNote = document.getElementById("versionStatusNote");
-        if (versionNote) versionNote.textContent = `✅ الملف ده (إصدار ${APP_VERSION}) هو المنشور حاليًا على الكل.`;
+        if (versionNote) versionNote.textContent = `✅ الملف ده (إصدار ${APP_VERSION_LABEL}) هو المنشور حاليًا على الكل.`;
         setTimeout(() => publishVersionBtn.classList.remove("saved-flash"), 600);
       }
     });
@@ -10691,14 +11439,33 @@ function setupAdminForms() {
   const AUDIENCE_LABEL = { members: "👤 الأعضاء", all: "🌍 الكل" };
   const MONTHS_AR = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 
+  const notifFilterEl = document.getElementById("adminNotifFilter");
+  const ND_MEDIA_BUCKET = "notif-media";
+  const REMINDER_DEFAULT_TEXT = "قال صلى الله عليه وسلم: احرص على ما ينفعك واستعن بالله ولا تعجز.";
+
   async function renderAdminNotifArchive() {
     if (!notifArchiveList) return;
     notifArchiveList.innerHTML = `<div style="opacity:.7;font-size:13px;">بيتحمّل...</div>`;
-    const { data, error } = await supabaseClient.from("notifications").select("*").order("created_at", { ascending: false }).limit(200);
+    const { data, error } = await supabaseClient.from("notifications").select("*").order("created_at", { ascending: false }).limit(300);
     if (error) { notifArchiveList.innerHTML = `<div style="opacity:.7;font-size:13px;">معرفتش أحمّل الأرشيف</div>`; return; }
-    if (!data || data.length === 0) { notifArchiveList.innerHTML = `<div style="opacity:.7;font-size:13px;">لسه مفيش رسائل مرسلة</div>`; return; }
-    let html = "", lastMonth = "";
-    data.forEach(n => {
+    const all = data || [];
+    const totalBytes = all.reduce((sum, n) => sum + (Array.isArray(n.images) ? n.images.reduce((x, im) => x + (Number(im && im.size) || 0), 0) : 0), 0);
+    const filter = notifFilterEl ? notifFilterEl.value : "all";
+    const rows = all.filter(n => {
+      const t = n.target || "now";
+      if (filter === "now") return t === "now";
+      if (filter === "linked") return t !== "now";
+      if (filter === "hidden") return !!n.hidden_at;
+      if (filter === "cancelled") return !!n.cancelled_at;
+      return true;
+    });
+    const today = ndTodayISO();
+    // أزرار الإخفاء/الإلغاء/الحذف بتظهر بس لصاحب صلاحية "إدارة الأرشيف" (والسيرفر بيرفضها لغيره أصلًا)
+    const canManage = (currentUserRole === "owner") || (Array.isArray(currentUserPermissions) && currentUserPermissions.includes("notif_manage"));
+    let html = `<div class="admin-storage-line">🖼️ مساحة صور الرسائل: ${(totalBytes / 1048576).toFixed(1)}MB من 1024MB المجانية</div>`;
+    if (rows.length === 0) html += `<div style="opacity:.7;font-size:13px;">${all.length ? "مفيش رسائل بالفلتر ده" : "لسه مفيش رسائل مرسلة"}</div>`;
+    let lastMonth = "";
+    rows.forEach(n => {
       const d = new Date(n.created_at);
       const monthKey = `${MONTHS_AR[d.getMonth()]} ${d.getFullYear()}`;
       if (monthKey !== lastMonth) { html += `<div class="admin-archive-month">📅 ${monthKey}</div>`; lastMonth = monthKey; }
@@ -10707,32 +11474,187 @@ function setupAdminForms() {
       let deliveryChips;
       if (t !== "now") {
         deliveryChips = `<span class="admin-archive-chip chip-reminder">⏰ بتتبعت مع التذكير في ميعاده</span>`;
+        const expired = n.valid_until && String(n.valid_until) < today;
+        deliveryChips += `<span class="admin-archive-chip chip-validity">📅 ${n.valid_from || "من الأول"} ← ${n.valid_until || "مفتوحة"}${expired ? " (انتهت)" : ""}</span>`;
       } else if (typeof n.sent_count === "number") {
         deliveryChips = `<span class="admin-archive-chip chip-sent">📤 اتبعتت لـ ${n.sent_count} جهاز</span>
           <span class="admin-archive-chip chip-delivered">✅ وصلت فعليًا لـ ${n.delivered_count || 0}</span>`;
       } else {
         deliveryChips = `<span class="admin-archive-chip chip-muted">— قبل نظام التتبع</span>`;
       }
+      const media = ndMediaBadges(n);
+      const status = (n.hidden_at ? `<span class="admin-archive-chip chip-hidden">🙈 مخفية عن الأعضاء</span>` : "")
+        + (n.cancelled_at ? `<span class="admin-archive-chip chip-cancelled">⛔ ملغية</span>` : "");
       html += `
-        <div class="admin-archive-row">
+        <div class="admin-archive-row ${n.hidden_at ? "is-hidden" : ""}">
           <div>${ndEscape(n.text)}</div>
           <div class="admin-archive-meta">
             <span class="admin-archive-chip chip-time">🕒 ${time}</span>
             <span class="admin-archive-chip ${t === "now" ? "chip-now" : "chip-reminder"}">${TARGET_LABEL[t] || t}</span>
             <span class="admin-archive-chip chip-audience">${AUDIENCE_LABEL[n.audience] || AUDIENCE_LABEL.members}</span>
+            ${media ? `<span class="admin-archive-chip">${media}</span>` : ""}
             ${deliveryChips}
+            ${status}
           </div>
+          ${canManage ? `<div class="admin-archive-actions">
+            ${n.hidden_at
+              ? `<button type="button" data-nact="unhide" data-nid="${ndEscape(n.id)}">👁️ إظهار تاني</button>`
+              : `<button type="button" data-nact="hide" data-nid="${ndEscape(n.id)}">🙈 إخفاء</button>`}
+            ${t !== "now" && !n.cancelled_at ? `<button type="button" data-nact="cancel" data-nid="${ndEscape(n.id)}">⛔ إلغاء</button>` : ""}
+            <button type="button" data-nact="delete" data-nid="${ndEscape(n.id)}">🗑️ حذف نهائي</button>
+          </div>` : ""}
         </div>`;
     });
     notifArchiveList.innerHTML = html;
+
+    const byId = {};
+    all.forEach(n => { byId[n.id] = n; });
+    notifArchiveList.querySelectorAll("[data-nact]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const n = byId[btn.dataset.nid];
+        if (!n) return;
+        const act = btn.dataset.nact;
+        const PUSH_NOTE = "\n\nملحوظة: الإشعار اللي وصل خلاص على شاشات الموبايلات مابيتسحبش.";
+        try {
+          if (act === "hide") {
+            if (!window.confirm("الرسالة هتختفي من صندوق كل الأعضاء، وتفضل هنا في الأرشيف وتقدر ترجّعها." + PUSH_NOTE)) return;
+            const { error } = await supabaseClient.from("notifications").update({ hidden_at: new Date().toISOString() }).eq("id", n.id);
+            if (error) throw error;
+            showToast("🙈 الرسالة اتخفت من صناديق الأعضاء", 3000);
+          } else if (act === "unhide") {
+            const { error } = await supabaseClient.from("notifications").update({ hidden_at: null }).eq("id", n.id);
+            if (error) throw error;
+            showToast("👁️ الرسالة رجعت تظهر للأعضاء", 3000);
+          } else if (act === "cancel") {
+            if (!window.confirm("إلغاء الرسالة دي هيوقف إرسالها مع التذكير من دلوقتي، والتذكير هيرجع لرسالته الأساسية. اللي وصلتهم قبل كده هتفضل في صندوقهم (ولو عايز تشيلها منه استخدم إخفاء).")) return;
+            const { error } = await supabaseClient.from("notifications").update({ cancelled_at: new Date().toISOString() }).eq("id", n.id);
+            if (error) throw error;
+            showToast("⛔ اتلغت — التذكير رجع لرسالته الأساسية", 3500);
+          } else if (act === "delete") {
+            if (!window.confirm("حذف نهائي: الرسالة هتتمسح من صندوق الكل ومن الأرشيف، وصورها كمان. مفيش رجوع." + PUSH_NOTE)) return;
+            const paths = (Array.isArray(n.images) ? n.images : []).map(im => im && im.path).filter(Boolean);
+            if (paths.length) {
+              const { error: rmErr } = await supabaseClient.storage.from(ND_MEDIA_BUCKET).remove(paths);
+              if (rmErr) throw new Error(`مسح الصور: ${rmErr.message}`);
+            }
+            const { error } = await supabaseClient.from("notifications").delete().eq("id", n.id);
+            if (error) throw error;
+            showToast("🗑️ الرسالة اتحذفت نهائي", 3000);
+          }
+          renderAdminNotifArchive();
+        } catch (e) {
+          showGlobalError("إدارة الإشعارات", e);
+        }
+      });
+    });
   }
+
+  if (notifFilterEl) notifFilterEl.addEventListener("change", () => renderAdminNotifArchive());
 
   if (notifArchiveToggle && notifArchiveList) {
     notifArchiveToggle.addEventListener("click", () => {
       const open = notifArchiveList.style.display === "none";
       notifArchiveList.style.display = open ? "flex" : "none";
+      if (notifFilterEl) notifFilterEl.style.display = open ? "block" : "none";
       notifArchiveToggle.textContent = open ? "📦 أرشيف الرسائل المرسلة ▴" : "📦 أرشيف الرسائل المرسلة ▾";
       if (open) renderAdminNotifArchive();
+    });
+  }
+
+  // ب5: فترة الصلاحية بتظهر بس للرسائل المربوطة بتذكير (ومتعبّية أسبوع افتراضيًا)
+  const notifTargetSel = document.getElementById("adminNotifTarget");
+  const validityWrap = document.getElementById("adminNotifValidityWrap");
+  const vFromEl = document.getElementById("adminNotifValidFrom");
+  const vUntilEl = document.getElementById("adminNotifValidUntil");
+  function syncValidityUI() {
+    if (!notifTargetSel || !validityWrap) return;
+    const linked = notifTargetSel.value !== "now";
+    validityWrap.style.display = linked ? "block" : "none";
+    if (linked && vFromEl && !vFromEl.value) {
+      vFromEl.value = ndTodayISO();
+      if (vUntilEl && !vUntilEl.value) {
+        const d = new Date(); d.setDate(d.getDate() + 6);
+        vUntilEl.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      }
+    }
+  }
+  if (notifTargetSel) notifTargetSel.addEventListener("change", syncValidityUI);
+  syncValidityUI();
+
+  // ب2: معاينة الصور قبل الإرسال (حد أقصى 4)
+  const imgInput = document.getElementById("adminNotifImages");
+  const imgPreview = document.getElementById("adminNotifImagesPreview");
+  if (imgInput && imgPreview) {
+    imgInput.addEventListener("change", () => {
+      imgPreview.innerHTML = "";
+      const files = Array.from(imgInput.files || []);
+      if (files.length > 4) showToast("⚠️ هيتاخد أول 4 صور بس", 3000);
+      files.slice(0, 4).forEach(f => {
+        const im = document.createElement("img");
+        im.src = URL.createObjectURL(f);
+        im.onload = () => URL.revokeObjectURL(im.src);
+        imgPreview.appendChild(im);
+      });
+    });
+  }
+
+  // ب2: روابط صور (درايف) — معاينة فورية عشان الأدمن يتأكد إنها بتحمّل قبل ما يبعت
+  const imgLinksEl = document.getElementById("adminNotifImageLinks");
+  const imgLinksPreview = document.getElementById("adminNotifImageLinksPreview");
+  const readImageLinks = () => String(imgLinksEl ? imgLinksEl.value : "").split("\n").map(x => x.trim()).filter(Boolean);
+  if (imgLinksEl && imgLinksPreview) {
+    imgLinksEl.addEventListener("change", () => {
+      imgLinksPreview.innerHTML = "";
+      readImageLinks().slice(0, 6).forEach(raw => {
+        const im = ndImageFromLink(raw);
+        const warn = (msg) => { const w = document.createElement("span"); w.className = "ag-note"; w.textContent = msg; return w; };
+        if (!im) { imgLinksPreview.appendChild(warn(`⚠️ مش رابط صحيح: ${raw}`)); return; }
+        const img = document.createElement("img");
+        img.src = im.url;
+        img.title = raw;
+        img.onerror = () => img.replaceWith(warn(`⚠️ صورة مش بتحمّل — اتأكد إنها متشاركة "أي حد معاه الرابط"`));
+        imgLinksPreview.appendChild(img);
+      });
+    });
+  }
+
+  // ب2: تصغير الصورة على الجهاز قبل الرفع (أقصى بُعد 1280px، JPEG) — عشان نحافظ على مساحة الـ1GB
+  async function ndCompressImage(file, maxDim, quality) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = () => rej(new Error(`مش قادر أقرا الصورة: ${file.name}`));
+        i.src = url;
+      });
+      const scale = Math.min(1, (maxDim || 1280) / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      const blob = await new Promise(res => c.toBlob(res, "image/jpeg", quality || 0.8));
+      if (!blob) throw new Error("فشل تصغير الصورة");
+      return { blob, w, h };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+  function ndUuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+    const h = Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
+  function parseAdminLinks(raw) {
+    return String(raw || "").split("\n").map(line => line.trim()).filter(Boolean).map(line => {
+      const parts = line.split("|");
+      const url = parts.pop().trim();
+      const title = parts.join("|").trim();
+      return { title: title || null, url };
     });
   }
 
@@ -10741,21 +11663,69 @@ function setupAdminForms() {
       const textEl = document.getElementById("adminNotifText");
       const targetEl = document.getElementById("adminNotifTarget");
       const audienceEl = document.getElementById("adminNotifAudience");
+      const bodyEl = document.getElementById("adminNotifBody");
+      const linksEl = document.getElementById("adminNotifLinks");
+      const videoEl = document.getElementById("adminNotifVideo");
       const text = (textEl.value || "").trim();
       if (!text) return;
       const target = targetEl.value;
       const audience = audienceEl ? audienceEl.value : "members";
+      const body = bodyEl ? (bodyEl.value || "").trim() : "";
+      const links = linksEl ? parseAdminLinks(linksEl.value) : [];
+      const video = videoEl ? (videoEl.value || "").trim() : "";
+      const files = imgInput ? Array.from(imgInput.files || []).slice(0, 4) : [];
+      const badLink = links.find(l => !ndIsHttpUrl(l.url));
+      if (badLink) { showGlobalError("إرسال الإشعار", `الرابط ده مش صحيح (لازم يبدأ بـ https://): ${badLink.url}`); return; }
+      if (video && !ndIsHttpUrl(video)) { showGlobalError("إرسال الإشعار", "رابط الفيديو لازم يبدأ بـ https://"); return; }
+      const linkRaws = readImageLinks();
+      if (linkRaws.length > 6) { showGlobalError("إرسال الإشعار", "الحد الأقصى 6 روابط صور"); return; }
+      const linkImgs = [];
+      for (const raw of linkRaws) {
+        const im = ndImageFromLink(raw);
+        if (!im) { showGlobalError("إرسال الإشعار", `رابط الصورة ده مش صحيح (لازم يبدأ بـ https://): ${raw}`); return; }
+        linkImgs.push(im);
+      }
+      let validFrom = null, validUntil = null;
+      if (target !== "now") {
+        validFrom = (vFromEl && vFromEl.value) || null;
+        validUntil = (vUntilEl && vUntilEl.value) || null;
+        if (validFrom && validUntil && validUntil < validFrom) { showGlobalError("إرسال الإشعار", "تاريخ النهاية قبل تاريخ البداية"); return; }
+      }
       notifSendBtn.disabled = true;
       const oldLabel = notifSendBtn.textContent;
       notifSendBtn.textContent = "⏳ بيتبعت...";
       showAuthError("adminMembersWarning", "");
+      const id = ndUuid();
+      const uploaded = [];
       try {
-        const { data: row, error } = await supabaseClient.from("notifications")
-          .insert({ text, target, audience }).select("id").single();
+        // الصور الأول (عشان الرسالة ماتتبعتش ناقصة) — ولو حاجة فشلت بنمسح اللي اترفع
+        for (let i = 0; i < files.length; i++) {
+          notifSendBtn.textContent = `⏳ بيرفع الصور (${i + 1}/${files.length})...`;
+          const { blob, w, h } = await ndCompressImage(files[i], 1280, 0.8);
+          const path = `${id}/${i + 1}-${Date.now()}.jpg`;
+          const { error: upErr } = await supabaseClient.storage.from(ND_MEDIA_BUCKET)
+            .upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
+          if (upErr) throw new Error(`رفع الصورة ${i + 1}: ${upErr.message}`);
+          const { data: pub } = supabaseClient.storage.from(ND_MEDIA_BUCKET).getPublicUrl(path);
+          uploaded.push({ path, url: pub.publicUrl, w, h, size: blob.size });
+        }
+        notifSendBtn.textContent = "⏳ بيتبعت...";
+        const { error } = await supabaseClient.from("notifications").insert({
+          id, text, target, audience,
+          body: body || null, links, images: uploaded.concat(linkImgs), video_url: video || null,
+          valid_from: validFrom, valid_until: validUntil,
+        });
         if (error) throw new Error(`حفظ الرسالة: ${error.message}`);
         textEl.value = "";
+        if (bodyEl) bodyEl.value = "";
+        if (linksEl) linksEl.value = "";
+        if (videoEl) videoEl.value = "";
+        if (imgInput) imgInput.value = "";
+        if (imgPreview) imgPreview.innerHTML = "";
+        if (imgLinksEl) imgLinksEl.value = "";
+        if (imgLinksPreview) imgLinksPreview.innerHTML = "";
         if (target === "now") {
-          const r = await sendRealPushNotification("New Day", text, { audience, notificationId: row.id });
+          const r = await sendRealPushNotification("New Day", text, { audience, notificationId: id });
           showToast(`📤 اتبعتت لـ ${r.sent || 0} جهاز — إيصالات الاستلام الفعلية هتظهر في الأرشيف خلال ثواني${r.removed ? ` (واتشال ${r.removed} اشتراك منتهي)` : ""}`, 6000);
           if (notifArchiveList && notifArchiveList.style.display !== "none") setTimeout(renderAdminNotifArchive, 6000);
         } else {
@@ -10763,10 +11733,50 @@ function setupAdminForms() {
         }
         if (notifArchiveList && notifArchiveList.style.display !== "none") renderAdminNotifArchive();
       } catch (e) {
+        if (uploaded.length) {
+          try { await supabaseClient.storage.from(ND_MEDIA_BUCKET).remove(uploaded.map(u => u.path)); } catch (e2) {}
+        }
         showGlobalError("إرسال الإشعار", e);
       } finally {
         notifSendBtn.disabled = false;
         notifSendBtn.textContent = oldLabel;
+      }
+    });
+  }
+
+  // ب5: الرسالة الأساسية لكل تذكير (app_settings: reminder_text_r1..r3)
+  const baseSaveBtn = document.getElementById("adminReminderBaseSave");
+  const BASE_KEYS = ["r1", "r2", "r3"];
+  async function loadReminderBaseTexts() {
+    BASE_KEYS.forEach(k => { const el = document.getElementById("adminReminderBase_" + k); if (el) el.placeholder = REMINDER_DEFAULT_TEXT; });
+    if (!supabaseClient) return;
+    try {
+      const { data } = await supabaseClient.from("app_settings").select("key, value").in("key", BASE_KEYS.map(k => "reminder_text_" + k));
+      (data || []).forEach(row => {
+        const el = document.getElementById("adminReminderBase_" + row.key.replace("reminder_text_", ""));
+        if (el) el.value = row.value || "";
+      });
+    } catch (e) {}
+  }
+  loadReminderBaseTexts();
+  if (baseSaveBtn) {
+    baseSaveBtn.addEventListener("click", async () => {
+      baseSaveBtn.disabled = true;
+      try {
+        for (const k of BASE_KEYS) {
+          const el = document.getElementById("adminReminderBase_" + k);
+          const v = el ? (el.value || "").trim() : "";
+          const key = "reminder_text_" + k;
+          const { error } = v
+            ? await supabaseClient.from("app_settings").upsert({ key, value: v, updated_at: new Date().toISOString() })
+            : await supabaseClient.from("app_settings").delete().eq("key", key);
+          if (error) throw error;
+        }
+        showToast("✅ اتحفظت الرسائل الأساسية للتذكيرات", 3000);
+      } catch (e) {
+        showGlobalError("حفظ رسائل التذكيرات", e);
+      } finally {
+        baseSaveBtn.disabled = false;
       }
     });
   }
@@ -11411,6 +12421,7 @@ function navigate(screenId) {
   if (!target || current === target) return;
 
   closeModeDrawer();
+  if (screenId !== "questions") { try { cancelLastQDoneTimer(); } catch (e) {} } // أ3: خرج من السؤال
 
   if (current) {
     current.classList.remove("active");
@@ -11706,6 +12717,26 @@ function checkInAppReminders() {
     if (rawStorage.get(shownKey, null) === todayKey) return; // اتعرض النهاردة أصلًا
     rawStorage.set(shownKey, todayKey);
     showInAppReminderAlert(label);
+  });
+}
+
+// أ6: على أندرويد/كروم، لو التطبيق ظاهر قدامك وقت التذكير، الـService Worker مش بيعرض الإشعار برّه —
+// بيبعته هنا بدل كده، ونعرضه جوه التطبيق لو لسه ماظهرش النهاردة (عشان التذكير مايضيعش لو فتحت بعد الدقيقة بالظبط).
+// على آيفون الإشعار الخارجي بيفضل يظهر عادي (سفاري ممكن يلغي الاشتراك لو إشعار وصل ومتعرضش).
+function handleReminderFromServiceWorker(slot) {
+  const labels = { r1: "الأول", r2: "الثاني", r3: "الثالث" };
+  if (!labels[slot] || isGuest) return;
+  const shownKey = `inAppReminderShown_${slot}`;
+  const todayKey = getTodayKey();
+  if (rawStorage.get(shownKey, null) === todayKey) return; // ظهر جوه التطبيق النهاردة بالفعل
+  rawStorage.set(shownKey, todayKey);
+  showInAppReminderAlert(labels[slot]);
+}
+if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    const d = (e && e.data) || {};
+    if (d.type === "nd-reminder") handleReminderFromServiceWorker(d.slot);
+    if (d.type === "nd-open-notif" && d.id) openNotificationFromOutside(String(d.id)); // ب3
   });
 }
 
@@ -12148,6 +13179,10 @@ async function init() {
         const leavingQ = getCurrentQuestion();
         if (leavingQ) lastQCodeByMode[qMode] = leavingQ.qCode;
 
+        // أ7: السؤال المثبّت (stickyQCode) خاص بالوضع اللي كنت فيه — لو اتنقل معانا كان بيظهر جوه
+        // Favorites/Wrong/Remaining وهو مش منهم، وبيمنع الفولدر إنه يفضى. فبنصفّره مع أي تغيير وضع.
+        if (targetMode !== qMode) stickyQCode = null;
+
         qMode = targetMode;
         // reset الحالة الحالية
         qState.picked = null;
@@ -12310,6 +13345,21 @@ async function init() {
   }
   wireSheetDragToClose(["raceHandle", "raceHeader"], ".race-sheet", "raceOverlay");
 
+  // 11-a2) Events — نافذة "آخر سؤال في الفولدر" (أ3)
+  const lqdOverlay = document.getElementById("lastQDoneOverlay");
+  const lqdYes = document.getElementById("lastQDoneYes");
+  const lqdLater = document.getElementById("lastQDoneLater");
+  const lqdClose = document.getElementById("lastQDoneClose");
+  if (lqdYes) lqdYes.addEventListener("click", confirmLastQDone);
+  if (lqdLater) lqdLater.addEventListener("click", closeLastQDoneSheet);
+  if (lqdClose) lqdClose.addEventListener("click", closeLastQDoneSheet);
+  if (lqdOverlay) {
+    lqdOverlay.addEventListener("click", (e) => {
+      if (e.target.id === "lastQDoneOverlay") closeLastQDoneSheet();
+    });
+  }
+  wireSheetDragToClose(["lastQDoneHandle", "lastQDoneHeader"], ".race-sheet", "lastQDoneOverlay");
+
   // 11-b) Events — Notifications
   const notificationsOverlay = document.getElementById("notificationsOverlay");
   const notificationsClose = document.getElementById("notificationsClose");
@@ -12368,6 +13418,7 @@ async function init() {
     profileBtn.addEventListener("click", () => {
       renderProfile();
       profileOverlay.classList.add("open");
+      if (typeof window.refreshPushButtonState === "function") window.refreshPushButtonState(); // أ4: حالة الجهاز من السيرفر كل ما يفتح
     });
   }
   if (profileClose && profileOverlay) {
@@ -12429,6 +13480,7 @@ init();
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("./sw.js").catch(function () {});
+      setTimeout(function () { if (typeof tryOpenPendingNotif === "function") tryOpenPendingNotif(0); }, 600); // ب3
     });
   }
 </script>
