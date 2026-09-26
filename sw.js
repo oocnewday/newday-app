@@ -9,7 +9,10 @@
    بدل الجديدة.
    ============================================================ */
 
-const CACHE_NAME = "newday-cache-v20";
+const CACHE_NAME = "newday-cache-v26";
+// (ج) مكتبة الدخول (Supabase) جاية من برّه — بنخزّنها عشان التطبيق يفتح بحسابك من غير نت
+const CDN_CACHE = "newday-cdn-v1";
+const CDN_ALLOW = ["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"];
 
 const APP_SHELL = [
   "./index.html",
@@ -32,7 +35,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+        keys.filter((k) => k !== CACHE_NAME && k !== CDN_CACHE).map((k) => caches.delete(k))
       )
     )
   );
@@ -45,7 +48,7 @@ const ND_SUPABASE_URL = "https://wymcsdzuwzabjdjpuprc.supabase.co";
 const ND_SUPABASE_KEY = "sb_publishable_igUClzy2FNybrF0W5UZwLA_ALedOf4h";
 
 self.addEventListener("push", (event) => {
-  let data = { title: "New Day", body: "عندك تحديث جديد!", url: "/", nid: null };
+  let data = { title: "New Day", body: "لديك إشعار جديد", url: "/", nid: null };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch (e) {}
@@ -73,15 +76,22 @@ function canSkipNotificationWhenVisible() {
 }
 
 async function showOrForward(data) {
-  if (data.kind === "reminder" && canSkipNotificationWhenVisible()) {
-    try {
-      const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
-      const visible = list.filter((c) => c.visibilityState === "visible");
-      if (visible.length > 0) {
-        visible.forEach((c) => c.postMessage({ type: "nd-reminder", slot: data.slot || null }));
-        return;
-      }
-    } catch (e) { /* لو حصل أي خطأ، نعرض الإشعار عادي */ }
+  let visible = [];
+  try {
+    const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    visible = list.filter((c) => c.visibilityState === "visible");
+  } catch (e) { /* لو حصل أي خطأ، نعرض الإشعار عادي */ }
+  const skipOutside = visible.length > 0 && canSkipNotificationWhenVisible();
+  if (data.kind === "reminder") {
+    if (skipOutside) {
+      visible.forEach((c) => c.postMessage({ type: "nd-reminder", slot: data.slot || null }));
+      return;
+    }
+  } else if (data.nid) {
+    // (ج) رسالة من الأدمن والتطبيق مفتوح: شريط جوه التطبيق + الجرس يزيد (+ هزّة لو مفيش إشعار برّه).
+    // على أندرويد/كروم مابنعرضش الإشعار برّه كمان؛ على آيفون لازم يظهر برّه (قاعدة آبل)
+    visible.forEach((c) => c.postMessage({ type: "nd-new-notif", id: data.nid, body: data.body || "", silent: skipOutside }));
+    if (skipOutside) return;
   }
   return self.registration.showNotification(data.title, {
     body: data.body,
@@ -118,8 +128,23 @@ self.addEventListener("notificationclick", (event) => {
 // 5) كل طلب — استراتيجية Cache-First مع تحديث في الخلفية
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  // متلمسش طلبات خارجية (زي Supabase أو الخطوط) — بس ملفات التطبيق نفسه
-  if (new URL(event.request.url).origin !== self.location.origin) return;
+  // الطلبات الخارجية (زي Supabase أو الخطوط) منلمسهاش — إلا مكتبة الدخول (تتخزّن للفتح من غير نت)
+  if (new URL(event.request.url).origin !== self.location.origin) {
+    if (CDN_ALLOW.indexOf(event.request.url) === -1) return;
+    event.respondWith(
+      caches.open(CDN_CACHE).then(async (cache) => {
+        const cached = await cache.match(event.request);
+        const net = fetch(event.request)
+          .then((res) => {
+            if (res && (res.ok || res.type === "opaque")) cache.put(event.request, res.clone());
+            return res;
+          })
+          .catch(() => cached);
+        return cached || net;
+      })
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
