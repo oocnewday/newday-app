@@ -1,6 +1,6 @@
 {
-  "name": "New Day — More knowledge, Better Vision",
-  "short_name": "New Day",
+  "name": "OOC New Day — More knowledge, Better Vision",
+  "short_name": "OOC New Day",
   "description": "تطبيق تدريب أطباء الرمد على أسئلة MCQ لامتحان السكند الزمالة",
   "start_url": "./index.html",
   "scope": "./",

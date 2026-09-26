@@ -1,5 +1,5 @@
 /* ============================================================
-   Service Worker — New Day
+   Service Worker — OOC New Day
    ------------------------------------------------------------
    بيخزن نسخة من التطبيق نفسه (الصفحة + الملفات) عشان يشتغل
    حتى من غير إنترنت خالص.
@@ -9,7 +9,7 @@
    بدل الجديدة.
    ============================================================ */
 
-const CACHE_NAME = "newday-cache-v26";
+const CACHE_NAME = "newday-cache-v33";
 // (ج) مكتبة الدخول (Supabase) جاية من برّه — بنخزّنها عشان التطبيق يفتح بحسابك من غير نت
 const CDN_CACHE = "newday-cdn-v1";
 const CDN_ALLOW = ["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"];
@@ -48,7 +48,7 @@ const ND_SUPABASE_URL = "https://wymcsdzuwzabjdjpuprc.supabase.co";
 const ND_SUPABASE_KEY = "sb_publishable_igUClzy2FNybrF0W5UZwLA_ALedOf4h";
 
 self.addEventListener("push", (event) => {
-  let data = { title: "New Day", body: "لديك إشعار جديد", url: "/", nid: null };
+  let data = { title: "OOC New Day", body: "لديك إشعار جديد", url: "/", nid: null };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch (e) {}
@@ -88,15 +88,16 @@ async function showOrForward(data) {
       return;
     }
   } else if (data.nid) {
-    // (ج) رسالة من الأدمن والتطبيق مفتوح: شريط جوه التطبيق + الجرس يزيد (+ هزّة لو مفيش إشعار برّه).
-    // على أندرويد/كروم مابنعرضش الإشعار برّه كمان؛ على آيفون لازم يظهر برّه (قاعدة آبل)
-    visible.forEach((c) => c.postMessage({ type: "nd-new-notif", id: data.nid, body: data.body || "", silent: skipOutside }));
-    if (skipOutside) return;
+    // (7.0) رسالة من الأدمن والتطبيق مفتوح: الإشعار العادي بيظهر بصوته (حسب إعدادات الموبايل — لو على الصامت مفيش صوت)،
+    // وجوه التطبيق كمان بيظهر الشريط والجرس بيزيد. (قبل كده على أندرويد كان بيتعرض جوه التطبيق بس من غير صوت)
+    visible.forEach((c) => c.postMessage({ type: "nd-new-notif", id: data.nid, body: data.body || "", silent: false }));
   }
   return self.registration.showNotification(data.title, {
     body: data.body,
-    icon: "./icon-192.png",
-    badge: "./icon-192.png",
+    // (6.8) الأيقونة الكبيرة جوه الإشعار: بوكيه OOC ملون ومقصوص من الخلفية.
+    // والصغيرة في شريط الموبايل: حروف OOC بلون واحد (أندرويد بيلوّنها بلون الموبايل دايمًا — أبيض/رصاصي)
+    icon: "./notif-icon.png",
+    badge: "./notif-badge.png",
     data: { url: data.url || "/", nid: data.nid || null },
   });
 }
@@ -130,7 +131,10 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   // الطلبات الخارجية (زي Supabase أو الخطوط) منلمسهاش — إلا مكتبة الدخول (تتخزّن للفتح من غير نت)
   if (new URL(event.request.url).origin !== self.location.origin) {
-    if (CDN_ALLOW.indexOf(event.request.url) === -1) return;
+    // (7.3) والخطوط كمان (عشان شكل التطبيق يفضل زي ما هو من غير نت)
+    const host = new URL(event.request.url).hostname;
+    const isFont = host === "fonts.googleapis.com" || host === "fonts.gstatic.com";
+    if (CDN_ALLOW.indexOf(event.request.url) === -1 && !isFont) return;
     event.respondWith(
       caches.open(CDN_CACHE).then(async (cache) => {
         const cached = await cache.match(event.request);
