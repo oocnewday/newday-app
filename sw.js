@@ -9,7 +9,7 @@
    بدل الجديدة.
    ============================================================ */
 
-const CACHE_NAME = "newday-cache-v33";
+const CACHE_NAME = "newday-cache-v42";
 // (ج) مكتبة الدخول (Supabase) جاية من برّه — بنخزّنها عشان التطبيق يفتح بحسابك من غير نت
 const CDN_CACHE = "newday-cdn-v1";
 const CDN_ALLOW = ["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"];
@@ -98,7 +98,7 @@ async function showOrForward(data) {
     // والصغيرة في شريط الموبايل: حروف OOC بلون واحد (أندرويد بيلوّنها بلون الموبايل دايمًا — أبيض/رصاصي)
     icon: "./notif-icon.png",
     badge: "./notif-badge.png",
-    data: { url: data.url || "/", nid: data.nid || null },
+    data: { url: data.url || "/", nid: data.nid || null, kind: data.kind || null, slot: data.slot || null }, // (7.5) عشان "الحمد لله" يشيل إشعار التذكير
   });
 }
 
