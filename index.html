@@ -23,7 +23,7 @@
   // وبعد ما تختفي بتتشال من الصفحة خالص (مفيش أي حركة شغالة وراها)
   (function () {
     var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    var fromNotif = /[?&]notif=/.test(location.search);
+    var fromNotif = /[?&](notif|q)=/.test(location.search); // (8.9) ورابط السؤال المباشر (?q=) برضه بيدخل علطول
     var done = false;
     var hide = function () {
       if (done) return; done = true;
@@ -3962,6 +3962,22 @@ html.lite .raindrop{ display:none !important; }
 .qbn-never { display:block; width:100%; margin-top:8px; min-height:44px; border:0; background:none; cursor:pointer;
   color:rgba(255,255,255,.6); font-size:13px; font-family:inherit; text-decoration:underline; text-underline-offset:3px; }
 .qbn-ok:focus-visible, .qbn-never:focus-visible { outline:3px solid #fff; outline-offset:2px; }
+/* ===== (8.9) بند 27: رقم السؤال (Q ID) بنسخ بلمسة + الرابط المباشر لسؤال ===== */
+/* الرقم هادي في آخر يمين سطر Solved/Reviewed، ولو المساحة ضاقت بينزل سطر لوحده على اليمين (margin-left:auto).
+   فوق طبقة التظليل (z-index 3) عشان اللمس ينسخ حتى لو أداة القلم مختارة */
+.q-qid { order:0; margin-left:auto; position:relative; z-index:4; display:inline-flex; align-items:center; gap:5px;
+  min-height:30px; padding:4px 8px; border:0; border-radius:8px; background:transparent; cursor:pointer;
+  color:var(--q-muted); font-family:inherit; font-size:11.5px; font-weight:600; letter-spacing:.3px;
+  font-variant-numeric:tabular-nums; direction:ltr; white-space:nowrap; -webkit-tap-highlight-color:transparent; }
+.q-qid svg { width:12px; height:12px; opacity:.7; flex:none; }
+.q-qid:active { background:var(--q-rule); }
+.q-qid:focus-visible { outline:2px solid var(--q-teal); outline-offset:2px; }
+@media (hover:hover) { .q-qid:hover { background:var(--q-rule); color:var(--q-ink); } }
+@media (min-width:520px) { .q-verify .q-qid { order:2; } }
+.auth-qlink-hint { margin:0 0 14px; padding:9px 12px; border-radius:12px; background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.16); color:rgba(255,255,255,.88); font-size:12.5px; line-height:1.7; text-align:center; }
+.auth-qlink-hint bdi { font-weight:800; white-space:nowrap; }
+.auth-qlink-hint[hidden] { display:none; }
 </style>
 </head>
 <body>
@@ -4195,6 +4211,7 @@ html.lite .raindrop{ display:none !important; }
        ============================================================ -->
   <div class="screen" id="authGate">
     <div class="motivation-card">
+      <p class="auth-qlink-hint" id="authQLinkHint" role="status" hidden></p>
       <div class="motivation-icon">🏆</div>
       <h2 class="motivation-title">للمنافسة وكسب النقاط</h2>
       <p class="motivation-text">
@@ -6582,7 +6599,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 8.4;
+const APP_VERSION = 8.9;
 const APP_VERSION_LABEL = Number(APP_VERSION).toFixed(1); // للعرض بس (6.0 مش 6)
 
 const CONFIG = {
@@ -8359,8 +8376,8 @@ async function awardPoints(qCode, isCorrect, answered) {
  * - عضو مسجّل لسه معتمدش: أول 20 سؤال بس من أي فولدر
  * - عضو مفعّل / أدمن / مالك: كل الأسئلة من غير حد
  */
-function getAllQuestionsInContext() {
-  const all = filterQuestions(window.NEWDAY_DATA.QUESTIONS, context);
+function getAllQuestionsInContext(ctx) { // (8.9) ctx اختياري: رابط السؤال بيفحص فولدر السؤال نفسه قبل ما ينقل الطالب
+  const all = filterQuestions(window.NEWDAY_DATA.QUESTIONS, ctx || context);
   if (isGuest) return all.slice(0, 10);
   if (currentUserRole === "admin" || currentUserRole === "owner" || currentUserApproved) return all;
   return all.slice(0, 20);
@@ -9130,6 +9147,13 @@ function renderQuestion() {
   // (8.4) مين حل السؤال ومين راجعه — دايمًا تحت السؤال
   html += `<div class="q-verify">`;
   html += `<span class="q-ai-line"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l1.6 4.1L13.7 7 9.6 8.6 8 12.7 6.4 8.6 2.3 7l4.1-1.4z" fill="currentColor"/></svg>${item.aiLine || "Solved by Advanced AI Tools"}</span>`;
+  // (8.9) بند 27: رقم السؤال — هادي على يمين السطر، ولمسة واحدة بتنسخه (أرقام بس، فمفيش حاجة تحتاج escape).
+  // جاي بعد سطر Solved في الترتيب: على الموبايل بيبقى قصاده في نفس السطر وشارة Reviewed تنزل تحتهم،
+  // وعلى الشاشة العريضة (CSS order) بيبقى آخر السطر بعد الشارة
+  const qidDisp = ndQidDisplay(item);
+  if (qidDisp) {
+    html += `<button type="button" class="q-qid" id="qQidBtn" aria-label="Copy question ID ${qidDisp}" title="Tap to copy">Q ID ${qidDisp}<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.2" y="5.2" width="8.3" height="8.3" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.6 10.6h-.4A1.2 1.2 0 0 1 2 9.4V3.2A1.2 1.2 0 0 1 3.2 2h6.2a1.2 1.2 0 0 1 1.2 1.2v.4" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button>`;
+  }
   if (item.reviewed) {
     html += `<span class="q-reviewed"><svg class="q-seal" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.8l2.3 1.7 2.9-.2.9 2.7 2.4 1.6-.8 2.8.8 2.8-2.4 1.6-.9 2.7-2.9-.2L12 20.2l-2.3-1.7-2.9.2-.9-2.7-2.4-1.6.8-2.8-.8-2.8 2.4-1.6.9-2.7 2.9.2z" fill="#D4A017"/><circle cx="12" cy="11" r="6.2" fill="#FFF8E1"/><path d="M8.9 11.2l2.1 2.1 4.2-4.4" fill="none" stroke="#1B4B43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>${item.reviewedLine || "Reviewed by OOC Consultant"}</span>`;
   }
@@ -9202,6 +9226,10 @@ function renderQuestion() {
 
   // جهّز طبقة التظليل/القلم لو ظاهرة
   if (showAnnotate) initAnnotateCanvas(qCode);
+
+  // (8.9) بند 27: لمسة على رقم السؤال بتنسخه
+  const qidBtn = document.getElementById("qQidBtn");
+  if (qidBtn) qidBtn.addEventListener("click", () => ndCopyQid(qidDisp));
 
   // 9) Events
 
@@ -11214,6 +11242,242 @@ let ndStateReady = false; // (و) حالة العضو (السجل اليومي..
     history.replaceState(null, "", u.pathname + u.search + u.hash); // نشيله من الرابط عشان الريفرش مايفتحهاش تاني
   } catch (e) {}
 })();
+/* ============================================================
+   (8.9) بند 27 — رابط مباشر لسؤال معيّن: <رابط التطبيق>/?q=000112
+   ------------------------------------------------------------
+   - نفس فكرة ?notif=: الرقم بيتلقط وقت الفتح ويتشال من العنوان (الريفرش مايفتحوش تاني)،
+     وبيتحفظ للتاب ده (sessionStorage) لحد ما يتفتح، عشان يعيش بعد "حدّث دلوقتي" في التحديث الإجباري.
+   - بيقبل 000112 و112 وQ000112 و"Q ID 000112": كلهم نفس السؤال.
+   - العضو الداخل: بيعدّي من نفس طريق زرار "ابدأ" (goToMotivation) والسؤال يفتح علطول.
+     غير المسجّل: صفحة الدخول بسطر تنبيه، والسؤال يفتح بعد الدخول أو الحساب الجديد أو "المتابعة كزائر".
+   - السؤال بيفتح في فولدره على All بنفس Study/Test/Review بتاع الطالب، ومن enterQuestionsScreen
+     (فحص التجربة + رسالة اليوم). مكانه في الوضع اللي كان فيه بيتحفظ زي تغيير التاب.
+   - حدود العرض زي ما هي (الزائر 10، وغير المفعّل 20): الرابط مش طريقة لتخطّي العضوية.
+   - مش على الجهاز: مزامنة وبعدين يفتح. مخفي أو مش موجود: رسالة. من غير نت: رسالة + "حاول مرة أخرى".
+   - كل النصوص بتتحط بـ textContent (مفيش HTML من الرابط).
+   ============================================================ */
+const ND_QLINK_KEY = "nd_pending_q";
+let ndPendingQ = null;       // رقم السؤال (6 أرقام) مستني يتفتح
+let ndQLinkInvalid = false;  // الرابط فيه ?q= بس الرقم مش صالح
+let ndQOpening = false;      // فيه فتح شغال دلوقتي (عشان مايتفتحش مرتين)
+
+function ndNormQid(v) {
+  // الرقم لازم يبقى في أول الرابط: 000112 أو 112 أو Q000112 أو "Q ID 000112" (أي حاجة بعده بتتساب)
+  const m = /^\s*(?:q\s*(?:id)?\s*[:#-]?\s*)?(\d{1,9})(?!\d)/i.exec(String(v == null ? "" : v));
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return n > 0 ? String(n).padStart(6, "0") : null;
+}
+function ndQidDisplay(item) {
+  const m = /^Q(\d{1,9})$/.exec(item && item.qCode ? String(item.qCode) : "");
+  return m ? m[1] : "";
+}
+function ndSetPendingQ(d) {
+  ndPendingQ = d || null;
+  try { if (ndPendingQ) sessionStorage.setItem(ND_QLINK_KEY, ndPendingQ); else sessionStorage.removeItem(ND_QLINK_KEY); } catch (e) {}
+  ndUpdateAuthQLinkHint();
+}
+(function captureQuestionDeepLink() {
+  try {
+    const u = new URL(window.location.href);
+    if (!u.searchParams.has("q")) {
+      const saved = ndNormQid(sessionStorage.getItem(ND_QLINK_KEY)); // رابط لسه ماتفتحش في التاب ده (مثلًا قبل تحديث إجباري)
+      if (saved) ndPendingQ = saved;
+      return;
+    }
+    const d = ndNormQid(u.searchParams.get("q"));
+    u.searchParams.delete("q");
+    history.replaceState(null, "", u.pathname + u.search + u.hash); // نشيله من الرابط عشان الريفرش مايفتحوش تاني
+    if (d) { ndPendingQ = d; try { sessionStorage.setItem(ND_QLINK_KEY, d); } catch (e) {} }
+    else ndQLinkInvalid = true;
+  } catch (e) {}
+})();
+
+function ndUpdateAuthQLinkHint() {
+  const el = document.getElementById("authQLinkHint");
+  if (!el) return;
+  el.textContent = "";
+  if (!ndPendingQ) { el.hidden = true; return; }
+  el.appendChild(document.createTextNode("🔗 سجّل الدخول أو تابع كزائر لعرض السؤال "));
+  const b = document.createElement("bdi");
+  b.dir = "ltr";
+  b.textContent = "Q ID " + ndPendingQ;
+  el.appendChild(b);
+  el.hidden = false;
+}
+
+function ndCopyQid(d) {
+  if (!d) return;
+  const text = "Q ID " + d;
+  const done = () => showToast("📋 تم نسخ رقم السؤال " + text, 2200);
+  const fallback = () => {
+    let ok = false;
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0, text.length);
+      ok = document.execCommand("copy");
+      ta.remove();
+    } catch (e) { ok = false; }
+    if (ok) done(); else showToast("⚠️ تعذّر النسخ، ورقم السؤال هو " + text, 5000);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done, fallback);
+  } else fallback();
+}
+
+// نافذة من تحت بنفس شكل رسائل التنبيه (qbn). body = مصفوفة: نص عادي، أو { ltr: "..." } للجزء الإنجليزي
+function ndShowLinkSheet(o) {
+  document.querySelectorAll(".ndq-overlay").forEach((x) => x.remove());
+  const ov = document.createElement("div");
+  ov.className = "sheet-overlay qbn-overlay ndq-overlay";
+  const sh = document.createElement("div");
+  sh.className = "sheet qbn-sheet";
+  sh.setAttribute("role", "dialog");
+  sh.setAttribute("aria-modal", "true");
+  sh.setAttribute("aria-labelledby", "ndqTitle");
+  const handle = document.createElement("div"); handle.className = "sheet-handle";
+  const icon = document.createElement("div"); icon.className = "qbn-icon"; icon.setAttribute("aria-hidden", "true"); icon.textContent = o.icon || "📌";
+  const title = document.createElement("div"); title.className = "sheet-title"; title.id = "ndqTitle"; title.textContent = o.title || "";
+  const body = document.createElement("p"); body.className = "qbn-body";
+  (o.body || []).forEach((part) => {
+    if (part && typeof part === "object") {
+      const b = document.createElement("bdi"); b.dir = "ltr"; b.textContent = String(part.ltr || ""); body.appendChild(b);
+    } else body.appendChild(document.createTextNode(String(part == null ? "" : part)));
+  });
+  const ok = document.createElement("button"); ok.type = "button"; ok.className = "qbn-ok"; ok.textContent = o.primary || "متابعة";
+  sh.append(handle, icon, title, body, ok);
+  let alt = null;
+  if (o.secondary) { alt = document.createElement("button"); alt.type = "button"; alt.className = "qbn-never"; alt.textContent = o.secondary; sh.appendChild(alt); }
+  ov.appendChild(sh);
+  document.body.appendChild(ov);
+  let closed = false;
+  const close = (fn) => {
+    if (closed) return; closed = true;
+    ov.classList.remove("open");
+    setTimeout(() => { ov.remove(); if (typeof fn === "function") fn(); }, 320);
+  };
+  ok.addEventListener("click", () => close(o.onPrimary));
+  if (alt) alt.addEventListener("click", () => close(o.onSecondary || o.onClose));
+  ov.addEventListener("click", (e) => { if (e.target === ov) close(o.onClose); });
+  requestAnimationFrame(() => requestAnimationFrame(() => { ov.classList.add("open"); ok.focus({ preventScroll: true }); }));
+}
+
+function ndShowQOfflineSheet(d) {
+  ndShowLinkSheet({
+    icon: "📶",
+    title: "تعذّر فتح السؤال",
+    body: ["لم يُحمَّل هذا السؤال على جهازك بعد، فاتصل بالإنترنت ثم اضغط «حاول مرة أخرى»."],
+    primary: "حاول مرة أخرى",
+    secondary: "إغلاق",
+    onPrimary: () => { if (ndPendingQ === d) ndOpenPendingQuestion(); },
+    onSecondary: () => { if (ndPendingQ === d) ndSetPendingQ(null); },
+    onClose: () => { if (ndPendingQ === d) ndSetPendingQ(null); }
+  });
+}
+
+// بيفتح السؤال المستني. بيرجع true لو اتفتح (أو اتحوّل لشاشة التجربة/رسالة اليوم)، وfalse لو لأ
+async function ndOpenPendingQuestion() {
+  const d = ndPendingQ;
+  if (!d || ndQOpening || !window.QB) return false;
+  ndQOpening = true;
+  try {
+    if (!QB.isLoaded()) await new Promise((r) => QB.whenReady(r));
+    const n = parseInt(d, 10);
+    const QS = window.NEWDAY_DATA.QUESTIONS;
+    const find = () => QS.find((x) => x.qid === n) || null;
+    let q = find();
+    if (!q) {
+      // مش على الجهاز: يمكن لسه ظاهر جديد ← مزامنة الأول (بحد أقصى 20 ثانية)
+      if (navigator.onLine === false) { ndShowQOfflineSheet(d); return false; }
+      showToast("⏳ جارٍ فتح السؤال Q ID " + d + "…", 21000);
+      const r = await Promise.race([
+        QB.sync(),
+        new Promise((res) => setTimeout(() => res({ ok: false, timeout: true }), 20000))
+      ]);
+      hideToast();
+      q = find();
+      if (!q) {
+        if (r && r.ok) {
+          ndSetPendingQ(null);
+          ndShowLinkSheet({
+            icon: "🔍",
+            title: "السؤال غير متاح",
+            body: ["هذا السؤال (", { ltr: "Q ID " + d }, ") غير متاح حاليًا، وقد يكون قيد المراجعة."],
+            primary: "متابعة"
+          });
+        } else ndShowQOfflineSheet(d);
+        return false;
+      }
+    }
+    // حدود العرض زي ما هي في فولدر السؤال
+    const ctx = { chapter: q.chapter, exam: q.exam, folder: q.folder };
+    if (!getAllQuestionsInContext(ctx).some((x) => x.qCode === q.qCode)) {
+      if (isGuest) {
+        // الزائر: الرقم يفضل مستني لحد ما يسجّل في نفس الجلسة (من غير ما يرجع مع الريفرش)
+        try { sessionStorage.removeItem(ND_QLINK_KEY); } catch (e) {}
+        requireAccount("هذا السؤال متاح للأعضاء فقط، فسجّل الدخول أو أنشئ حسابًا لعرضه.");
+      } else {
+        ndSetPendingQ(null);
+        ndShowLinkSheet({
+          icon: "🔒",
+          title: "العضوية غير مفعّلة",
+          body: ["هذا السؤال متاح بعد تفعيل العضوية، فتواصل مع فريق OOC لتفعيلها."],
+          primary: "متابعة"
+        });
+      }
+      return false;
+    }
+    ndSetPendingQ(null);
+    // افتكر مكان الطالب في الوضع اللي كان فيه (زي تغيير التاب) قبل ما ننقله
+    if (qMode !== "allq") {
+      const leaving = getCurrentQuestion();
+      if (leaving) lastQCodeByMode[qMode] = leaving.qCode;
+    }
+    context = ctx;
+    qMode = "allq";
+    stickyQCode = null;
+    qHistory = [];
+    qState = { picked: null, revealed: false, submitted: false, more: false };
+    const pool = getPool(true);
+    const i = pool.findIndex((x) => x.qCode === q.qCode);
+    qIdx = i >= 0 ? i : 0;
+    await saveState();
+    try { renderModeTabs(); } catch (e) {}
+    await enterQuestionsScreen();
+    return true;
+  } catch (e) {
+    return false;
+  } finally {
+    ndQOpening = false;
+  }
+}
+
+// بعد ما نعرف مين داخل: العضو يعدّي من طريق زرار "ابدأ"، وغير المسجّل يروح لصفحة الدخول بسطر التنبيه
+function ndTryPendingQuestion(attempt) {
+  if (!ndPendingQ && !ndQLinkInvalid) return;
+  const n = attempt || 0;
+  const active = document.querySelector(".screen.active");
+  const id = active ? active.id : "";
+  const member = !isGuest && !!currentUserId;
+  const ready = ndAuthResolved && (!member || ndStateReady) && window.QB && QB.isLoaded();
+  if (!ready || id === "forceUpdate" || id === "trialBlocked") {
+    if (n < 60) setTimeout(() => ndTryPendingQuestion(n + 1), 500);
+    return;
+  }
+  if (ndQLinkInvalid) { ndQLinkInvalid = false; showToast("⚠️ رابط السؤال غير صحيح", 4500); return; }
+  if (id !== "splash") return; // المستخدم اتحرك بنفسه، وgoToMotivation هيكمّل بالسؤال
+  if (member) {
+    if (onboardingCompleted) goToMotivation(); else navigate("onboarding");
+  } else {
+    if (typeof prefetchSignupSchema === "function") { try { prefetchSignupSchema(); } catch (e) {} }
+    navigate("authGate");
+  }
+}
+
 function tryOpenPendingNotif(attempt) {
   if (!ndPendingNotifId) return;
   const n = attempt || 0;
@@ -11703,6 +11967,14 @@ function renderMotivationScreen() {
   }
 }
 function goToMotivation() {
+  // (8.9) بند 27: جاي من رابط سؤال ← بعد الدخول أو الحساب الجديد أو "المتابعة كزائر" نفتح السؤال بدل الرسالة التحفيزية.
+  // لو ماتفتحش (مش متاح، أو برّه حدود العرض، أو من غير نت) بنكمّل عادي على الرسالة التحفيزية
+  if (ndPendingQ && !ndQOpening) {
+    ndOpenPendingQuestion().then((opened) => {
+      if (!opened) { renderMotivationScreen(); navigate("motivation"); }
+    });
+    return;
+  }
   renderMotivationScreen();
   navigate("motivation");
 }
@@ -14996,6 +15268,7 @@ function navigate(screenId) {
 
   target.classList.add("active");
   target.scrollTop = 0;
+  if (screenId === "authGate") ndUpdateAuthQLinkHint(); // (8.9) سطر "سجّل الدخول لعرض السؤال…" لو جاي من رابط سؤال
 
   if (screenId === "questions") {
     const body = document.getElementById("qBody");
@@ -15857,6 +16130,7 @@ async function init() {
   // ب3: لو التطبيق اتفتح من الضغط على إشعار ← افتح الرسالة علطول (من غير ما نستنى باقي التحميل)
   ndAuthResolved = true;
   if (typeof tryOpenPendingNotif === "function") tryOpenPendingNotif(0);
+  if (typeof ndTryPendingQuestion === "function") ndTryPendingQuestion(0); // (8.9) بند 27: رابط سؤال مباشر
   refreshMotivData(); // (و) الرسائل التحفيزية وجمل الترحيب (من غير ما نستنى)
   refreshContactChannels(); // (7.9) وسائل التواصل
   if (isGuest) setTimeout(() => { try { prefetchSignupSchema(); } catch (e) {} }, 2500); // (و) صفحة الحساب الجديد تفتح علطول

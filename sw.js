@@ -9,7 +9,7 @@
    بدل الجديدة.
    ============================================================ */
 
-const CACHE_NAME = "newday-cache-v43";
+const CACHE_NAME = "newday-cache-v44"; // (8.9)
 // (ج) مكتبة الدخول (Supabase) جاية من برّه — بنخزّنها عشان التطبيق يفتح بحسابك من غير نت
 const CDN_CACHE = "newday-cdn-v1";
 const CDN_ALLOW = ["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"];
@@ -146,6 +146,33 @@ self.addEventListener("fetch", (event) => {
           .catch(() => cached);
         return cached || net;
       })
+    );
+    return;
+  }
+
+  // (8.9) فتح صفحة التطبيق نفسها (navigate): الرابط ممكن يكون فيه ?q=000112 (رابط سؤال) أو ?notif= أو ?_v=.
+  // قبل كده الكاش كان بيدوّر على الرابط بالحرف، فأي رابط فيه ? مابيفتحش من غير نت. دلوقتي بندوّر من غير الـ ?
+  // (ولو مالقيناش، نفس index.html اللي اتخزّن وقت التثبيت)، وبنخزّن الصفحة باسمها من غير الـ ? عشان الكاش مايكبرش.
+  // التطبيق نفسه هو اللي بيقرا الـ ? من العنوان، فالنسخة المخزّنة بتفهمه عادي. وCache-First زي ما هو.
+  if (event.request.mode === "navigate") {
+    const url = new URL(event.request.url);
+    const cleanKey = url.origin + url.pathname;
+    const isAppPage = url.pathname === "/" || /\/index\.html$/.test(url.pathname) || url.pathname === self.registration.scope.replace(self.location.origin, "");
+    event.respondWith(
+      (async () => {
+        let cached = await caches.match(cleanKey);
+        if (!cached && isAppPage) cached = await caches.match("./index.html");
+        const networkFetch = fetch(event.request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(cleanKey, clone));
+            }
+            return response;
+          })
+          .catch(() => cached);
+        return cached || networkFetch;
+      })()
     );
     return;
   }
