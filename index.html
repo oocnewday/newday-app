@@ -6136,6 +6136,14 @@ window.NEWDAY_DATA = {
         ]);
         var rows = Array.isArray(res[0]) ? res[0] : [];
         var newNotices = Array.isArray(res[1]) ? res[1] : (meta.notices || []);
+        // (9.0) بند 47: هامش الـ 5 دقايق بيرجّع آخر سؤال اتعدّل مع كل مزامنة. الصف اللي عندنا بنفس updated_at بالظبط
+        // (مقارنة نص)، أو المشطوب وهو مش عندنا أصلًا، مالوش أثر ← بيتجاهل، فمفيش إعادة بناء ولا إعادة كتابة للبنك
+        if (!full) rows = rows.filter(function (r) {
+          if (!r || r.qid == null) return false;
+          var cur = byQid.get(r.qid);
+          if (r.is_removed) return !!cur;
+          return !cur || String(cur.updated_at) !== String(r.updated_at);
+        });
         if (!full && rows.length === 0) {
           meta = Object.assign({}, meta, { notices: newNotices, syncedAt: Date.now() });
           kvSetMany({ meta: meta }).catch(function () {});
@@ -6160,6 +6168,7 @@ window.NEWDAY_DATA = {
         };
         rebuild();
         await persist();
+        askPersistentStorage();
         var added = 0, removed = 0;
         var now = {};
         Q.forEach(function (q) { now[q.qCode] = 1; if (!before[q.qCode]) added++; });
@@ -6178,6 +6187,21 @@ window.NEWDAY_DATA = {
   }
 
   function syncIfDue() { if (Date.now() - lastSyncAt >= MIN_GAP_MS) sync(); }
+
+  /* (9.0) بند 47: تخزين دائم للبنك — من غير كده المتصفح ممكن يمسحه لما المساحة تقل، فيتنزّل كله تاني.
+     مرة واحدة في الفتحة، ولو فيه أسئلة على الجهاز، ولو persisted() = false. مش على فايرفوكس (قرار 29/9)،
+     لأنه بيسأل الطالب إذن. في كروم وسفاري مفيش أي سؤال، والمتصفح بيقرر لوحده */
+  var persistAsked = false;
+  function askPersistentStorage() {
+    if (persistAsked || !Q.length) return;
+    try {
+      if (/Firefox|FxiOS/.test(navigator.userAgent || "")) return;
+      var st = navigator.storage;
+      if (!st || typeof st.persist !== "function" || typeof st.persisted !== "function") return;
+      persistAsked = true;
+      st.persisted().then(function (p) { if (!p) return st.persist(); }).catch(function () {});
+    } catch (e) {}
+  }
 
   /* ---------- رسائل التنبيه للطلاب (get_student_notices) ---------- */
   function noticeKey(n) { return NOTICE_HIDE_PREFIX + n.id + "_" + ts(n.updated_at); }
@@ -6252,7 +6276,7 @@ window.NEWDAY_DATA = {
     readyCbs.splice(0).forEach(function (fn) { try { fn(); } catch (e) {} });
     if (!Q.length) { sync(); return; }
     // الأسئلة موجودة على الجهاز ← نأجّل المزامنة لحد ما التطبيق يخلّص فتح (أخف على الموبايلات الضعيفة)
-    var later = function () { sync(); };
+    var later = function () { sync(); askPersistentStorage(); };
     if ("requestIdleCallback" in window) requestIdleCallback(later, { timeout: 4000 }); else setTimeout(later, 1500);
   });
 
@@ -6599,7 +6623,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 8.9;
+const APP_VERSION = 9.0; // (9.0) إصدار طلاب أ1: بند 39 ب و46 و47
 const APP_VERSION_LABEL = Number(APP_VERSION).toFixed(1); // للعرض بس (6.0 مش 6)
 
 const CONFIG = {
@@ -6732,14 +6756,37 @@ async function loadMemberState() {
   // (7.3) لو عارفين إن مفيش نت (أو الجلسة متحمّلة من الجهاز) ← نكمّل من نسخة الجهاز علطول
   const skipServer = offlineAccountMode || (typeof navigator !== "undefined" && navigator.onLine === false);
   let serverEpoch = null;
-  if (supabaseClient && !skipServer) try {
-    const [res, epRes] = await withTimeout(Promise.all([
-      supabaseClient.from("users").select("app_state").eq("id", currentUserId).maybeSingle(),
-      supabaseClient.from("app_settings").select("value").eq("key", "progress_epoch").maybeSingle(),
-    ]), 5000, "تحميل التقدّم");
-    if (!res.error) server = (res.data && res.data.app_state && typeof res.data.app_state === "object") ? res.data.app_state : {};
-    if (epRes && !epRes.error) serverEpoch = parseInt(epRes.data && epRes.data.value, 10) || 0;
-  } catch (e) { /* من غير نت */ }
+  // (9.0) بند 46: قبل تنزيل الحالة كلها بنسأل سؤال خفيف: ميعاد آخر حفظ (__savedAt) ورقم التصفير اللي جوه الحالة
+  // على السيرفر، مع progress_epoch. لو نسخة الجهاز مش مستنية رفع، وبنفس ميعاد آخر حفظ ونفس رقم التصفير،
+  // ورقمها مش أقدم من progress_epoch ← هي نفس اللي على السيرفر، فنكمّل منها من غير تنزيل.
+  // غير كده (أو لو السؤال الخفيف فشل) ← التنزيل الكامل زي 8.9 بالباقي من الـ 5 ثواني (أقل حاجة 1.5 ثانية).
+  let fromMirror = false;
+  if (supabaseClient && !skipServer) {
+    const t0 = Date.now();
+    let light = null;
+    try {
+      const [lr, epRes] = await withTimeout(Promise.all([
+        supabaseClient.from("users").select("sa:app_state->__savedAt, se:app_state->__epoch").eq("id", currentUserId).maybeSingle(),
+        supabaseClient.from("app_settings").select("value").eq("key", "progress_epoch").maybeSingle(),
+      ]), 5000, "تحميل التقدّم");
+      if (lr && !lr.error && lr.data) light = lr.data;
+      if (epRes && !epRes.error) serverEpoch = parseInt(epRes.data && epRes.data.value, 10) || 0;
+    } catch (e) { /* من غير نت أو المهلة خلصت */ }
+    const mEpoch = mirror ? epochOf(mirror.state) : -1;
+    const mirrorIsServer = !!(light && mirror && !mirror.pending && serverEpoch !== null
+      && typeof light.sa === "number" && light.sa > 0 && light.sa === memberSavedAt(mirror.state)
+      && light.se === mEpoch && mEpoch >= serverEpoch);
+    if (mirrorIsServer) {
+      server = mirror.state;
+      fromMirror = true;
+    } else if (!(typeof navigator !== "undefined" && navigator.onLine === false)) {
+      try {
+        const left = Math.max(1500, 5000 - (Date.now() - t0));
+        const res = await withTimeout(supabaseClient.from("users").select("app_state").eq("id", currentUserId).maybeSingle(), left, "تحميل التقدّم");
+        if (!res.error) server = (res.data && res.data.app_state && typeof res.data.app_state === "object") ? res.data.app_state : {};
+      } catch (e) { /* من غير نت */ }
+    }
+  }
   // نسخة الجهاز من قبل آخر تصفير ← مابقالهاش لازمة
   let mirrorOk = mirror;
   if (mirrorOk && serverEpoch !== null && epochOf(mirrorOk.state) < serverEpoch) {
@@ -6758,8 +6805,10 @@ async function loadMemberState() {
     } else {
       memberState = server;
     }
+    const epochBefore = epochOf(memberState);
     memberState.__epoch = progressEpoch;
-    writeMemberMirror();
+    // (9.0) بند 46: الحالة جت من نسخة الجهاز ورقم التصفير ماتغيرش ← النسخة زي ما هي، مفيش داعي نكتبها تاني
+    if (!(fromMirror && epochBefore === progressEpoch)) writeMemberMirror();
   } else if (mirrorOk) {
     // من غير نت: نكمّل من نسخة الجهاز (كاملة) — ومسموح نرفعها لما النت يرجع
     memberState = mirrorOk.state;
@@ -6781,6 +6830,11 @@ function cloudGet(key, def) {
 }
 
 function cloudSet(key, val) {
+  // (9.0) قرار صاحب المشروع (مع بند 46): القيمة البسيطة (رقم أو نص أو true/false أو null) لو هي هي بالظبط ← مفيش حفظ.
+  // السبب: وقت المذاكرة بيتحفظ كل دقيقة ومع كل إخفاء أو قفل حتى لو ماتغيرش، فكان __savedAt بيتغير والحالة كلها بتترفع.
+  // الكائن والمصفوفة ماتتلمسش (ممكن يكونوا اتعدّلوا في مكانهم وبعدين اتبعتوا هنا)
+  if ((val === null || typeof val === "number" || typeof val === "string" || typeof val === "boolean")
+      && Object.prototype.hasOwnProperty.call(memberState, key) && memberState[key] === val) return;
   memberState[key] = val;
   memberState.__savedAt = Date.now();
   memberStatePendingSync = true;
@@ -7276,14 +7330,28 @@ async function saveSignupIntroText(text) {
   return { error };
 }
 
-/* --- ADMIN SESSION (unlock مؤقت — بيختفي لما تقفل المتصفح) --- */
+/* --- ADMIN SESSION (unlock مؤقت — بيختفي لما تقفل المتصفح) ---
+   (9.0) بند 39 ب: الفتح بقى مربوط بالحساب وبالوقت: {uid, at} في sessionStorage، وصالح لنفس الحساب
+   30 دقيقة من كتابة كلمة السر أو لحد ما التطبيق يتقفل. القيمة القديمة "1" (من 8.9) مابتفتحش،
+   وsaveAdminUnlocked(false) بيمسح المفتاح. الفتح ده بيوفّر كتابة كلمة السر بس — الدور نفسه
+   بيتفحص من القاعدة مع كل دخول (is_current_user_admin)، وكل كتابة للإدارة عليها صلاحيات السيرفر. */
+const ADMIN_UNLOCK_KEY = "newday_admin_unlocked";
+const ADMIN_UNLOCK_MS = 30 * 60 * 1000;
 function loadAdminUnlocked() {
-  try { return sessionStorage.getItem("newday_admin_unlocked") === "1"; }
-  catch (e) { return false; }
+  try {
+    const raw = sessionStorage.getItem(ADMIN_UNLOCK_KEY);
+    const v = raw ? JSON.parse(raw) : null;
+    if (!v || typeof v !== "object" || !currentUserId || v.uid !== currentUserId) return false;
+    const age = Date.now() - Number(v.at);
+    return age >= 0 && age < ADMIN_UNLOCK_MS; // ساعة الجهاز رجعت لورا (عمر بالسالب) ← كلمة السر تاني
+  } catch (e) { return false; }
 }
 function saveAdminUnlocked(v) {
-  try { sessionStorage.setItem("newday_admin_unlocked", v ? "1" : "0"); return true; }
-  catch (e) { return false; }
+  try {
+    if (v && currentUserId) sessionStorage.setItem(ADMIN_UNLOCK_KEY, JSON.stringify({ uid: currentUserId, at: Date.now() }));
+    else sessionStorage.removeItem(ADMIN_UNLOCK_KEY);
+    return true;
+  } catch (e) { return false; }
 }
 
 /* --- NOTIFICATIONS (رسائل من الأدمن — جدول Supabase حقيقي، كل سطر رسالة) --- */
@@ -12016,7 +12084,41 @@ function enterQuestionsScreen() {
 /* ============================================================
    25-i) ADMIN PANEL (مدخل مخفي + كلمة سر + تعديل المحتوى)
    ============================================================ */
-const ADMIN_PASSWORD = "neWday2m@26";
+/* (9.0) بند 39 ب: مفيش كلمة سر مكتوبة في الكود. الدخول للوحة = المدخل المخفي + الدور من القاعدة
+   + كلمة سر حساب الأدمن نفسه (Supabase بيتأكد منها زي الدخول العادي، بنفس طريقة handlePasswordSave).
+   المحاولات الغلط في localStorage مربوطة بالحساب (nd_admin_fail_<uid> = {n, until}) عشان قفل التطبيق
+   مايصفّرهاش: الخامسة = انتظار 5 دقايق. */
+const ADMIN_FAIL_MAX = 5;
+const ADMIN_WAIT_MS = 5 * 60 * 1000;
+const ADMIN_MSG_BAD = "الإيميل أو كلمة السر غلط";
+const ADMIN_MSG_WAIT = "محاولات غلط كتير — حاول تاني بعد 5 دقايق";
+const ADMIN_MSG_NET = "⚠️ لوحة الإدارة تحتاج اتصالًا بالإنترنت وجلسة دخول فعّالة — حاول بعد رجوع النت"; // نفس رسالة 8.9
+function adminFailKey() { return "nd_admin_fail_" + currentUserId; }
+function readAdminFail() {
+  try {
+    const v = JSON.parse(localStorage.getItem(adminFailKey()) || "null");
+    return (v && typeof v === "object") ? { n: Number(v.n) || 0, until: Number(v.until) || 0 } : { n: 0, until: 0 };
+  } catch (e) { return { n: 0, until: 0 }; }
+}
+function writeAdminFail(v) {
+  try { if (v) localStorage.setItem(adminFailKey(), JSON.stringify(v)); else localStorage.removeItem(adminFailKey()); } catch (e) {}
+}
+// الباقي من الانتظار (بالمللي ثانية)، ومايزيدش عن 5 دقايق حتى لو ساعة الجهاز رجعت لورا
+function adminWaitLeftMs() {
+  const f = readAdminFail();
+  const left = f.until - Date.now();
+  if (!f.until || left <= 0) return 0;
+  if (left > ADMIN_WAIT_MS) { writeAdminFail({ n: 0, until: Date.now() + ADMIN_WAIT_MS }); return ADMIN_WAIT_MS; }
+  return left;
+}
+// بتسجّل محاولة غلط، وبترجع true لو دي الخامسة (بدأ الانتظار)
+function countAdminFail() {
+  const f = readAdminFail();
+  const n = (f.until && f.until <= Date.now() ? 0 : f.n) + 1;
+  if (n >= ADMIN_FAIL_MAX) { writeAdminFail({ n: 0, until: Date.now() + ADMIN_WAIT_MS }); return true; }
+  writeAdminFail({ n: n, until: 0 });
+  return false;
+}
 
 function setupAdminEntry() {
   const wOnline = document.getElementById("agWordOnline");
@@ -12083,6 +12185,13 @@ async function verifyAdminAndOpenPrompt() {
   try {
     const { data, error } = await supabaseClient.rpc("is_current_user_admin");
     if (!error && data === true) {
+      // (9.0) بند 39 ب: الدور اتفحص دلوقتي من القاعدة. لو كلمة السر اتكتبت بنفس الحساب من أقل من 30 دقيقة ← اللوحة علطول
+      if (loadAdminUnlocked() && !offlineAccountMode) {
+        adminUnlocked = true;
+        renderAdminPanel();
+        navigate("adminPanel");
+        return;
+      }
       openAdminPasswordPrompt();
     }
   } catch (e) { /* من غير نت — منعرضش حاجة */ }
@@ -12113,28 +12222,61 @@ function setupAdminPasswordOverlay() {
   const emailInput = document.getElementById("adminPassEmail");
   const error = document.getElementById("adminPassError");
 
-  function trySubmit() {
-    if (!input) return;
+  // (9.0) بند 39 ب: كلمة السر = كلمة سر حساب الأدمن نفسه، وSupabase هو اللي بيتأكد منها
+  const overlayEl = document.getElementById("adminPassOverlay");
+  const promptOpen = () => !!(overlayEl && overlayEl.classList.contains("open"));
+  function showFail(msg) {
+    if (error) error.textContent = msg;
+    if (input) { input.value = ""; input.focus(); }
+  }
+  // من غير نت، أو الجلسة محتاجة تتجدد، أو السيرفر ماردّش ← نفس رسالة 8.9، والمحاولة مش محسوبة
+  function netFail() {
+    closeAdminPasswordPrompt();
+    if (offlineAccountMode) verifyOfflineSession();
+    showToast(ADMIN_MSG_NET, 5000);
+  }
+  async function checkPassword() {
+    if (isGuest || !currentUserId || !supabaseClient) { closeAdminPasswordPrompt(); return; }
+    if (adminWaitLeftMs() > 0) return showFail(ADMIN_MSG_WAIT);
+    const pass = input.value;
     // تمويه: خانة الإيميل لازم تفضل فاضية — لو اتكتب فيها حاجة، الدخول يفشل
     // (حتى لو الباسورد صح) عشان أي حد غير الأدمن يحس إنه login عادي غلط بياناته
     const emailFilled = emailInput && emailInput.value.trim() !== "";
-    if (!emailFilled && input.value === ADMIN_PASSWORD) {
-      adminUnlocked = true;
-      saveAdminUnlocked(true);
-      closeAdminPasswordPrompt();
-      // (6.7) لوحة الأدمن محتاجة جلسة دخول مؤكدة من السيرفر
-      if (offlineAccountMode) {
-        verifyOfflineSession();
-        showToast("⚠️ لوحة الإدارة تحتاج اتصالًا بالإنترنت وجلسة دخول فعّالة — حاول بعد رجوع النت", 5000);
-        return;
-      }
-      renderAdminPanel();
-      navigate("adminPanel");
-    } else {
-      if (error) error.textContent = "الإيميل أو كلمة السر غلط";
-      input.value = "";
-      input.focus();
+    if (!pass) return showFail(ADMIN_MSG_BAD); // فاضية ← من غير سيرفر ومن غير عدّ
+    if (emailFilled) return showFail(countAdminFail() ? ADMIN_MSG_WAIT : ADMIN_MSG_BAD); // محسوبة، من غير سيرفر
+    // (6.7) لوحة الأدمن محتاجة جلسة دخول مؤكدة من السيرفر
+    if (offlineAccountMode || navigator.onLine === false) return netFail();
+    const uidAtStart = currentUserId;
+    let res;
+    try {
+      const { data: u, error: uErr } = await withTimeout(supabaseClient.auth.getUser(), 10000, "حساب الإدارة");
+      const email = u && u.user && u.user.id === uidAtStart ? u.user.email : null;
+      if (uErr || !email) return netFail();
+      res = await withTimeout(supabaseClient.auth.signInWithPassword({ email, password: pass }), 10000, "كلمة سر الإدارة");
+    } catch (e) { return netFail(); } // انتهت المهلة أو خطأ شبكة
+    if (currentUserId !== uidAtStart) { closeAdminPasswordPrompt(); return; } // الحساب اتغيّر في النص
+    const err = res && res.error;
+    if (err) {
+      const st = Number(err.status) || 0;
+      if (err.name === "AuthRetryableFetchError" || st === 0 || st >= 500) return netFail();
+      if (st === 429) { writeAdminFail({ n: 0, until: Date.now() + ADMIN_WAIT_MS }); return showFail(ADMIN_MSG_WAIT); }
+      return showFail(countAdminFail() ? ADMIN_MSG_WAIT : ADMIN_MSG_BAD);
     }
+    const signedId = res && res.data && res.data.user && res.data.user.id;
+    if (signedId !== uidAtStart) return netFail();
+    writeAdminFail(null);
+    adminUnlocked = true;
+    saveAdminUnlocked(true);
+    if (!promptOpen()) return; // ضغط إلغاء وهو مستني ← مانفتحش اللوحة (المرة الجاية هتفتح علطول)
+    closeAdminPasswordPrompt();
+    renderAdminPanel();
+    navigate("adminPanel");
+  }
+  let submitting = false; // ضد الضغط مرتين (أو زرار + Enter) وهو مستني السيرفر
+  async function trySubmit() {
+    if (!input || submitting) return;
+    submitting = true;
+    try { await checkPassword(); } finally { submitting = false; }
   }
 
   if (submitBtn) submitBtn.addEventListener("click", trySubmit);
@@ -14950,7 +15092,7 @@ async function handleLogin() {
   }
 
   const userId = data.user.id;
-  const { data: profile } = await supabaseClient.from("users").select("*").eq("id", userId).single();
+  const { data: profile } = await supabaseClient.from("users").select(ND_PROFILE_COLS).eq("id", userId).single(); // (9.0) بند 46: الأعمدة المستخدمة بس (من غير app_state)
 
   isGuest = false;
   currentUserId = userId;
@@ -15858,6 +16000,9 @@ function wireCriticalGlobalUI() {
    وأول ما النت يرجع بنتأكد من الجلسة ونزامن
    ============================================================ */
 const ND_ACCOUNT_CACHE_KEY = "nd_last_account_v1";
+// (9.0) بند 46: بيانات الحساب في الدخول والبداية = الأعمدة اللي الكود بيستخدمها بس. select("*") كان بينزّل app_state كمان
+// (حالة العضو كلها) مع كل فتح، وهي بتتنزل تاني في loadMemberState. أي عمود جديد يتقري هنا لازم يتضاف للقايمة
+const ND_PROFILE_COLS = "trial_started_at, admin_approved, membership_expires_at, role, admin_permissions, is_primary_owner, display_name, member_no, track_color, name_change_count";
 let offlineAccountMode = false;
 function cacheAccountForOffline() {
   if (isGuest || !currentUserId || offlineAccountMode) return;
@@ -16105,7 +16250,7 @@ async function init() {
         isGuest = false;
         currentUserId = session.user.id;
         currentUserEmail = session.user.email;
-        const { data: profile } = await withTimeout(supabaseClient.from("users").select("*").eq("id", currentUserId).single(), 5000, "بيانات الحساب").catch(() => ({ data: null }));
+        const { data: profile } = await withTimeout(supabaseClient.from("users").select(ND_PROFILE_COLS).eq("id", currentUserId).single(), 5000, "بيانات الحساب").catch(() => ({ data: null })); // (9.0) بند 46
         if (profile) {
           currentUserTrialStart = new Date(profile.trial_started_at).getTime();
           currentUserApproved = profile.admin_approved;
