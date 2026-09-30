@@ -5885,7 +5885,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 9.1; // (9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
+const APP_VERSION = 9.2; // (9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
 const APP_VERSION_LABEL = Number(APP_VERSION).toFixed(1); // للعرض بس (6.0 مش 6)
 
 const CONFIG = {
@@ -6085,6 +6085,7 @@ async function loadMemberState() {
   // (ج) كان هنا بيعتبر أي تعديل مستني "فشل بسبب النت" فالرسالة كانت بتظهر مع كل فتح للتطبيق.
   // دلوقتي الرفع بيحصل بهدوء، والرسالة بتظهر بس لو آخر حفظ فشل فعلًا لأن مكانش فيه نت
   if (memberStatePendingSync && memberStateSafeToUpload && navigator.onLine) persistMemberState();
+  if (memberStateSafeToUpload) ndAnnSyncSoon(); // (9.2) بند 44 (2): نقل الرسم القديم مرة واحدة، ورفع أو مسح اللي مستني على الجهاز
 }
 
 function cloudGet(key, def) {
@@ -6103,6 +6104,17 @@ function cloudSet(key, val) {
   queueMemberMirror();
   clearTimeout(memberStateSaveTimer);
   memberStateSaveTimer = setTimeout(persistMemberState, 2500); // (د) تعديلات كتير ورا بعض ← رفعة واحدة
+}
+
+// (9.2) بند 44 (2): شيل مفتاح من الحالة (للنقل مرة واحدة من app_state.annotations) — نفس طريقة cloudSet في الحفظ
+function cloudDel(key) {
+  if (!memberState || !Object.prototype.hasOwnProperty.call(memberState, key)) return;
+  delete memberState[key];
+  memberState.__savedAt = Date.now();
+  memberStatePendingSync = true;
+  queueMemberMirror();
+  clearTimeout(memberStateSaveTimer);
+  memberStateSaveTimer = setTimeout(persistMemberState, 2500);
 }
 
 async function persistMemberState() {
@@ -6157,6 +6169,7 @@ if (typeof window !== "undefined") {
     if (isGuest || !currentUserId) return;
     if (!memberStateSafeToUpload) { recoverMemberStateAfterOffline(); return; }
     if (memberStatePendingSync) { clearTimeout(memberStateSaveTimer); persistMemberState(); }
+    ndAnnSyncSoon(); // (9.2) بند 44 (2)
   });
   // لما يسيب التطبيق (يقفله أو ينقل لتطبيق تاني) ← نحفظ فورًا بدل ما نستنى
   document.addEventListener("visibilitychange", () => {
@@ -6367,7 +6380,11 @@ async function saveQMode(val) {
   return true;
 }
 
-/* --- ANNOTATIONS (تظليل/كتابة محفوظة لكل سؤال في وضع Study) --- */
+/* --- ANNOTATIONS (تظليل/كتابة محفوظة لكل سؤال في وضع Study) ---
+   (9.2) بند 44 (2): رسم العضو بقى في جدول user_annotations بمشروع الطلاب، رسمة لكل سؤال، بدل app_state.annotations
+   (اللي كانت بتترفع كلها مع كل حفظ للتقدّم). الوصول بدوال nd_annotation_* بس، ونسخة على الجهاز في IndexedDB لوحدها
+   (nd_annotations، مش نسخة التقدّم في localStorage) للفتح من غير نت. آخر حفظ للسؤال يكسب.
+   loadAnnotations/saveAnnotationsMap فضلوا للخريطة القديمة بس: الزائر، وpurgeLegacyTestQuestions، والنقل مرة واحدة */
 async function loadAnnotations() {
   if (useCloudState()) return cloudGet("annotations", {});
   return rawStorage.get("annotations", {});
@@ -6377,15 +6394,295 @@ async function saveAnnotationsMap(map) {
   rawStorage.set("annotations", map);
   return true;
 }
+// (9.2) بند 44 (2): حد الرسمة (قرار صاحب المشروع 30/9)، ونفس الحد في القاعدة
+const ND_ANN_MAX = 2097152;
+const ND_ANN_PNG = "data:image/png;base64,";
+// النسخة على الجهاز: قاعدة IndexedDB لوحدها بمخزنين: meta (خفيف: وقت الحساب at، ورقم التصفير ep، ومستني p = "save" أو "del"،
+// ورقم تعديل v، ومحلي بس lo) وimg (الصورة). المفتاح uid|qCode. لو IndexedDB مش متاح أو الكتابة فشلت ← ذاكرة الجلسة دي بس
+let ndAnnDbP = null;
+const ndAnnMem = new Map();
+function ndAnnDb() {
+  if (!ndAnnDbP) ndAnnDbP = new Promise((res) => {
+    try {
+      const rq = indexedDB.open("nd_annotations", 1);
+      rq.onupgradeneeded = () => { const db = rq.result; ["meta", "img"].forEach(n => { if (!db.objectStoreNames.contains(n)) db.createObjectStore(n); }); };
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => res(null);
+      rq.onblocked = () => res(null);
+    } catch (e) { res(null); }
+  });
+  return ndAnnDbP;
+}
+function ndAnnRun(mode, fn) { // بيرجع undefined لو فشل
+  return ndAnnDb().then(db => new Promise((res) => {
+    if (!db) return res(undefined);
+    try {
+      const tx = db.transaction(["meta", "img"], mode);
+      const get = fn(tx.objectStore("meta"), tx.objectStore("img"));
+      tx.oncomplete = () => res(get ? get() : true);
+      tx.onerror = tx.onabort = () => res(undefined);
+    } catch (e) { res(undefined); }
+  }));
+}
+async function ndAnnGet(key) { // { meta, img } أو null
+  if (ndAnnMem.has(key)) return ndAnnMem.get(key);
+  const r = await ndAnnRun("readonly", (m, i) => {
+    const a = m.get(key), b = i.get(key);
+    return () => (a.result ? { meta: a.result, img: b.result || null } : null);
+  });
+  return r || null;
+}
+async function ndAnnPut(key, meta, img) { // img = null ← من غير صورة (علامة مسح مستني)
+  const ok = await ndAnnRun("readwrite", (m, i) => { m.put(meta, key); if (img) i.put(img, key); else i.delete(key); });
+  if (ok) ndAnnMem.delete(key); else ndAnnMem.set(key, { meta, img: img || null });
+}
+async function ndAnnDel(key) {
+  ndAnnMem.delete(key);
+  await ndAnnRun("readwrite", (m, i) => { m.delete(key); i.delete(key); });
+}
+// (9.2) مراجعة تانية 30/9: أي كتابة على الجهاز مش من المستخدم نفسه (رد السيرفر، أو التصفير، أو النقل) بتتعمل بس لو الرسمة لسه
+// على رقم التعديل v اللي اتقرا قبل الطلب (v = null ← مفيش رسمة)، والفحص والكتابة في نفس المعاملة، عشان حفظ أو مسح عمله
+// المستخدم في نفس اللحظة مايتكتبش فوقه (اتثبت في Chromium قبل التصليح). next = null ← تتشال من الجهاز. بترجع true لو كتبت
+async function ndAnnSetIf(key, v, next, img) {
+  const same = (m) => (m ? m.v : null) === v;
+  if (ndAnnMem.has(key)) {
+    const c = ndAnnMem.get(key);
+    if (!same(c && c.meta)) return false;
+    if (next) { ndAnnMem.set(key, { meta: next, img: img || null }); return true; }
+    ndAnnMem.delete(key);
+    // (9.2) مراجعة تالتة 30/9: اللي في IndexedDB تحت ذاكرة الجلسة أقدم منها، فيتمسح هو كمان زي ndAnnDel
+    // (كان بيظهر بعد المسح، ولو كان مستني رفع بيرجع للحساب؛ اتثبت في Chromium قبل التصليح)
+    // (9.2) مراجعة رابعة 30/9: بس لو مش أحدث من v، في نفس المعاملة: حفظ من المستخدم لسه بيتكتب على الجهاز (رقمه أكبر)
+    // مايتمسحش (كان بيضيع من الجهاز والحساب؛ اتثبت في Chromium قبل التصليح)
+    await ndAnnRun("readwrite", (m, i) => {
+      const rq = m.get(key);
+      rq.onsuccess = () => { const r = rq.result; if (!r || (r.v || 0) <= v) { m.delete(key); i.delete(key); } };
+      return null;
+    });
+    return true;
+  }
+  let hit = false;
+  const done = await ndAnnRun("readwrite", (m, i) => {
+    const rq = m.get(key);
+    rq.onsuccess = () => {
+      if (!same(rq.result)) return;
+      hit = true;
+      if (next) { m.put(next, key); if (img) i.put(img, key); else i.delete(key); } else { m.delete(key); i.delete(key); }
+    };
+    return null;
+  });
+  // (9.2) مراجعة تالتة 30/9: لو كتابة تانية راحت لذاكرة الجلسة وإحنا في المعاملة، هي الأحدث ← مانكتبش فوقها ومانعرضش حاجة
+  if (ndAnnMem.has(key)) return false;
+  if (done) return hit;
+  // الكتابة فشلت (زي امتلاء مساحة الجهاز) ← ذاكرة الجلسة زي ndAnnPut، بس لو الفحص نجح جوه المعاملة أو مفيش رسمة (v = null).
+  // (9.2) مراجعة تالتة 30/9: قبلها الأحدث من جهاز تاني ماكانش بيظهر لو الكتابة فشلت (اتثبت في Chromium)
+  if (!next || (!hit && v !== null)) return false; // المسح فشل، أو اللي على الجهاز مش معروف ← يفضل زي ما هو (والمستني بيترفع تاني)
+  ndAnnMem.set(key, { meta: next, img: img || null });
+  return true;
+}
+async function ndAnnMetas(uid) { // [[key, meta]] للحساب ده، من غير الصور (خفيفة)
+  const out = new Map();
+  await ndAnnRun("readonly", (m) => {
+    const rq = m.openCursor(IDBKeyRange.bound(uid + "|", uid + "|\uffff"));
+    rq.onsuccess = () => { const c = rq.result; if (c) { out.set(c.key, c.value); c.continue(); } };
+    return null;
+  });
+  ndAnnMem.forEach((v, k) => { if (k.indexOf(uid + "|") === 0) out.set(k, v.meta); });
+  return Array.from(out.entries());
+}
+function ndAnnMine() { return useCloudState() ? currentUserId : null; }
+function ndAnnTooLargeToast() { showToast("تعذّر حفظ الرسم على حسابك لكبر حجمه، وحُفظ على هذا الجهاز فقط", 5000); }
+// الرسمة القديمة في app_state.annotations لنفس السؤال تتشال، عشان النقل مايرجّعهاش بعد حفظ أو مسح جديد
+function ndAnnDropLegacy(qCode) {
+  const m = cloudGet("annotations", null);
+  if (!m || typeof m !== "object" || !Object.prototype.hasOwnProperty.call(m, qCode)) return;
+  const n = Object.assign({}, m);
+  delete n[qCode];
+  if (Object.keys(n).length) cloudSet("annotations", n); else cloudDel("annotations");
+}
+
+// رفع أو مسح اللي مستني لسؤال واحد. من غير نت أو خطأ عابر ← يفضل مستني للمرة الجاية من غير رسالة
+// (9.2) مراجعة 30/9: نداءات السؤال الواحد ورا بعض (مش مع بعض)، عشان طلب قديم مايوصلش القاعدة بعد الأحدث
+// (حفظ اتأخر كان ممكن يكتب فوق حفظ أحدث، أو يرجّع رسمة اتمسحت بعده)
+const ndAnnFlushQ = new Map();
+function ndAnnFlush(uid, qCode) {
+  const key = uid + "|" + qCode;
+  const p = (ndAnnFlushQ.get(key) || Promise.resolve()).then(() => ndAnnFlushRun(uid, qCode)).catch(() => {});
+  ndAnnFlushQ.set(key, p);
+  p.then(() => { if (ndAnnFlushQ.get(key) === p) ndAnnFlushQ.delete(key); });
+  return p;
+}
+async function ndAnnFlushRun(uid, qCode) {
+  const key = uid + "|" + qCode;
+  let cur = await ndAnnGet(key);
+  if (!cur || !cur.meta || !cur.meta.p || !supabaseClient) return;
+  if ((cur.meta.ep || 0) < progressEpoch) { await ndAnnSetIf(key, cur.meta.v, null); return; } // من قبل تصفير التقدّم
+  // (9.2) مراجعة 30/9: قبل ما النقل يتقفل مفيش رفع ولا مسح، عشان p_migrate وهو شغال مايرجّعش رسمة اتمسحت دلوقتي
+  if (ndAnnMigNeeded(uid)) {
+    if (!memberStateSafeToUpload || currentUserId !== uid || !(await ndAnnMigrate(uid))) return; // تفضل مستنية
+    cur = await ndAnnGet(key); // ممكن تكون اتغيرت وإحنا مستنيين
+    if (!cur || !cur.meta || !cur.meta.p) return;
+  }
+  const meta = cur.meta;
+  // (9.2) مراجعة تانية 30/9: الطلب مايطلعش غير والحساب الشغال هو صاحب الرسمة (الرفع ممكن يستنى في الطابور والحساب يتغير،
+  // فكانت رسمة حساب بتتحفظ على الحساب اللي دخل بعده؛ اتثبت قبل التصليح)
+  if (currentUserId !== uid) return;
+  let res;
+  try {
+    res = meta.p === "del"
+      ? await supabaseClient.rpc("nd_annotation_delete", { p_q_code: qCode, p_epoch: meta.ep || 0 })
+      : await supabaseClient.rpc("nd_annotation_save", { p_q_code: qCode, p_image: cur.img, p_epoch: meta.ep || 0 });
+  } catch (e) { return; }
+  if (!res || currentUserId !== uid) return;
+  // الكتابة على الجهاز بعد الرد بشرط إن الرسمة ماتغيرتش وإحنا بنرفع (ndAnnSetIf)؛ لو اتغيرت ← الرفع الجاي في الطابور هيبعت الأحدث
+  if (res.error) {
+    const m = String(res.error.message || res.error || "");
+    if (m.indexOf("nd_stale_epoch") >= 0) { await ndAnnSetIf(key, meta.v, null); return; }
+    if (m.indexOf("nd_too_large") >= 0 || m.indexOf("nd_bad_") >= 0) {
+      if (meta.p === "del") { await ndAnnSetIf(key, meta.v, null); return; }
+      const kept = await ndAnnSetIf(key, meta.v, Object.assign({}, meta, { p: null, lo: true }), cur.img);
+      if (kept && m.indexOf("nd_too_large") >= 0) ndAnnTooLargeToast();
+    }
+    return;
+  }
+  if (meta.p === "del") await ndAnnSetIf(key, meta.v, null);
+  else await ndAnnSetIf(key, meta.v, Object.assign({}, meta, { p: null, lo: false, at: (res.data && res.data.at) || null }), cur.img);
+}
+
 async function saveAnnotationForQuestion(qCode, dataURL) {
-  const map = await loadAnnotations();
-  map[qCode] = dataURL;
-  await saveAnnotationsMap(map);
+  const uid = ndAnnMine();
+  if (!uid) { // الزائر زي ما هو
+    const map = await loadAnnotations();
+    map[qCode] = dataURL;
+    await saveAnnotationsMap(map);
+    return;
+  }
+  const key = uid + "|" + qCode;
+  const cur = await ndAnnGet(key);
+  const meta = { at: cur && cur.meta ? cur.meta.at : null, ep: progressEpoch, p: "save", v: ((cur && cur.meta && cur.meta.v) || 0) + 1, lo: false };
+  ndAnnDropLegacy(qCode);
+  if (dataURL.length > ND_ANN_MAX) { // فوق الحد ← على الجهاز بس
+    await ndAnnPut(key, Object.assign(meta, { p: null, lo: true }), dataURL);
+    ndAnnTooLargeToast();
+    return;
+  }
+  await ndAnnPut(key, meta, dataURL);
+  ndAnnFlush(uid, qCode);
 }
 async function removeAnnotationForQuestion(qCode) {
-  const map = await loadAnnotations();
-  delete map[qCode];
-  await saveAnnotationsMap(map);
+  const uid = ndAnnMine();
+  if (!uid) {
+    const map = await loadAnnotations();
+    delete map[qCode];
+    await saveAnnotationsMap(map);
+    return;
+  }
+  const key = uid + "|" + qCode;
+  const cur = await ndAnnGet(key);
+  ndAnnDropLegacy(qCode);
+  await ndAnnPut(key, { at: null, ep: progressEpoch, p: "del", v: ((cur && cur.meta && cur.meta.v) || 0) + 1, lo: false }, null);
+  ndAnnFlush(uid, qCode);
+}
+
+// (9.2) قرار صاحب المشروع 30/9: السؤال اللي اتسأل عليه الحساب مايتسألش تاني قبل 10 دقايق في نفس الفتحة
+// (فتحه تاني أو ضغطة More بتعيد رسم الشاشة). اللي على الجهاز بيظهر زي ما هو، والحفظ والمسح بيترفعوا زي ما هم.
+// الحل الأكبر (قايمة واحدة بكل الرسومات مع فتح التطبيق) اتسجّل في integration_backlog 55
+const ND_ANN_RECHECK_MS = 10 * 60 * 1000;
+const ndAnnChecked = new Map(); // uid|qCode ← وقت آخر سؤال للحساب نجح
+// عرض الرسم المحفوظ لسؤال: onImg(الصورة، replace) و onClear() لو اتمسحت من جهاز تاني
+async function ndAnnShow(qCode, onImg, onClear) {
+  const uid = ndAnnMine();
+  if (!uid) { // الزائر زي ما هو
+    const map = await loadAnnotations();
+    if (map && map[qCode]) onImg(map[qCode], false);
+    return;
+  }
+  const key = uid + "|" + qCode;
+  let cur = await ndAnnGet(key);
+  if (cur && cur.meta && (cur.meta.ep || 0) < progressEpoch) { await ndAnnSetIf(key, cur.meta.v, null); cur = null; } // من قبل التصفير
+  const meta = cur && cur.meta;
+  if (meta) { if (meta.p !== "del" && cur.img) onImg(cur.img, false); }
+  else {
+    const legacy = cloudGet("annotations", null); // لسه مااتنقلتش (أول فتح من غير نت مثلًا)
+    if (legacy && typeof legacy === "object" && typeof legacy[qCode] === "string") onImg(legacy[qCode], false);
+  }
+  if (meta && (meta.p || meta.lo)) { if (meta.p) ndAnnFlush(uid, qCode); return; } // المستني بيترفع، والمحلي بس مابيتغيرش من الحساب
+  if (!supabaseClient || !memberStateSafeToUpload || navigator.onLine === false) return;
+  const age = Date.now() - (ndAnnChecked.get(key) || -Infinity);
+  if (age >= 0 && age < ND_ANN_RECHECK_MS) return; // (9.2) اتسأل عليه من أقل من 10 دقايق (لو ساعة الجهاز رجعت لورا بيتسأل عادي)
+  if (ndAnnMigNeeded(uid) && !(await ndAnnMigrate(uid))) return; // (9.2) تصليح 30/9: قبل قفل النقل، الحساب ممكن يرجّع رسمة اتمسحت على 9.1
+  if (currentUserId !== uid) return;
+  let res;
+  try { res = await supabaseClient.rpc("nd_annotation_get", { p_q_code: qCode, p_known_at: (meta && meta.at) || null }); } catch (e) { return; }
+  if (!res || res.error || !res.data || currentUserId !== uid) return;
+  ndAnnChecked.set(key, Date.now());
+  const d = res.data, v0 = meta ? meta.v : null;
+  // (9.2) مراجعة تانية 30/9: لو اتحفظ أو اتمسح على الجهاز وإحنا بنسأل ← ndAnnSetIf مابتكتبش، واللي على الجهاز يفضل
+  if (!d.exists) { if (meta && await ndAnnSetIf(key, v0, null)) onClear(); return; }
+  if (typeof d.image !== "string") return; // زي اللي على الجهاز
+  if (await ndAnnSetIf(key, v0, { at: d.at || null, ep: progressEpoch, p: null, v: (v0 || 0) + 1, lo: false }, d.image)) onImg(d.image, true);
+}
+
+// النقل مرة واحدة من app_state.annotations (9.1 وقبله)، وبعده رفع أو مسح اللي مستني على الجهاز
+// (9.2) تصليح 30/9 (بموافقة صاحب المشروع): بعد ما كل مفاتيح النقل تنجح، nd_annotations_migrate_finish بتقفل النقل بالمفاتيح
+// اللي لسه في الحالة، فالنسخة المنقولة لرسمة اتمسحت على 9.1 (↩️ أو مسح بيانات الجهاز) تتمسح من الجدول بدل ما ترجع، وبعدها المفتاح
+// يتشال من الحالة. ولو المفتاح مش في الحالة خالص، بتتنادى بقايمة فاضية مرة واحدة على الجهاز لكل حساب (ndAnnMigDone في rawStorage)
+let ndAnnSyncing = false, ndAnnSyncTimer = null, ndAnnMigP = null, ndAnnMigUid = null;
+const ndAnnMigOk = new Set();
+function ndAnnMigNeeded(uid) {
+  const legacy = cloudGet("annotations", null);
+  if (legacy && typeof legacy === "object") return true;
+  if (ndAnnMigOk.has(uid)) return false;
+  if (rawStorage.get("ndAnnMigDone", false) === true) { ndAnnMigOk.add(uid); return false; }
+  return true;
+}
+function ndAnnMigrate(uid) { // true لو النقل اتقفل. نداء واحد في نفس الوقت (ndAnnShow وndAnnSync)
+  if (!ndAnnMigP || ndAnnMigUid !== uid) {
+    ndAnnMigUid = uid;
+    const p = ndAnnMigrateRun(uid).catch(() => false).finally(() => { if (ndAnnMigP === p) ndAnnMigP = null; });
+    ndAnnMigP = p;
+  }
+  return ndAnnMigP;
+}
+async function ndAnnMigrateRun(uid) {
+  if (!ndAnnMigNeeded(uid)) return true;
+  const legacy = cloudGet("annotations", null);
+  const has = !!(legacy && typeof legacy === "object");
+  const keys = []; // مفاتيح الرسم اللي لسه في الحالة
+  if (has) for (const q of Object.keys(legacy)) {
+    if (!/^Q[0-9]{1,12}$/.test(q)) continue; // مش رسمة سؤال من البنك
+    keys.push(q);
+    const img = legacy[q];
+    if (typeof img !== "string" || img.indexOf(ND_ANN_PNG) !== 0) continue;
+    if (img.length > ND_ANN_MAX) { // على الجهاز بس، ولو مفيش رسمة عليه للسؤال ده (مراجعة تانية 30/9: في نفس المعاملة)
+      await ndAnnSetIf(uid + "|" + q, null, { at: null, ep: progressEpoch, p: null, v: 1, lo: true }, img);
+      continue;
+    }
+    if (currentUserId !== uid) return false; // (9.2) مراجعة تانية 30/9: الطلب لنفس الحساب اللي النقل بتاعه
+    const { error } = await supabaseClient.rpc("nd_annotation_save", { p_q_code: q, p_image: img, p_epoch: progressEpoch, p_migrate: true });
+    if (currentUserId !== uid || error) return false;
+  }
+  if (currentUserId !== uid) return false;
+  const { error } = await supabaseClient.rpc("nd_annotations_migrate_finish", { p_keys: keys, p_epoch: progressEpoch });
+  if (currentUserId !== uid || error) return false;
+  rawStorage.set("ndAnnMigDone", true); // rawStorage صندوق الحساب ده بس
+  ndAnnMigOk.add(uid);
+  if (has) cloudDel("annotations");
+  return true;
+}
+function ndAnnSyncSoon() { clearTimeout(ndAnnSyncTimer); ndAnnSyncTimer = setTimeout(ndAnnSync, 1500); }
+async function ndAnnSync() {
+  const uid = ndAnnMine();
+  if (!uid || !supabaseClient || !memberStateSafeToUpload || ndAnnSyncing || navigator.onLine === false) return;
+  ndAnnSyncing = true;
+  try {
+    if (!(await ndAnnMigrate(uid))) return; // (9.2) مراجعة 30/9: النقل ماتقفلش ← اللي مستني يفضل للمرة الجاية
+    for (const [key, meta] of await ndAnnMetas(uid)) {
+      if (currentUserId !== uid) return;
+      if (meta && meta.p) await ndAnnFlush(uid, key.slice(uid.length + 1));
+    }
+  } catch (e) {
+  } finally { ndAnnSyncing = false; }
 }
 
 /* ============================================================
@@ -6709,6 +7006,10 @@ async function saveBestStreak(v) {
 async function resetAll() {
   rawStorage.clear();
   if (useCloudState()) {
+    // (9.2) بند 44 (2): الرسم بقى في جدول لوحده ← يتمسح من الحساب والجهاز كمان (زي ما كان بيتمسح مع app_state)
+    const annUid = currentUserId;
+    try { await supabaseClient.rpc("nd_annotations_clear_mine"); } catch (e) {}
+    try { for (const [k] of await ndAnnMetas(annUid)) await ndAnnDel(k); } catch (e) {}
     memberState = {};
     memberStatePendingSync = false;
     clearTimeout(memberStateSaveTimer);
@@ -8706,13 +9007,18 @@ function initAnnotateCanvas(qCode) {
   ctx.lineJoin = "round";
 
   // لو السؤال ده محفوظ عليه تظليل/كتابة قبل كده، ارسمها
-  loadAnnotations().then(map => {
-    const saved = map && map[qCode];
-    if (!saved) return;
+  // (9.2) بند 44 (2): من الجهاز فورًا، وبعدين من الحساب لو فيه أحدث (replace). الأحدث مابيغيّرش اللي قدامه لو بدأ يرسم أو حفظ أو مسح
+  let touched = false, cleared = false;
+  ndAnnShow(qCode, (saved, replace) => {
+    if (!canvas.isConnected || cleared || (replace && touched)) return;
     const img = new Image();
-    img.onload = () => ctx.drawImage(img, 0, 0, w, h);
+    img.onload = () => {
+      if (!canvas.isConnected || cleared || (replace && touched)) return;
+      if (replace) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, w, h);
+    };
     img.src = saved;
-  });
+  }, () => { if (canvas.isConnected && !touched) ctx.clearRect(0, 0, canvas.width, canvas.height); });
 
   let currentTool = null; // "highlighter" | "pen" | "eraser" | null
   let drawing = false;
@@ -8746,6 +9052,7 @@ function initAnnotateCanvas(qCode) {
   if (saveBtn) {
     saveBtn.addEventListener("click", async () => {
       if (!requireAccount()) return;
+      touched = true;
       const dataURL = canvas.toDataURL("image/png");
       await saveAnnotationForQuestion(qCode, dataURL);
       saveBtn.classList.add("saved-flash");
@@ -8757,6 +9064,7 @@ function initAnnotateCanvas(qCode) {
   const unsaveBtn = document.getElementById("qToolUnsave");
   if (unsaveBtn) {
     unsaveBtn.addEventListener("click", async () => {
+      touched = true; cleared = true;
       await removeAnnotationForQuestion(qCode);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     });
@@ -8797,6 +9105,7 @@ function initAnnotateCanvas(qCode) {
 
   function start(e) {
     if (!currentTool) return;
+    touched = true;
     drawing = true;
     const p = getPos(e);
     lastX = p.x; lastY = p.y;
