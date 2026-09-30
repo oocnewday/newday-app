@@ -9,7 +9,7 @@
    بدل الجديدة.
    ============================================================ */
 
-const CACHE_NAME = "newday-cache-v45"; // (9.0)
+const CACHE_NAME = "newday-cache-v46"; // (9.1)
 // (ج) مكتبة الدخول (Supabase) جاية من برّه — بنخزّنها عشان التطبيق يفتح بحسابك من غير نت
 const CDN_CACHE = "newday-cdn-v1";
 const CDN_ALLOW = ["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"];
@@ -129,6 +129,8 @@ self.addEventListener("notificationclick", (event) => {
 // 5) كل طلب — استراتيجية Cache-First مع تحديث في الخلفية
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  // (9.1) بند 39 ج: ملف الإدارة (admin.js) مابيتخزّنش ومابيتلمسش — الطلب بيروح للنت علطول (والتطبيق بيطلبه بعد فحص الدور وكلمة السر بس)
+  if (new URL(event.request.url).pathname.endsWith("/admin.js")) return;
   // الطلبات الخارجية (زي Supabase أو الخطوط) منلمسهاش — إلا مكتبة الدخول (تتخزّن للفتح من غير نت)
   if (new URL(event.request.url).origin !== self.location.origin) {
     // (7.3) والخطوط كمان (عشان شكل التطبيق يفضل زي ما هو من غير نت)
