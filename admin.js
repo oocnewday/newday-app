@@ -1,4 +1,4 @@
-/*! ND-ADMIN-JS 1.0 api=1 */
+/*! ND-ADMIN-JS 1.1 api=1 */
 /* ============================================================
    ملف الإدارة (admin.js) — لوحة الأدمن في تطبيق OOC New Day
    ------------------------------------------------------------
@@ -16,7 +16,7 @@
      وapi= في أول سطر = أقل apiVersion محتاجه الملف ده من ملف الطلاب.
    ============================================================ */
 (function (ND) {
-  const ADMIN_JS_VERSION = "1.0";
+  const ADMIN_JS_VERSION = "1.1"; // (1.1) بند 44 (1): قسم "تبديل الأجهزة"
   const ADMIN_API_MIN = 1;
   // ملف طلاب أقدم من ملف الإدارة ← ملف الطلاب بيعرض «لوحة الإدارة محتاجة تحديث التطبيق»، والملف ده مابيشتغلش
   if (!ND || !(ND.apiVersion >= ADMIN_API_MIN)) { if (ND && typeof ND.registerAdmin === "function") ND.registerAdmin({ outdated: true }); return; }
@@ -350,6 +350,18 @@ const ADMIN_PANEL_HTML = `<div class="screen" id="adminPanel">
               <button type="button" class="member-back-btn" id="membersBackToList">← رجوع للقائمة</button>
               <div id="membersDetailContent"></div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- (1.1) بند 44 (1): تبديل الأجهزة — قراية بس، بصلاحية الأعضاء -->
+      <div class="app-guide-item admin-item" id="adminDevicesItem" data-perm="members">
+        <div class="app-guide-header"><span class="app-guide-icon">📱</span><span class="app-guide-title">تبديل الأجهزة</span><span class="app-guide-chevron">▾</span></div>
+        <div class="app-guide-content-wrap">
+          <div class="app-guide-content admin-form">
+            <span class="ag-note">الحساب بيشتغل على جهاز واحد في نفس الوقت. هنا كل مرة حساب اتفتح على جهاز غير اللي كان شغال عليه في آخر 7 أيام، والحسابات مترتبة بعدد التبديلات. تبديلات كتير أو أجهزة كتير ممكن معناها إن أكتر من حد بيستخدم نفس الحساب، والقرار للإدارة. حسابات الإدارة مابتتسجّلش هنا.</span>
+            <button class="admin-save-btn" id="devSwitchRefresh" type="button">🔄 تحديث</button>
+            <div id="devSwitchList"></div>
           </div>
         </div>
       </div>
@@ -757,6 +769,20 @@ const ADMIN_PANEL_CSS = String.raw`.admin-item.admin-locked{ opacity:0.55; }
 .admin-subsection{ margin-top:18px; padding-top:12px; border-top:1px dashed rgba(255,255,255,.18); }
 /* (9.1) سطر نسخة ملف الإدارة تحت عنوان اللوحة */
 .admin-js-version{ font-size:11px; color:var(--ink-soft); opacity:.7; margin:4px 0 0; }
+/* (1.1) بند 44 (1): تبديل الأجهزة */
+#devSwitchRefresh{ margin-bottom:10px; }
+.dev-acc{ background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; margin-bottom:6px; font-family:'Cairo',sans-serif; color:#fff; }
+.dev-acc-head{ display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; color:inherit; font:inherit; font-size:12.5px; padding:12px 14px; cursor:pointer; text-align:start; }
+.dev-acc-who{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; direction:ltr; text-align:right; }
+.dev-acc-count{ flex-shrink:0; font-size:11px; font-weight:700; padding:3px 8px; border-radius:8px; background:rgba(124,196,255,.12); color:#9fd3ff; }
+.dev-acc-sub{ padding:0 14px 10px; font-size:11.5px; opacity:.8; }
+.dev-acc-rows{ display:none; padding:0 14px 12px; }
+.dev-acc.open .dev-acc-rows{ display:block; }
+.dev-row{ display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; padding:7px 0; border-top:1px solid rgba(255,255,255,0.08); font-size:11.5px; }
+.dev-row-time{ direction:ltr; opacity:.75; }
+.dev-row-label{ flex:1; min-width:120px; direction:ltr; text-align:right; overflow-wrap:anywhere; }
+.dev-row .mer-badge{ font-size:10px; font-weight:700; padding:3px 8px; border-radius:8px; }
+.dev-row .dev-known{ background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.75); }
 `;
 
 
@@ -3058,6 +3084,93 @@ function mountAdminPanel() {
   }
   wireAdminHeaders();
   setupAdminForms();
+  setupDeviceSwitches(); // (1.1) بند 44 (1)
+}
+
+/* ============================================================
+   (1.1) بند 44 (1): تبديل الأجهزة — قراية بس (nd_admin_device_switches، وصلاحية الأعضاء بتتفحص جوه الدالة)
+   كل سطر = الحساب اتفتح على جهاز غير الشغال (أو أول جهاز ليه). التجميع لكل حساب هنا: عدد التبديلات
+   (من غير أول جهاز)، وعدد الأجهزة المختلفة، وآخر تبديل. أي نص من القاعدة بيتعرض بـ ndEscape.
+   بيتحمّل لما القسم يتفتح بس (مش مع فتح اللوحة)، وزرار "تحديث" بيجيبه تاني.
+   ============================================================ */
+const DEV_SWITCH_DAYS = 7;
+let devSwitchLoaded = false;
+let devSwitchLoading = false;
+async function renderDeviceSwitches() {
+  const wrap = document.getElementById("devSwitchList");
+  if (!wrap || !supabaseClient || devSwitchLoading) return;
+  devSwitchLoading = true;
+  wrap.innerHTML = `<div class="auth-field-help">بيتحمّل...</div>`;
+  try {
+    const { data, error } = await withTimeout(supabaseClient.rpc("nd_admin_device_switches", { p_days: DEV_SWITCH_DAYS }), 10000, "تبديل الأجهزة");
+    if (error || !Array.isArray(data)) {
+      const raw = error ? (error.message || JSON.stringify(error)) : "لا توجد بيانات";
+      wrap.innerHTML = `<div class="auth-field-help">معرفتش أجيب السجل — (${ndEscape(raw)})</div>`;
+      return;
+    }
+    devSwitchLoaded = true;
+    const acc = new Map();
+    data.forEach(r => {
+      if (!r || !r.user_id) return;
+      let a = acc.get(r.user_id);
+      if (!a) { a = { r: r, rows: [], switches: 0, devices: new Set(), last: null }; acc.set(r.user_id, a); }
+      a.rows.push(r);
+      a.devices.add(r.device_no);
+      if (!r.is_first) {
+        a.switches++;
+        if (!a.last || String(r.at) > String(a.last)) a.last = r.at;
+      }
+    });
+    const list = Array.from(acc.values()).sort((x, y) => (y.switches - x.switches) || (y.devices.size - x.devices.size)
+      || String(y.last || y.rows[0].at).localeCompare(String(x.last || x.rows[0].at)));
+    if (!list.length) {
+      wrap.innerHTML = `<div class="auth-field-help">مفيش أي تبديل في آخر ${DEV_SWITCH_DAYS} أيام.</div>`;
+      return;
+    }
+    wrap.innerHTML = "";
+    list.forEach(a => {
+      const who = a.r.display_name || a.r.email || "—";
+      const box = document.createElement("div");
+      box.className = "dev-acc";
+      box.innerHTML = `
+        <button type="button" class="dev-acc-head" aria-expanded="false">
+          <span class="dev-acc-who">${ndEscape(who)} <bdi class="member-no-tag">${ndEscape(a.r.member_no || "")}</bdi></span>
+          <span class="dev-acc-count">🔁 ${a.switches} تبديل</span>
+        </button>
+        <div class="dev-acc-sub">📱 ${a.devices.size} ${a.devices.size === 1 ? "جهاز" : "أجهزة"}${a.last ? ` · آخر تبديل <bdi dir="ltr">${ndEscape(fmtActTime(a.last))}</bdi>` : ""}${a.r.email && a.r.display_name ? ` · <bdi dir="ltr">${ndEscape(a.r.email)}</bdi>` : ""}</div>
+        <div class="dev-acc-rows"></div>`;
+      const rowsWrap = box.querySelector(".dev-acc-rows");
+      a.rows.forEach(r => {
+        const row = document.createElement("div");
+        row.className = "dev-row";
+        const kind = r.is_first ? `<span class="mer-badge dev-known">أول جهاز</span>`
+          : (r.is_new ? `<span class="mer-badge mer-new">🆕 جهاز جديد</span>` : `<span class="mer-badge dev-known">جهاز معروف</span>`);
+        row.innerHTML = `<span class="dev-row-time">${ndEscape(fmtActTime(r.at))}</span>
+          <span class="dev-row-label">${ndEscape("جهاز " + (r.device_no || "?") + (r.label ? " — " + r.label : ""))}</span>${kind}`;
+        rowsWrap.appendChild(row);
+      });
+      const head = box.querySelector(".dev-acc-head");
+      head.addEventListener("click", () => {
+        const open = box.classList.toggle("open");
+        head.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      wrap.appendChild(box);
+    });
+  } catch (e) {
+    wrap.innerHTML = `<div class="auth-field-help">معرفتش أجيب السجل — اتأكد من النت وجرّب تاني.</div>`;
+  } finally {
+    devSwitchLoading = false;
+  }
+}
+function setupDeviceSwitches() {
+  const item = document.getElementById("adminDevicesItem");
+  if (!item) return;
+  const header = item.querySelector(".app-guide-header");
+  if (header) header.addEventListener("click", () => {
+    setTimeout(() => { if (item.classList.contains("open") && !devSwitchLoaded) renderDeviceSwitches(); }, 0);
+  });
+  const btn = document.getElementById("devSwitchRefresh");
+  if (btn) btn.addEventListener("click", () => renderDeviceSwitches());
 }
 
 mountAdminPanel();

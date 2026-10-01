@@ -2653,6 +2653,17 @@ bdi{ unicode-bidi: isolate; }
 .reminders-push-hint{ font-size:12.5px; line-height:1.6; color:#8a5a00; background:#fff4d6; border:1px solid #f0d896; border-radius:10px; padding:10px 12px; margin:8px 0; display:flex; flex-direction:column; gap:8px; }
 .reminders-push-hint-btn{ align-self:flex-start; background:var(--q-teal); color:#fff; border:none; border-radius:8px; padding:7px 12px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; }
 .force-update-status{ text-align:center; font-size:13.5px; font-weight:700; color:#f5d67a; margin:0 0 12px; animation:statusPulse 1.2s ease-in-out infinite; }
+/* (9.3) بند 44 (1): شاشة "حسابك مفتوح الآن على جهاز آخر" — فوق التطبيق كله، تحت شاشة الافتتاح بس */
+.nd-dev-overlay{
+  position:fixed; inset:0; z-index:99000; display:none; overflow-y:auto;
+  padding:30px 24px calc(30px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg, #1a2340 0%, #0a0f1a 100%);
+}
+.nd-dev-overlay.show{ display:flex; }
+.nd-dev-card{ margin:auto; }
+.nd-dev-card .profile-edit-save{ padding:12px; font-size:14.5px; }
+.nd-dev-card button:disabled{ opacity:0.6; }
+.nd-dev-logout{ width:100%; margin-top:10px; background:transparent; color:rgba(255,255,255,0.85); border-color:rgba(255,255,255,0.3); }
 @keyframes statusPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.45; } }
 .notif-tabs{ display:flex; gap:8px; margin-bottom:10px; }
 .notif-tab{ flex:1; padding:9px 10px; border-radius:10px; border:1px solid var(--q-rule); background:#fff; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; color:var(--q-ink-soft, #567); }
@@ -5885,7 +5896,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 9.2; // (9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
+const APP_VERSION = 9.3; // (9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
 const APP_VERSION_LABEL = Number(APP_VERSION).toFixed(1); // للعرض بس (6.0 مش 6)
 
 const CONFIG = {
@@ -5984,6 +5995,7 @@ function readMemberMirror() {
 }
 function writeMemberMirror() {
   if (!currentUserId || !memberStateSafeToUpload) return; // منخزّنش حالة ناقصة على الجهاز
+  if (ndDevLocked) return; // (9.3) بند 44 (1): الحساب اتفتح على جهاز تاني ← النسخة اتكتبت قبل القفل ومفيش كتابة بعده
   try {
     localStorage.setItem(memberMirrorKey(), JSON.stringify({ state: memberState, pending: memberStatePendingSync, failed: memberSyncHadFailure }));
   } catch (e) {
@@ -6005,7 +6017,221 @@ function flushMemberMirror() {
 }
 const memberSavedAt = (st) => (st && typeof st.__savedAt === "number") ? st.__savedAt : 0;
 
+// ------------------------------------------------------------
+// (9.3) بند 44 (1): جهاز واحد في نفس الوقت (قرار صاحب المشروع 30/9، الخطة في مستند الشغل).
+//  - فتح التطبيق بالنت (nd_device_claim) بيخلّي الجهاز ده الشغال للحساب، والقاعدة بترفض حفظ التقدّم والنقاط
+//    من أي جهاز غيره (trg_guard_active_device) برسالة ثابتة nd_device_replaced.
+//  - رقم الجهاز عشوائي مرة واحدة في localStorage (nd_device_id)، وبيتبعت جوه نسخة الحفظ بس (__dev) والقاعدة
+//    بتشيله قبل التخزين. تبويبين في نفس المتصفح = جهاز واحد، ومسح بيانات المتصفح = جهاز جديد.
+//  - الجهاز اللي خرج: شاشة "حسابك مفتوح الآن على جهاز آخر"، والحفظ بيقف. (هـ2، قرار صاحب المشروع 30/9 بعد (هـ))
+//    نسخة الجهاز بتتكتب بآخر حالة قبل القفل ومابتتمسحش: الحل اللي مااترفعش بيتلغي بس لو الجهاز التاني حفظ على
+//    الحساب بعد آخر حالة الجهاز ده شافها (p_base)، وده بيتحسم في "المتابعة" أو في الفتح الجاي بنفس الحساب.
+//    (هـ3، قرار صاحب المشروع 30/9) "حفظ" هنا = حل: المقارنة على علامة الحل __solvedAt (بتتغير بس في awardPoints عن
+//    طريق ndMarkSolved) مش __savedAt، فالفتح والتصفّح من غير حل على الجهاز التاني مابيلغيش حلول الجهاز ده. ولو الجهاز ده
+//    عليه حل مااترفعش والتاني ماحلّش، نسخة الجهاز هي اللي بتترفع حتى لو التاني حفظ بعدها تغييرات من غير حل (المفضلة ومكان
+//    السؤال) — عيب قبله صاحب المشروع بشرط التنبيه في "دليل التطبيق" (integration_backlog 59).
+//  - الإدارة (admin/owner) مستثناة (القاعدة كمان بتستثنيها)، والزائر مالوش دعوة.
+//  - لو الدوال مش موجودة أو فشلت ← التطبيق بيكمّل زي 9.2، والقاعدة هي الحكم.
+// ------------------------------------------------------------
+const ND_DEVICE_KEY = "nd_device_id";
+const ND_DEVICE_RE = /^[A-Za-z0-9_-]{16,128}$/;
+let ndDeviceIdMem = null;
+let ndDevLocked = false; // true = الحساب اتفتح على جهاز تاني ← مفيش حفظ من هنا لحد "المتابعة" أو الخروج
+function ndDeviceId() {
+  if (ndDeviceIdMem) return ndDeviceIdMem;
+  let id = null;
+  try { id = localStorage.getItem(ND_DEVICE_KEY); } catch (e) {}
+  if (!id || !ND_DEVICE_RE.test(id)) {
+    const b = new Uint8Array(18);
+    try { crypto.getRandomValues(b); } catch (e) { for (let i = 0; i < b.length; i++) b[i] = Math.floor(Math.random() * 256); }
+    id = btoa(String.fromCharCode.apply(null, b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    try { localStorage.setItem(ND_DEVICE_KEY, id); } catch (e) {} // من غير تخزين (تصفّح خاص) ← رقم للفتحة دي بس
+  }
+  ndDeviceIdMem = id;
+  return id;
+}
+// نوع الجهاز والمتصفح لسجل الإدارة بس (أقصاه 60 حرف، والقاعدة بتقصّه كمان)
+function ndDeviceLabel() {
+  const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
+  const touchMac = /Macintosh/.test(ua) && typeof navigator !== "undefined" && navigator.maxTouchPoints > 1;
+  const os = /iPad/.test(ua) || touchMac ? "iPad" : /iPhone|iPod/.test(ua) ? "iPhone" : /Android/.test(ua) ? "Android"
+    : /Windows/.test(ua) ? "Windows" : /CrOS/.test(ua) ? "ChromeOS" : /Mac OS X|Macintosh/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : "";
+  const br = /EdgA?\/|EdgiOS/.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /OPR\/|OPiOS/.test(ua) ? "Opera"
+    : /FxiOS|Firefox\//.test(ua) ? "Firefox" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "";
+  let model = "";
+  const m = ua.match(/Android[^;)]*;\s*([^;)]+?)(?:\s+Build\/[^;)]*)?\)/);
+  if (m && !/^(wv|K|Linux|U)$/i.test(m[1].trim())) model = m[1].trim();
+  return [os, model, br].filter(Boolean).join(" · ").slice(0, 60);
+}
+// آخر علامة حل (__solvedAt) الجهاز ده شافها على الحساب (من التحميل أو من حفظ نجح) — p_base في nd_device_claim.
+// (هـ3) كانت __savedAt؛ نفس المفتاح لأن 9.3 مااتنشرش، فمفيش جهاز عليه القيمة القديمة
+function ndDevBaseKey(uid) { return "nd_dev_base_" + uid; }
+function ndDevGetBase(uid) {
+  try { const v = JSON.parse(localStorage.getItem(ndDevBaseKey(uid))); return (typeof v === "number" && v > 0) ? v : null; } catch (e) { return null; }
+}
+function ndDevSetBase(uid, v) {
+  if (!uid) return;
+  try { localStorage.setItem(ndDevBaseKey(uid), JSON.stringify((typeof v === "number" && v > 0) ? v : null)); } catch (e) {}
+}
+function ndDevExempt() { return isGuest || !currentUserId || currentUserRole === "admin" || currentUserRole === "owner"; }
+function ndIsReplacedError(e) { return String((e && (e.message || e)) || "").indexOf("nd_device_replaced") !== -1; }
+// (هـ3) علامة الحل: وقت آخر حل على الحساب (null لو مفيش، زي حساب ماحلّش على 9.3 أو نسخة من 9.2)
+function ndSolvedAt(st) { const v = st && st.__solvedAt; return (typeof v === "number" && v > 0) ? v : null; }
+// بتتنادى من awardPoints بس (الحل = أي نداء ليها، قرار صاحب المشروع 30/9)، بنفس طريقة cloudSet في الحفظ.
+// للعضو بس؛ الزائر مالوش حالة على الحساب
+function ndMarkSolved() {
+  if (!useCloudState()) return;
+  const now = Date.now();
+  memberState.__solvedAt = now;
+  memberState.__savedAt = now;
+  memberStatePendingSync = true;
+  queueMemberMirror();
+  clearTimeout(memberStateSaveTimer);
+  memberStateSaveTimer = setTimeout(persistMemberState, 2500);
+}
+// نسخة الجهاز فيها حل مااترفعش: مستنية رفع، وفيها علامة حل غير آخر علامة الجهاز شافها على الحساب (base)
+function ndMirrorUnsentSolve(m, base) {
+  const s = m && m.pending ? ndSolvedAt(m.state) : null;
+  return s !== null && s !== base;
+}
+// نسخة مستنية اتلغت: الرسالة بس لو كان فيها حل مااترفعش. (هـ4، قرار صاحب المشروع 1/10) النسخة اللي مافيهاش علامة الحل
+// = مافيهاش حل، من غير احتياط لنسخ 9.2: الطلاب هيبدأوا على آخر نسخة، و9.2 على أجهزة الفريق التجريبية بس وتقدّمها
+// مسموح يضيع. كده الرسالة ماتظهرش لطالب لسه ماحلّش على 9.3 وغيّر من غير حل (زي المفضلة) والجهاز التاني حل
+function ndMirrorDropNeedsMsg(m, base) {
+  return ndMirrorUnsentSolve(m, base);
+}
+// نسخة الحفظ اللي بتروح للقاعدة: الحالة + __dev (memberState نفسه مابيتلمسش)
+function ndWithDev(st) { return Object.assign({}, st, { __dev: ndDeviceId() }); }
+// (هـ2) رسالة الحل اللي اتلغى (نص صاحب المشروع 30/9)، وعلامة في sessionStorage عشان تظهر بعد إعادة الفتح من "المتابعة"
+const ND_DEV_DROPPED_MSG = "حُمِّل تقدّمك المحفوظ من جهازك الآخر. ولضمان العدالة بين جميع المشتركين يُحفظ التقدّم من جهاز واحد في الوقت نفسه، لذلك لم تُحفظ الإجابات التي حللتها على هذا الجهاز دون اتصال. ننصحك بالاتصال بالإنترنت قبل الانتقال إلى جهاز آخر.";
+const ND_DEV_DROP_FLAG = "nd_dev_dropped";
+function ndDevSetDropFlag(uid) { try { sessionStorage.setItem(ND_DEV_DROP_FLAG, String(uid)); } catch (e) {} }
+function ndDevTakeDropFlag(uid) {
+  try {
+    const v = sessionStorage.getItem(ND_DEV_DROP_FLAG);
+    if (v !== null) sessionStorage.removeItem(ND_DEV_DROP_FLAG);
+    return !!uid && v === String(uid);
+  } catch (e) { return false; }
+}
+// بترجع رد القاعدة ({switched, other_saved} أو {exempt}) أو null لو فشلت — عمرها ما بترمي خطأ
+async function ndDeviceClaim(uid) {
+  try {
+    const { data, error } = await supabaseClient.rpc("nd_device_claim", { p_device: ndDeviceId(), p_label: ndDeviceLabel(), p_base: ndDevGetBase(uid) });
+    return (!error && data && typeof data === "object") ? data : null;
+  } catch (e) { return null; }
+}
+// الجهاز ده لسه الشغال؟ true / false (ووقتها الشاشة) / null لو مانعرفش (من غير نت أو فشل) ← القاعدة هي الحكم
+let ndDevChecking = null;
+function ndDeviceCheck() {
+  if (ndDevLocked) return Promise.resolve(false);
+  if (!supabaseClient || ndDevExempt() || offlineAccountMode || !memberStateLoaded || !memberStateSafeToUpload) return Promise.resolve(null);
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return Promise.resolve(null);
+  if (ndDevChecking) return ndDevChecking;
+  const uid = currentUserId;
+  ndDevChecking = (async () => {
+    try {
+      const { data, error } = await withTimeout(supabaseClient.rpc("nd_device_check", { p_device: ndDeviceId() }), 5000, "فحص الجهاز");
+      if (error || typeof data !== "boolean") return null;
+      if (data === false && currentUserId === uid) { ndDeviceReplaced(); return false; }
+      return data;
+    } catch (e) { return null; } finally { ndDevChecking = null; }
+  })();
+  return ndDevChecking;
+}
+// الحساب اتفتح على جهاز تاني: وقف الحفظ والشاشة. (هـ2) قبل القفل: لو فيه تعديلات مااترفعتش أو كتابة نسخة مستنية،
+// نسخة الجهاز بتتكتب فورًا بآخر حالة (تايمر النسخة ممكن يكون لسه ماكتبش آخر حل)، ومابتتمسحش. بعد القفل مفيش كتابة ليها
+function ndDeviceReplaced() {
+  if (ndDevLocked || ndDevExempt()) return;
+  const flushMirror = memberStatePendingSync || !!memberMirrorTimer;
+  if (memberMirrorTimer) { clearTimeout(memberMirrorTimer); memberMirrorTimer = null; }
+  if (flushMirror) writeMemberMirror();
+  ndDevLocked = true;
+  memberStatePendingSync = false;
+  memberSyncHadFailure = false;
+  clearTimeout(memberStateSaveTimer);
+  ndDevShowScreen();
+}
+function ndDevShowScreen() {
+  let el = document.getElementById("ndDeviceReplaced");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "ndDeviceReplaced";
+    el.className = "nd-dev-overlay";
+    el.setAttribute("role", "alertdialog");
+    el.setAttribute("aria-modal", "true");
+    el.setAttribute("aria-labelledby", "ndDevTitle");
+    const card = document.createElement("div");
+    card.className = "motivation-card nd-dev-card";
+    const icon = document.createElement("div");
+    icon.className = "motivation-icon";
+    icon.textContent = "📱";
+    const title = document.createElement("h2");
+    title.className = "motivation-title";
+    title.id = "ndDevTitle";
+    title.textContent = "حسابك مفتوح الآن على جهاز آخر";
+    const text = document.createElement("p");
+    text.className = "motivation-text";
+    // (هـ2) نص صاحب المشروع 30/9، و(هـ3) من غير الجملة الأولى لأن العنوان بيقولها (قرار صاحب المشروع 30/9)
+    text.textContent = "حرصًا على العدالة بين الجميع، يعمل الحساب على جهاز واحد في الوقت نفسه، لذلك توقّف حفظ تقدّمك على هذا الجهاز. للمتابعة هنا اضغط «المتابعة على هذا الجهاز»، وسيتوقّف الحفظ على الجهاز الآخر.";
+    const status = document.createElement("p");
+    status.className = "force-update-status";
+    status.id = "ndDevStatus";
+    status.style.display = "none";
+    const go = document.createElement("button");
+    go.type = "button";
+    go.className = "profile-edit-save";
+    go.id = "ndDevContinue";
+    go.textContent = "المتابعة على هذا الجهاز";
+    const out = document.createElement("button");
+    out.type = "button";
+    out.className = "profile-edit-cancel nd-dev-logout";
+    out.id = "ndDevLogout";
+    out.textContent = "تسجيل الخروج";
+    go.addEventListener("click", ndDevContinueHere);
+    out.addEventListener("click", () => { go.disabled = true; out.disabled = true; handleLogout(); });
+    card.append(icon, title, text, status, go, out);
+    el.appendChild(card);
+    document.body.appendChild(el);
+  }
+  const st = document.getElementById("ndDevStatus");
+  if (st) st.style.display = "none";
+  el.querySelectorAll("button").forEach(b => { b.disabled = false; });
+  el.classList.add("show");
+}
+function ndDevHideScreen() {
+  const el = document.getElementById("ndDeviceReplaced");
+  if (el) el.classList.remove("show");
+}
+// "المتابعة على هذا الجهاز": الجهاز ده ياخد الدور (والتاني يقف بنفس الشاشة)، وبعدين فتح من جديد.
+// (هـ2) nd_device_claim بـ p_base: الجهاز التاني حفظ على الحساب ← نسخة الجهاز تتمسح والرسالة بعد الفتح (لو كان فيها
+// حل مااترفعش)؛ ماحفظش ← النسخة تفضل والفتح بيرفعها عادي؛ الرد ماوصلش ← "تعذّر الاتصال…" والنسخة تفضل
+// (هـ3) نفس قرار loadMemberState: other_saved = الطالب حل على الجهاز التاني (علامة الحل). ولو ماحلّش والنسخة فيها حل
+// مااترفعش، الفتح بعد إعادة التحميل بيرفعها حتى لو التاني حفظ بعدها (nd_device_claim هناك بترجع false لأن الجهاز بقى الشغال)
+async function ndDevContinueHere() {
+  const st = document.getElementById("ndDevStatus");
+  const btns = document.querySelectorAll("#ndDeviceReplaced button");
+  const fail = () => {
+    if (st) { st.textContent = "تعذّر الاتصال بالإنترنت، يُرجى المحاولة مرة أخرى."; st.style.display = ""; }
+    btns.forEach(b => { b.disabled = false; });
+  };
+  btns.forEach(b => { b.disabled = true; });
+  if (st) { st.textContent = "جارٍ التحميل…"; st.style.display = ""; }
+  if (!supabaseClient || !currentUserId || (typeof navigator !== "undefined" && navigator.onLine === false)) { fail(); return; }
+  let r = null;
+  try { r = await withTimeout(ndDeviceClaim(currentUserId), 8000, "الجهاز"); } catch (e) { r = null; }
+  if (!r) { fail(); return; }
+  if (r.other_saved === true) {
+    const m = readMemberMirror();
+    try { localStorage.removeItem(memberMirrorKey()); } catch (e) {}
+    if (ndMirrorDropNeedsMsg(m, ndDevGetBase(currentUserId))) ndDevSetDropFlag(currentUserId); // (هـ3)
+  }
+  location.reload();
+}
+
 async function loadMemberState() {
+  // (9.3) بند 44 (1): أي تحميل (دخول، أو خروج، أو رجوع النت) بيبدأ من غير قفل الجهاز
+  ndDevLocked = false;
+  ndDevHideScreen();
   memberState = {};
   memberStateLoaded = false;
   memberStateSafeToUpload = false;
@@ -6017,6 +6243,11 @@ async function loadMemberState() {
   let server = null;
   // (7.3) لو عارفين إن مفيش نت (أو الجلسة متحمّلة من الجهاز) ← نكمّل من نسخة الجهاز علطول
   const skipServer = offlineAccountMode || (typeof navigator !== "undefined" && navigator.onLine === false);
+  // (9.3) بند 44 (1): فتح بالنت = الجهاز ده يبقى الشغال. بيتبعت مع السؤال الخفيف في نفس الوقت (من غير تأخير للفتح)
+  const claimUid = currentUserId;
+  const claimBase = ndDevGetBase(claimUid); // (هـ3) نفس p_base اللي nd_device_claim بتتبعت بيها، للقرار تحت
+  const claimT0 = Date.now();
+  const claimP = (supabaseClient && !skipServer && !ndDevExempt()) ? ndDeviceClaim(claimUid) : null;
   let serverEpoch = null;
   // (9.0) بند 46: قبل تنزيل الحالة كلها بنسأل سؤال خفيف: ميعاد آخر حفظ (__savedAt) ورقم التصفير اللي جوه الحالة
   // على السيرفر، مع progress_epoch. لو نسخة الجهاز مش مستنية رفع، وبنفس ميعاد آخر حفظ ونفس رقم التصفير،
@@ -6055,17 +6286,36 @@ async function loadMemberState() {
     mirrorOk = null;
     try { localStorage.removeItem(memberMirrorKey()); } catch (e) {}
   }
+  // (9.3) بند 44 (1) (قرار صاحب المشروع 30/9): الطالب حل على جهاز تاني بعد آخر علامة حل الجهاز ده شافها (other_saved،
+  // المقارنة على __solvedAt من (هـ3)) ← النسخة المستنية هنا مابتترفعش (الشغال هو المرجع)، والرسالة بس لو كان فيها حل
+  // مااترفعش (من غير احتياط نسخ 9.2، قرار صاحب المشروع 1/10). (هـ3) ماحلّش والنسخة فيها حل مااترفعش ← النسخة هي اللي بتترفع حتى لو التاني
+  // حفظ بعدها من غير حل (عيب قبله صاحب المشروع بشرط التنبيه). غير كده، أو الرد ماوصلش، أو حساب إدارة ← زي 9.2 بالظبط
+  let claim = null;
+  if (claimP) { try { claim = await withTimeout(claimP, Math.max(1500, 5000 - (Date.now() - claimT0)), "الجهاز"); } catch (e) {} }
+  let ndDropped = false;
+  let ndForceMirror = false;
+  const claimOk = !!(claim && currentUserId === claimUid);
+  if (mirrorOk && mirrorOk.pending && claimOk && claim.other_saved === true) {
+    ndDropped = ndMirrorDropNeedsMsg(mirrorOk, claimBase);
+    mirrorOk = null;
+    try { localStorage.removeItem(memberMirrorKey()); } catch (e) {}
+  } else if (mirrorOk && claimOk && claim.other_saved === false && ndMirrorUnsentSolve(mirrorOk, claimBase)) {
+    ndForceMirror = true;
+  }
 
   if (server) {
     memberStateSafeToUpload = true;
     progressEpoch = serverEpoch || epochOf(server);
-    if (mirrorOk && mirrorOk.pending && memberSavedAt(mirrorOk.state) > memberSavedAt(server)) {
+    if (mirrorOk && mirrorOk.pending && (ndForceMirror || memberSavedAt(mirrorOk.state) > memberSavedAt(server))) {
       // الجهاز عليه تقدّم أحدث لسه مااترفعش (جلسة من غير نت) ← نكمّل منه ونرفعه
       memberState = mirrorOk.state;
+      // (هـ3) النسخة بتترفع لأن فيها حل والتاني ماحلّش ← ميعاد الحفظ مايرجعش لورا عن اللي على الحساب
+      if (ndForceMirror) memberState.__savedAt = Math.max(Date.now(), memberSavedAt(server) + 1, memberSavedAt(memberState));
       memberStatePendingSync = true;
       memberSyncHadFailure = !!mirrorOk.failed; // (ج) نطمّنه بس لو الحفظ فشل فعلًا بسبب النت
     } else {
       memberState = server;
+      ndDevSetBase(currentUserId, ndSolvedAt(server)); // (9.3) بند 44 (1) و(هـ3): آخر علامة حل الجهاز ده شافها على الحساب
     }
     const epochBefore = epochOf(memberState);
     memberState.__epoch = progressEpoch;
@@ -6082,6 +6332,8 @@ async function loadMemberState() {
     memberState = {}; // مفيش نت ولا نسخة ← حالة مؤقتة، ممنوع تتكتب على السيرفر
   }
   memberStateLoaded = true;
+  // (هـ2) الرسالة كمان بعد "المتابعة" لو اتلغى فيها حل مااترفعش (علامة sessionStorage للحساب ده)
+  if (ndDevTakeDropFlag(currentUserId) || ndDropped) setTimeout(() => showToast(ND_DEV_DROPPED_MSG, 10000), 1500);
   // (ج) كان هنا بيعتبر أي تعديل مستني "فشل بسبب النت" فالرسالة كانت بتظهر مع كل فتح للتطبيق.
   // دلوقتي الرفع بيحصل بهدوء، والرسالة بتظهر بس لو آخر حفظ فشل فعلًا لأن مكانش فيه نت
   if (memberStatePendingSync && memberStateSafeToUpload && navigator.onLine) persistMemberState();
@@ -6121,16 +6373,20 @@ async function persistMemberState() {
   if (!supabaseClient || !currentUserId) return;
   if (!memberStateSafeToUpload) return; // أ8: الحالة دي مش متحمّلة من السيرفر — منكتبش فوق تقدّمه
   if (!memberStatePendingSync) return;
+  if (ndDevLocked) return; // (9.3) بند 44 (1): الحساب اتفتح على جهاز تاني
   const userAtStart = currentUserId;
   const snapshotAt = memberState.__savedAt;
+  const solvedSent = ndSolvedAt(memberState); // (هـ3) علامة الحل اللي في النسخة دي ← p_base لو الحفظ نجح
   memberState.__epoch = progressEpoch; // (7.8)
   try {
     // (7.8) النقاط بتتحفظ مع التقدّم في نفس الطلب (عشان السيرفر يتأكد من رقم التصفير للاتنين)
-    const upd = { app_state: memberState };
+    // (9.3) بند 44 (1): رقم الجهاز (__dev) في النسخة اللي بتتبعت بس، والقاعدة بتشيله قبل التخزين
+    const upd = { app_state: ndWithDev(memberState) };
     if (typeof memberState.totalPoints === "number") upd.total_points = memberState.totalPoints;
     const { error } = await supabaseClient.from("users").update(upd).eq("id", userAtStart);
     if (error) throw error;
     if (currentUserId !== userAtStart) return; // الحساب اتغيّر في النص
+    ndDevSetBase(userAtStart, solvedSent); // (9.3) بند 44 (1) و(هـ3): علامة الحل اللي بقت على الحساب
     if (memberState.__savedAt === snapshotAt) {
       memberStatePendingSync = false;
       writeMemberMirror();
@@ -6142,6 +6398,8 @@ async function persistMemberState() {
     }
     ndSawOffline = false;
   } catch (e) {
+    // (9.3) بند 44 (1): القاعدة رفضت لأن الحساب اتفتح على جهاز تاني ← الشاشة ووقف الحفظ
+    if (ndIsReplacedError(e) && currentUserId === userAtStart) { ndDeviceReplaced(); return; }
     // بنعتبره "فشل بسبب النت" بس لو فعلًا مفيش نت أو الطلب نفسه ماوصلش — مش أي خطأ
     const msg = String((e && (e.message || e)) || "");
     if (!navigator.onLine || ndSawOffline) {
@@ -6170,7 +6428,10 @@ if (typeof window !== "undefined") {
     if (!memberStateSafeToUpload) { recoverMemberStateAfterOffline(); return; }
     if (memberStatePendingSync) { clearTimeout(memberStateSaveTimer); persistMemberState(); }
     ndAnnSyncSoon(); // (9.2) بند 44 (2)
+    ndDeviceCheck(); // (9.3) بند 44 (1)
   });
+  // (9.3) بند 44 (1): الرجوع للتطبيق ← الجهاز ده لسه الشغال؟ (لو لأ: الشاشة قبل أي حفظ)
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") ndDeviceCheck(); });
   // لما يسيب التطبيق (يقفله أو ينقل لتطبيق تاني) ← نحفظ فورًا بدل ما نستنى
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "hidden") return;
@@ -7004,6 +7265,8 @@ async function saveBestStreak(v) {
 
 /* --- RESET --- */
 async function resetAll() {
+  // (9.3) بند 44 (1): المسح زي الحفظ ← من جهاز مش هو الشغال: الشاشة، ومفيش مسح (ولا حتى الرسم)
+  if (useCloudState() && (await ndDeviceCheck()) === false) return false;
   rawStorage.clear();
   if (useCloudState()) {
     // (9.2) بند 44 (2): الرسم بقى في جدول لوحده ← يتمسح من الحساب والجهاز كمان (زي ما كان بيتمسح مع app_state)
@@ -7014,7 +7277,10 @@ async function resetAll() {
     memberStatePendingSync = false;
     clearTimeout(memberStateSaveTimer);
     try { localStorage.removeItem(memberMirrorKey()); } catch (e) {} // أ8: ونسخة الجهاز كمان
-    try { await supabaseClient.from("users").update({ app_state: {} }).eq("id", currentUserId); } catch (e) {}
+    try {
+      const { error } = await supabaseClient.from("users").update({ app_state: ndWithDev({}) }).eq("id", currentUserId); // (9.3) __dev بيتشال في القاعدة
+      if (ndIsReplacedError(error)) ndDeviceReplaced();
+    } catch (e) {}
   }
   return true;
 }
@@ -7887,6 +8153,10 @@ async function awardPoints(qCode, isCorrect, answered) {
   if (earned > 0) {
     totalPoints += earned;
   }
+
+  // (9.3) بند 44 (1) (هـ3): علامة الحل (__solvedAt) للعضو، والجهاز التاني بيعرف منها إن الطالب حل هنا.
+  // أي طريق جديد بيسجّل حل من غير awardPoints لازم ينادي ndMarkSolved هو كمان
+  ndMarkSolved();
 
   // 3) حدّث حالة السؤال
   const st = getQuestionState(qCode);
@@ -11162,6 +11432,15 @@ function renderBarChart(stats) {
    مش وصف عام، عشان يفضل دقيق لو أي تفصيلة اتغيرت بعدين.
    ============================================================ */
 const APP_GUIDE_ITEMS = [
+  // (9.3) بند 44 (1) وintegration_backlog 59: تنبيهات الجهاز الواحد والاستخدام دون اتصال (نصوص خطة (هـ3) 30/9)
+  {
+    icon: "⚠️",
+    title: "تنبيهات مهمة",
+    html: `
+      <p><b>استخدام أكثر من جهاز:</b> يعمل حسابك على جهاز واحد في الوقت نفسه حرصًا على العدالة بين جميع المشتركين. عند فتح حسابك على جهاز آخر يتوقّف حفظ التقدّم على الجهاز الأول، ويمكنك العودة إليه بالضغط على «المتابعة على هذا الجهاز».</p>
+      <p><b>الاستخدام دون اتصال بالإنترنت:</b> يمكنك حل الأسئلة دون اتصال، ويُحفظ تقدّمك على الجهاز ثم يُرفع إلى حسابك تلقائيًا عند عودة الاتصال بإذن الله. أما إذا حللت أسئلة على جهاز آخر قبل رفع هذا التقدّم، فيُعتمد تقدّم الجهاز الآخر ولا تُحفظ إجابات هذا الجهاز. وإذا لم تحلّ أسئلة على الجهاز الآخر، يُرفع تقدّم هذا الجهاز، وقد يحلّ محل تغييرات أخرى أجريتها هناك مثل المفضلة أو مكان التوقف. لذلك ننصحك بالاتصال بالإنترنت قبل الانتقال إلى جهاز آخر.</p>
+    `
+  },
   {
     icon: "🏁",
     title: "نظام التسابق والحل",
