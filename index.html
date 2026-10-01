@@ -5896,7 +5896,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 9.3; // (9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
+const APP_VERSION = 9.4; // (9.4) بنود 61 و62 و63: النقاط وحد الـ 149، والرسم مع الجهاز الواحد، ورسايل النت. و(9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
 const APP_VERSION_LABEL = Number(APP_VERSION).toFixed(1); // للعرض بس (6.0 مش 6)
 
 const CONFIG = {
@@ -5978,8 +5978,40 @@ let memberStatePendingSync = false;  // فيه تغييرات لسه موصلت�
 let memberSyncHadFailure = false;
 // (6.7) رسالة "عاد الاتصال" بتظهر بس لو النت فصل فعلًا (الجهاز قال إنه من غير نت) — مش لأي خطأ عابر في السيرفر
 let ndSawOffline = (typeof navigator !== "undefined" && navigator.onLine === false);
-if (typeof window !== "undefined") window.addEventListener("offline", () => { ndSawOffline = true; });    // حفظ فشل (غالبًا مفيش نت) — لما ينجح نطمّنه
+if (typeof window !== "undefined") window.addEventListener("offline", () => { ndSawOffline = true; ndOfflineNotice(); });    // حفظ فشل (غالبًا مفيش نت) — لما ينجح نطمّنه
 let memberMirrorQueued = false;
+// (9.4) بند 63 (القرار 6، طلب صاحب المشروع 1/10): رسايل النت للعضو (مش الزائر، والإدارة مستثناة زي ما هي مستثناة من الجهاز الواحد)
+// أ: النت قطع أو التطبيق اتفتح من غير نت ← مرة واحدة في الفتحة
+const ND_OFFLINE_MSG = "انقطع الاتصال بالإنترنت. للحفاظ على تقدّمك في هذه الجلسة والجلسات التالية على هذا الجهاز، يُرجى الاتصال بالإنترنت من هذا الجهاز قبل بدء جلسة جديدة من جهاز آخر بالحساب نفسه، حتى نتمكّن من حفظ تقدّمك على حسابك.";
+let ndOfflineMsgShown = false;
+// (9.4) بند 65: الحالة مؤقتة (مفيش نسخة على الجهاز، memberStateSafeToUpload = false) ← إجابات الجلسة مش هتترفع، فالنص بيقول كده صراحة
+const ND_OFFLINE_NOCOPY_MSG = "انقطع الاتصال بالإنترنت، ولا توجد نسخة من تقدّمك على هذا الجهاز، لذلك لن تُحفظ إجاباتك في هذه الجلسة حتى يعود الاتصال ويُحمَّل تقدّمك من حسابك بإذن الله.";
+function ndOfflineNotice() {
+  if (ndOfflineMsgShown || ndDevExempt()) return;
+  if (typeof navigator === "undefined" || navigator.onLine !== false) return;
+  if (!memberStateLoaded) return; // (9.4) بند 65: النص بيتحدد بعد التحميل (loadMemberState بتنادينا في آخرها)
+  ndOfflineMsgShown = true;
+  showToast(memberStateSafeToUpload ? ND_OFFLINE_MSG : ND_OFFLINE_NOCOPY_MSG, 10000);
+}
+// ب (بنص صاحب المشروع 1/10): أول حفظ كتابة أو تظليل من غير نت ← مرة واحدة في الفتحة
+const ND_OFFLINE_WRITE_MSG = "حُفظت كتابتك على هذا الجهاز، وستُرفع هي وكل ما تكتبه بعدها في هذه الجلسة إلى حسابك عند عودة الاتصال بإذن الله. يُرجى الاتصال بالإنترنت من هذا الجهاز قبل فتح حسابك على جهاز آخر، حتى لا تفقد ما كتبته.";
+let ndOfflineWriteShown = false;
+function ndOfflineWriteNotice() {
+  if (ndOfflineWriteShown || ndDevExempt()) return;
+  if (typeof navigator === "undefined" || navigator.onLine !== false) return;
+  ndOfflineWriteShown = true;
+  showToast(ND_OFFLINE_WRITE_MSG, 10000);
+}
+// ج: علامة على الجهاز (بتفضل بعد قفل التطبيق) إن فيه حل أو تغيير في المفضلة اتعمل من غير نت ولسه مااترفعش، عشان رسالة رجوع النت
+// تقول "وحُفظ تقدّمك" بس لو ده اللي اترفع. بتتشال مع أول رفع كامل، أو لو الفتح ماكمّلش من نسخة مستنية
+function ndOffChgKey(uid) { return "nd_off_chg_" + uid; }
+function ndNoteOfflineChange() {
+  if (!useCloudState() || !currentUserId) return;
+  if (!((typeof navigator !== "undefined" && navigator.onLine === false) || ndSawOffline || memberSyncHadFailure)) return;
+  try { localStorage.setItem(ndOffChgKey(currentUserId), "1"); } catch (e) {}
+}
+function ndOffChgHas(uid) { try { return localStorage.getItem(ndOffChgKey(uid)) === "1"; } catch (e) { return false; } }
+function ndOffChgClear(uid) { try { localStorage.removeItem(ndOffChgKey(uid)); } catch (e) {} }
 
 function memberMirrorKey() { return "nd_member_state_" + currentUserId; }
 // (7.8) رقم التصفير: كل تصفير للتقدّم من الإدارة بياخد رقم جديد على السيرفر. التطبيق بيبعته مع كل حفظ،
@@ -6081,6 +6113,7 @@ function ndSolvedAt(st) { const v = st && st.__solvedAt; return (typeof v === "n
 // للعضو بس؛ الزائر مالوش حالة على الحساب
 function ndMarkSolved() {
   if (!useCloudState()) return;
+  ndNoteOfflineChange(); // (9.4) بند 63 (ج)
   const now = Date.now();
   memberState.__solvedAt = now;
   memberState.__savedAt = now;
@@ -6103,7 +6136,8 @@ function ndMirrorDropNeedsMsg(m, base) {
 // نسخة الحفظ اللي بتروح للقاعدة: الحالة + __dev (memberState نفسه مابيتلمسش)
 function ndWithDev(st) { return Object.assign({}, st, { __dev: ndDeviceId() }); }
 // (هـ2) رسالة الحل اللي اتلغى (نص صاحب المشروع 30/9)، وعلامة في sessionStorage عشان تظهر بعد إعادة الفتح من "المتابعة"
-const ND_DEV_DROPPED_MSG = "حُمِّل تقدّمك المحفوظ من جهازك الآخر. ولضمان العدالة بين جميع المشتركين يُحفظ التقدّم من جهاز واحد في الوقت نفسه، لذلك لم تُحفظ الإجابات التي حللتها على هذا الجهاز دون اتصال. ننصحك بالاتصال بالإنترنت قبل الانتقال إلى جهاز آخر.";
+// (9.4) بند 62 (القرار 4، نص صاحب المشروع 1/10): الرسالة لو اتلغى حل أو رسم
+const ND_DEV_DROPPED_MSG = "حُمِّل تقدّمك المحفوظ من جهازك الآخر. ولضمان العدالة بين جميع المشتركين يُحفظ التقدّم من جهاز واحد في الوقت نفسه، لذلك لم يُحفظ ما سجّلته على هذا الجهاز دون اتصال من إجابات أو كتابة على الأسئلة. ننصحك بالاتصال بالإنترنت قبل الانتقال إلى جهاز آخر.";
 const ND_DEV_DROP_FLAG = "nd_dev_dropped";
 function ndDevSetDropFlag(uid) { try { sessionStorage.setItem(ND_DEV_DROP_FLAG, String(uid)); } catch (e) {} }
 function ndDevTakeDropFlag(uid) {
@@ -6224,6 +6258,7 @@ async function ndDevContinueHere() {
     const m = readMemberMirror();
     try { localStorage.removeItem(memberMirrorKey()); } catch (e) {}
     if (ndMirrorDropNeedsMsg(m, ndDevGetBase(currentUserId))) ndDevSetDropFlag(currentUserId); // (هـ3)
+    if ((await ndAnnDropPending(currentUserId)) > 0) ndDevSetDropFlag(currentUserId); // (9.4) بند 62: الرسم المستني كمان
   }
   location.reload();
 }
@@ -6302,6 +6337,9 @@ async function loadMemberState() {
   } else if (mirrorOk && claimOk && claim.other_saved === false && ndMirrorUnsentSolve(mirrorOk, claimBase)) {
     ndForceMirror = true;
   }
+  // (9.4) بند 62 (القرار 4، الخيار أ): الرسم بيمشي مع الحلول. الطالب حل على الجهاز التاني ← الرسم اللي مستني رفع هنا بيتمسح
+  // من الجهاز ومايترفعش (الحساب هو المرجع)، والرسالة لو اتمسح رسم كمان
+  if (claimOk && claim.other_saved === true && (await ndAnnDropPending(claimUid)) > 0) ndDropped = true;
 
   if (server) {
     memberStateSafeToUpload = true;
@@ -6334,6 +6372,9 @@ async function loadMemberState() {
   memberStateLoaded = true;
   // (هـ2) الرسالة كمان بعد "المتابعة" لو اتلغى فيها حل مااترفعش (علامة sessionStorage للحساب ده)
   if (ndDevTakeDropFlag(currentUserId) || ndDropped) setTimeout(() => showToast(ND_DEV_DROPPED_MSG, 10000), 1500);
+  // (9.4) بند 63: الفتح ماكمّلش من نسخة مستنية ← مفيش حاجة من غير نت مستنية رفع (أ: والتنبيه لو الفتح من غير نت)
+  if (memberStateSafeToUpload && !memberStatePendingSync) ndOffChgClear(currentUserId);
+  setTimeout(ndOfflineNotice, 1500);
   // (ج) كان هنا بيعتبر أي تعديل مستني "فشل بسبب النت" فالرسالة كانت بتظهر مع كل فتح للتطبيق.
   // دلوقتي الرفع بيحصل بهدوء، والرسالة بتظهر بس لو آخر حفظ فشل فعلًا لأن مكانش فيه نت
   if (memberStatePendingSync && memberStateSafeToUpload && navigator.onLine) persistMemberState();
@@ -6387,14 +6428,17 @@ async function persistMemberState() {
     if (error) throw error;
     if (currentUserId !== userAtStart) return; // الحساب اتغيّر في النص
     ndDevSetBase(userAtStart, solvedSent); // (9.3) بند 44 (1) و(هـ3): علامة الحل اللي بقت على الحساب
+    const offChg = ndOffChgHas(userAtStart); // (9.4) بند 63 (ج)
     if (memberState.__savedAt === snapshotAt) {
       memberStatePendingSync = false;
       writeMemberMirror();
+      ndOffChgClear(userAtStart);
     }
     if (memberSyncHadFailure) {
       memberSyncHadFailure = false;
       writeMemberMirror();
-      showToast("☁️ عاد الاتصال بالإنترنت وحُفظ تقدّمك بفضل الله", 3500);
+      // (9.4) بند 63 (القرار 6 ج): "وحُفظ تقدّمك" بس لو اترفع حل أو تغيير في المفضلة اتعملوا من غير نت، وغير كده رجوع النت بس
+      showToast(offChg ? "☁️ عاد الاتصال بالإنترنت وحُفظ تقدّمك بفضل الله" : "☁️ عاد الاتصال بالإنترنت", 3500);
     }
     ndSawOffline = false;
   } catch (e) {
@@ -6411,15 +6455,36 @@ async function persistMemberState() {
 }
 
 // فتح التطبيق من غير نت ومن غير نسخة على الجهاز ← أول ما النت يرجع نحمّل تقدّمه الحقيقي من السيرفر
-async function recoverMemberStateAfterOffline() {
-  if (isGuest || !currentUserId || memberStateSafeToUpload) return;
+// (9.4) بند 65: لحد 9.3 مستمع online ده كان بيشتغل قبل verifyOfflineSession، والتطبيق لسه offlineAccountMode = true،
+// فـ loadMemberState كانت بتسيب السيرفر (skipServer) ومحدش بيحاول تاني. دلوقتي: لو الجلسة لسه ماتأكدتش ← نرجع،
+// وverifyOfflineSession بتنادينا بعد التأكيد. ومرة واحدة في نفس الوقت (ndRecoverP)، ومش وقت أي تحميل تاني (memberStateLoaded)
+let ndRecoverP = null;
+const ND_RECOVER_LOST_MSG = "☁️ عاد الاتصال بالإنترنت وحُمّل تقدّمك من حسابك بفضل الله. ولم تُحفظ الإجابات التي سجّلتها قبل عودة الاتصال، لأن تقدّمك لم يكن على هذا الجهاز.";
+function recoverMemberStateAfterOffline() {
+  if (isGuest || !currentUserId || memberStateSafeToUpload || !memberStateLoaded) return Promise.resolve();
+  if (offlineAccountMode || (typeof navigator !== "undefined" && navigator.onLine === false)) return Promise.resolve();
+  if (ndRecoverP) return ndRecoverP;
+  ndRecoverP = (async () => {
+    try { await ndRecoverRun(); } catch (e) { /* زي 9.3: يتحاول تاني مع رجوع النت أو الرجوع للتطبيق */ } finally { ndRecoverP = null; }
+  })();
+  return ndRecoverP;
+}
+async function ndRecoverRun() {
+  const uid = currentUserId;
+  // (9.4) بند 65: حل في الحالة المؤقتة (ndMarkSolved بتحط __solvedAt) ← مش هيترفع (الحساب هو المرجع، أ8)، فالرسالة بتقول كده
+  const hadTempSolve = !!ndSolvedAt(memberState);
+  const tempState = memberState;
   await loadMemberState();
-  if (!memberStateSafeToUpload) return;
+  if (currentUserId !== uid) return;
+  // (9.4) بند 65 (مراجعة 1/10): التحميل فشل (السيرفر مارجعش في المهلة) ← loadMemberState رجّعت الحالة {}، فالحالة المؤقتة
+  // ترجع زي ما هي (الحالة الحدية د: إجابات الجلسة ماتختفيش من الشاشة قبل التحميل، وعلامة الحل تفضل للرسالة في المحاولة الجاية)
+  if (!memberStateSafeToUpload) { if (memberStateLoaded) memberState = tempState; return; }
   await loadState();
   try { renderModeTabs(); } catch (e) {}
   const active = document.querySelector(".screen.active");
   if (active && active.id === "questions") { try { renderQuestion(); } catch (e) {} }
-  showToast("☁️ عاد الاتصال بالإنترنت وحُمّل تقدّمك بفضل الله", 3500);
+  if (hadTempSolve) showToast(ND_RECOVER_LOST_MSG, 10000);
+  else showToast("☁️ عاد الاتصال بالإنترنت وحُمّل تقدّمك بفضل الله", 3500);
 }
 
 if (typeof window !== "undefined") {
@@ -6431,7 +6496,11 @@ if (typeof window !== "undefined") {
     ndDeviceCheck(); // (9.3) بند 44 (1)
   });
   // (9.3) بند 44 (1): الرجوع للتطبيق ← الجهاز ده لسه الشغال؟ (لو لأ: الشاشة قبل أي حفظ)
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") ndDeviceCheck(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    ndDeviceCheck();
+    if (!memberStateSafeToUpload) recoverMemberStateAfterOffline(); // (9.4) بند 65
+  });
   // لما يسيب التطبيق (يقفله أو ينقل لتطبيق تاني) ← نحفظ فورًا بدل ما نستنى
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "hidden") return;
@@ -6777,6 +6846,9 @@ async function ndAnnFlushRun(uid, qCode) {
   const key = uid + "|" + qCode;
   let cur = await ndAnnGet(key);
   if (!cur || !cur.meta || !cur.meta.p || !supabaseClient) return;
+  // (9.4) بند 62: مفيش رفع ولا مسح والجهاز مقفول بشاشة "حسابك مفتوح الآن على جهاز آخر"، ولا وتحميل الحالة شغال (رد nd_device_claim
+  // ممكن يقول إن الطالب حل على الجهاز التاني، فالرسم المستني يتمسح من الجهاز بدل ما يترفع) ← يفضل مستني
+  if (ndDevLocked || !memberStateLoaded) return;
   if ((cur.meta.ep || 0) < progressEpoch) { await ndAnnSetIf(key, cur.meta.v, null); return; } // من قبل تصفير التقدّم
   // (9.2) مراجعة 30/9: قبل ما النقل يتقفل مفيش رفع ولا مسح، عشان p_migrate وهو شغال مايرجّعش رسمة اتمسحت دلوقتي
   if (ndAnnMigNeeded(uid)) {
@@ -6789,10 +6861,12 @@ async function ndAnnFlushRun(uid, qCode) {
   // فكانت رسمة حساب بتتحفظ على الحساب اللي دخل بعده؛ اتثبت قبل التصليح)
   if (currentUserId !== uid) return;
   let res;
+  // (9.4) بند 62: رقم الجهاز، والقاعدة بترفض من جهاز مش الشغال بـ nd_device_replaced (item62_annotation_device) ← مفيش فرع
+  // ليه تحت، فالرسمة بتفضل مستنية (لو الجهاز رجع الشغال بترتفع، ولو الطالب حل على التاني بتتمسح مع الحلول)
   try {
     res = meta.p === "del"
-      ? await supabaseClient.rpc("nd_annotation_delete", { p_q_code: qCode, p_epoch: meta.ep || 0 })
-      : await supabaseClient.rpc("nd_annotation_save", { p_q_code: qCode, p_image: cur.img, p_epoch: meta.ep || 0 });
+      ? await supabaseClient.rpc("nd_annotation_delete", { p_q_code: qCode, p_epoch: meta.ep || 0, p_device: ndDeviceId() })
+      : await supabaseClient.rpc("nd_annotation_save", { p_q_code: qCode, p_image: cur.img, p_epoch: meta.ep || 0, p_device: ndDeviceId() });
   } catch (e) { return; }
   if (!res || currentUserId !== uid) return;
   // الكتابة على الجهاز بعد الرد بشرط إن الرسمة ماتغيرتش وإحنا بنرفع (ndAnnSetIf)؛ لو اتغيرت ← الرفع الجاي في الطابور هيبعت الأحدث
@@ -6808,6 +6882,19 @@ async function ndAnnFlushRun(uid, qCode) {
   }
   if (meta.p === "del") await ndAnnSetIf(key, meta.v, null);
   else await ndAnnSetIf(key, meta.v, Object.assign({}, meta, { p: null, lo: false, at: (res.data && res.data.at) || null }), cur.img);
+}
+
+// (9.4) بند 62 (القرار 4، الخيار أ): الطالب حل على جهاز تاني (other_saved) ← الرسم اللي مستني رفع أو مسح على الجهاز ده بيتشال من
+// الجهاز (ينسى اللي حفظه، والسؤال بيعرض اللي على الحساب) ومايترفعش. بشرط رقم التعديل (ndAnnSetIf)، عشان حفظ جديد في نفس اللحظة
+// مايتمسحش. اللي اترفع قبل كده واللي على الجهاز بس لكبر حجمه (p فاضي) مابيتلمسوش. بترجع عدد اللي اتشال
+async function ndAnnDropPending(uid) {
+  let n = 0;
+  try {
+    for (const [key, meta] of await ndAnnMetas(uid)) {
+      if (meta && meta.p && (await ndAnnSetIf(key, meta.v, null))) n++;
+    }
+  } catch (e) {}
+  return n;
 }
 
 async function saveAnnotationForQuestion(qCode, dataURL) {
@@ -6907,6 +6994,7 @@ function ndAnnMigrate(uid) { // true لو النقل اتقفل. نداء واح
 }
 async function ndAnnMigrateRun(uid) {
   if (!ndAnnMigNeeded(uid)) return true;
+  if (ndDevLocked) return false; // (9.4) بند 62: مفيش رفع والجهاز مقفول
   const legacy = cloudGet("annotations", null);
   const has = !!(legacy && typeof legacy === "object");
   const keys = []; // مفاتيح الرسم اللي لسه في الحالة
@@ -6920,7 +7008,7 @@ async function ndAnnMigrateRun(uid) {
       continue;
     }
     if (currentUserId !== uid) return false; // (9.2) مراجعة تانية 30/9: الطلب لنفس الحساب اللي النقل بتاعه
-    const { error } = await supabaseClient.rpc("nd_annotation_save", { p_q_code: q, p_image: img, p_epoch: progressEpoch, p_migrate: true });
+    const { error } = await supabaseClient.rpc("nd_annotation_save", { p_q_code: q, p_image: img, p_epoch: progressEpoch, p_migrate: true, p_device: ndDeviceId() /* (9.4) بند 62 */ });
     if (currentUserId !== uid || error) return false;
   }
   if (currentUserId !== uid) return false;
@@ -6934,7 +7022,7 @@ async function ndAnnMigrateRun(uid) {
 function ndAnnSyncSoon() { clearTimeout(ndAnnSyncTimer); ndAnnSyncTimer = setTimeout(ndAnnSync, 1500); }
 async function ndAnnSync() {
   const uid = ndAnnMine();
-  if (!uid || !supabaseClient || !memberStateSafeToUpload || ndAnnSyncing || navigator.onLine === false) return;
+  if (!uid || !supabaseClient || !memberStateSafeToUpload || ndAnnSyncing || navigator.onLine === false || ndDevLocked) return; // (9.4) بند 62: ndDevLocked
   ndAnnSyncing = true;
   try {
     if (!(await ndAnnMigrate(uid))) return; // (9.2) مراجعة 30/9: النقل ماتقفلش ← اللي مستني يفضل للمرة الجاية
@@ -7996,6 +8084,16 @@ function getQuestionState(qCode) {
       return resetState;
     }
   }
+  // (9.4) بند 61 (قرار صاحب المشروع 1/10): النص اللي كان كامل في دورة خلصت (حالات 9.3 وقبلها: الغلط بعد الكامل كان بيرجّعه
+  // نص ويسيب firstCorrectAt) ← firstCorrectAt يتشال من غير ما العلامة تتغير، فالصح بعدها ياخد +1 زي أي نص
+  if (st.state === "half" && st.firstCorrectAt) {
+    const diffDays = (Date.now() + debugTimeOffsetMs - st.firstCorrectAt) / (1000 * 60 * 60 * 24);
+    if (diffDays >= recomputeCycleDays) {
+      const cleared = Object.assign({}, st, { firstCorrectAt: null });
+      questionState[qCode] = cleared;
+      return cleared;
+    }
+  }
 
   return st;
 }
@@ -8057,6 +8155,9 @@ function resetQuestionStateIfExpired(qCode) {
    - سؤال كان صح ورجع قبل 3 أيام = 0
    - بعد 3 أيام → يُحسب من جديد
    - Daily limit: 149 سؤال جديد/يوم
+   - (9.4) بند 61 (قرار صاحب المشروع 1/10): السؤال مايدّيش أكتر من نقطتين في الدورة (مدتها recomputeCycleDays من لوحة الأدمن):
+     الكامل جوه الدورة + غلط أو إظهار = 0 والعلامة تفضل كاملة، والنص اللي كان كامل في نفس الدورة + صح = 0.
+     وبعد 149 سؤال مختلف في اليوم، الجديد = 0. المرجع: مستند "منطق تطبيق الطلاب"
    ============================================================ */
 
 /**
@@ -8084,9 +8185,9 @@ function calculatePoints(qCode, isCorrect) {
     };
   }
 
-  // لو السؤال حله قبل كده (وانتهى الكولداون) → يتعامل كأنه جديد
-  // لكن لو هو في dailyNewIds، يبقى محسوب النهاردة بالفعل
-  if (!isNewToday && dailyNewIds.length >= CONFIG.DAILY_LIMIT) {
+  // (9.4) بند 61: الحد كان معكوس (كان بيصفّر الأسئلة اللي اتعدّت النهاردة ويسيب الجديد ياخد). زي دليل التطبيق:
+  // بعد 149 سؤال مختلف في اليوم، السؤال الجديد = 0 ومابيتعدّش (awardPoints مابتضيفوش)، واللي اتعدّ بالقاعدة العادية
+  if (isNewToday && dailyNewIds.length >= CONFIG.DAILY_LIMIT) {
     return {
       earned: 0,
       newState: st.state,
@@ -8096,6 +8197,10 @@ function calculatePoints(qCode, isCorrect) {
 
   // الحالة 1: صح
   if (isCorrect) {
+    // (9.4) بند 61: النص اللي كان كامل جوه الدورة دي (عليه firstCorrectAt، حالات 9.3) مالوش نقاط لحد ما الدورة تخلص
+    if (st.state === "half" && st.firstCorrectAt) {
+      return { earned: 0, newState: "full", reason: "correct-in-cycle" };
+    }
     // لو كان غلط قبل كده
     if (st.state === "half") {
       return {
@@ -8113,6 +8218,12 @@ function calculatePoints(qCode, isCorrect) {
   }
 
   // الحالة 2: غلط
+  // (9.4) بند 61 (قرار صاحب المشروع 1/10): الكامل جوه الدورة + غلط أو إظهار من غير اختيار = 0 والعلامة تفضل كاملة (والسؤال
+  // بيروح Wrong في awardPoints زي ما هو). قبلها كان +1 ونص علامة، والصح بعدها +1، وهكذا من غير حد. جوه الدورة = عليه
+  // firstCorrectAt (getQuestionState بيرجّع الكامل فاضي لما الدورة تخلص)، أو حالة قديمة من غير firstCorrectAt والتهدئة شغالة
+  if (st.state === "full" && (st.firstCorrectAt || cooldownActive)) {
+    return { earned: 0, newState: "full", reason: "wrong-in-cycle" };
+  }
   // لو كان صح قبل كده (وانتهى الكولداون) → يرجع half
   if (st.state === "full") {
     return {
@@ -8163,7 +8274,8 @@ async function awardPoints(qCode, isCorrect, answered) {
   setQuestionState(qCode, {
     state: result.newState,
     lastScoredAt: earned > 0 ? Date.now() + debugTimeOffsetMs : st.lastScoredAt,
-    firstCorrectAt: (result.newState === "full" && !st.firstCorrectAt) ? (Date.now() + debugTimeOffsetMs) : st.firstCorrectAt,
+    // (9.4) بند 61: الدورة بتبدأ من حل صح بس (الغلط جوه الدورة بقى بيسيب العلامة كاملة)
+    firstCorrectAt: (isCorrect && result.newState === "full" && !st.firstCorrectAt) ? (Date.now() + debugTimeOffsetMs) : st.firstCorrectAt,
     earnedPoints: (st.earnedPoints || 0) + earned
   });
 
@@ -9325,6 +9437,7 @@ function initAnnotateCanvas(qCode) {
       touched = true;
       const dataURL = canvas.toDataURL("image/png");
       await saveAnnotationForQuestion(qCode, dataURL);
+      if (dataURL.length <= ND_ANN_MAX) ndOfflineWriteNotice(); // (9.4) بند 63 (ب)؛ فوق الحد ليه رسالته
       saveBtn.classList.add("saved-flash");
       setTimeout(() => saveBtn.classList.remove("saved-flash"), 600);
     });
@@ -10341,6 +10454,8 @@ function setupProfileEditing() {
   if (colorSaveBtn) {
     colorSaveBtn.addEventListener("click", async () => {
       if (!pendingColor) return;
+      // (9.4) بند 63 (القرار 7، 1/10): بيتحفظ على السيرفر مباشرة، ومن غير نت كان بيظهر "تم الحفظ" والتحديث بيفشل ومابيتعادش
+      if (!navigator.onLine) { showToast("⚠️ لا يوجد اتصال بالإنترنت، فحاول بعد عودته", 3000); return; }
       colorSaveBtn.disabled = true;
       trackColor = pendingColor;
       pendingColor = null;
@@ -10380,6 +10495,8 @@ function setupProfileEditing() {
   }
   if (remSave) {
     remSave.addEventListener("click", async () => {
+      // (9.4) بند 63 (القرار 7، 1/10): بيتحفظ على السيرفر مباشرة، ومن غير نت كان بيظهر "تم الحفظ" والتحديث بيفشل ومابيتعادش
+      if (!navigator.onLine) { showToast("⚠️ لا يوجد اتصال بالإنترنت، فحاول بعد عودته", 3000); return; }
       const r1 = document.getElementById("profileR1").value || null;
       const r2 = document.getElementById("profileR2").value || null;
       const r3 = document.getElementById("profileR3").value || null;
@@ -11438,7 +11555,7 @@ const APP_GUIDE_ITEMS = [
     title: "تنبيهات مهمة",
     html: `
       <p><b>استخدام أكثر من جهاز:</b> يعمل حسابك على جهاز واحد في الوقت نفسه حرصًا على العدالة بين جميع المشتركين. عند فتح حسابك على جهاز آخر يتوقّف حفظ التقدّم على الجهاز الأول، ويمكنك العودة إليه بالضغط على «المتابعة على هذا الجهاز».</p>
-      <p><b>الاستخدام دون اتصال بالإنترنت:</b> يمكنك حل الأسئلة دون اتصال، ويُحفظ تقدّمك على الجهاز ثم يُرفع إلى حسابك تلقائيًا عند عودة الاتصال بإذن الله. أما إذا حللت أسئلة على جهاز آخر قبل رفع هذا التقدّم، فيُعتمد تقدّم الجهاز الآخر ولا تُحفظ إجابات هذا الجهاز. وإذا لم تحلّ أسئلة على الجهاز الآخر، يُرفع تقدّم هذا الجهاز، وقد يحلّ محل تغييرات أخرى أجريتها هناك مثل المفضلة أو مكان التوقف. لذلك ننصحك بالاتصال بالإنترنت قبل الانتقال إلى جهاز آخر.</p>
+      <p><b>الاستخدام دون اتصال بالإنترنت:</b> يمكنك حل الأسئلة دون اتصال، ويُحفظ تقدّمك على الجهاز ثم يُرفع إلى حسابك تلقائيًا عند عودة الاتصال بإذن الله. أما إذا حللت أسئلة على جهاز آخر قبل رفع هذا التقدّم، فيُعتمد تقدّم الجهاز الآخر ولا تُحفظ إجابات هذا الجهاز ولا الكتابة على أسئلته. وإذا لم تحلّ أسئلة على الجهاز الآخر، يُرفع تقدّم هذا الجهاز، وقد يحلّ محل تغييرات أخرى أجريتها هناك مثل المفضلة أو مكان التوقف. لذلك ننصحك بالاتصال بالإنترنت قبل الانتقال إلى جهاز آخر.</p>
     `
   },
   {
@@ -11461,7 +11578,7 @@ const APP_GUIDE_ITEMS = [
     title: "تذكيرات المذاكرة",
     html: `
       <p>يمكنك تحديد وقت تذكير واحد إلزامي، ووقتين إضافيين اختياريين، من الملف الشخصي. وعند تفعيل الإشعارات تصلك التذكيرات في مواعيدها حتى لو كان التطبيق مغلقًا، وإذا كان التطبيق مفتوحًا وقت الموعد يظهر لك تنبيه داخله أيضًا.</p>
-      <span class="ag-note">📶 منبهات التذكير لا تعمل إذا حان وقتها ولم تكن متصلًا بالإنترنت، حيث يصل لها موعد تذكيرك بفضل الله من ملف حضرتك على سيرفرنا بالإنترنت.</span>
+      <span class="ag-note">📶 إشعارات التذكير تصلك من سيرفرنا، لذلك تحتاج إلى اتصال بالإنترنت وقت الموعد. أما إذا كان التطبيق مفتوحًا وقت الموعد، فيظهر التنبيه داخله حتى دون اتصال بإذن الله. وتعديل مواعيد التذكير يحتاج إلى اتصال بالإنترنت.</span>
       <span class="ag-note">✨ ولكن يمكنك بفضل الله استخدام التطبيق بدون إنترنت، وجميع بيانات جلستك ونقاطك ومنافستك محفوظة في الحفظ والصون 🤩 محليًا على التطبيق، ويتم إرسالها لملف حضرتك بفضل الله على سيرفرنا بمجرد فتح الإنترنت.</span>
     `
   },
@@ -13892,6 +14009,7 @@ async function verifyOfflineSession() {
     if (data && data.session && data.session.user && data.session.user.id === currentUserId) {
       offlineAccountMode = false;
       cacheAccountForOffline();
+      recoverMemberStateAfterOffline(); // (9.4) بند 65: التحميل بعد تأكيد الجلسة، مش قبلها
     } else if (!error) {
       showToast("⚠️ انتهت جلسة الدخول، يُرجى تسجيل الدخول مرة أخرى", 6000);
       await handleLogout();
@@ -14296,6 +14414,7 @@ async function init() {
       const qCode = item.qCode;
       if (favorites.has(qCode)) favorites.delete(qCode);
       else favorites.add(qCode);
+      ndNoteOfflineChange(); // (9.4) بند 63 (ج)
       await saveState();
       renderQuestion();
     });
