@@ -1,4 +1,4 @@
-/*! ND-ADMIN-JS 1.1 api=1 */
+/*! ND-ADMIN-JS 1.2 api=1 */
 /* ============================================================
    ملف الإدارة (admin.js) — لوحة الأدمن في تطبيق OOC New Day
    ------------------------------------------------------------
@@ -16,7 +16,7 @@
      وapi= في أول سطر = أقل apiVersion محتاجه الملف ده من ملف الطلاب.
    ============================================================ */
 (function (ND) {
-  const ADMIN_JS_VERSION = "1.1"; // (1.1) بند 44 (1): قسم "تبديل الأجهزة"
+  const ADMIN_JS_VERSION = "1.2"; // (1.2) نصوص الإدارة والسيرفر بـ ndEscape (التدوير بعد بند 82). و(1.1) بند 44 (1): قسم "تبديل الأجهزة"
   const ADMIN_API_MIN = 1;
   // ملف طلاب أقدم من ملف الإدارة ← ملف الطلاب بيعرض «لوحة الإدارة محتاجة تحديث التطبيق»، والملف ده مابيشتغلش
   if (!ND || !(ND.apiVersion >= ADMIN_API_MIN)) { if (ND && typeof ND.registerAdmin === "function") ND.registerAdmin({ outdated: true }); return; }
@@ -973,7 +973,7 @@ function renderAdminUrlList(containerId, arr, onRemove) {
   arr.forEach((url, i) => {
     const row = document.createElement("div");
     row.className = "admin-url-row";
-    row.innerHTML = `<span>${url}</span><button class="admin-url-remove" aria-label="حذف">✕</button>`;
+    row.innerHTML = `<span>${ndEscape(url)}</span><button class="admin-url-remove" aria-label="حذف">✕</button>`; // (1.2)
     row.querySelector(".admin-url-remove").addEventListener("click", () => onRemove(i));
     el.appendChild(row);
   });
@@ -1665,7 +1665,7 @@ async function renderAdminMembersList() {
   const { data: members, error } = await supabaseClient.rpc("admin_list_members");
   if (error || !members) {
     const raw = error ? (error.message || JSON.stringify(error)) : "لا توجد بيانات";
-    if (grid) grid.innerHTML = `<div class="auth-field-help">معرفتش أجيب الأعضاء — (${raw})</div>`;
+    if (grid) grid.innerHTML = `<div class="auth-field-help">معرفتش أجيب الأعضاء — (${ndEscape(raw)})</div>`; // (1.2)
     return;
   }
 
@@ -1811,7 +1811,7 @@ async function renderMemberDetail(memberId) {
     <div class="member-detail-card">
       <div class="member-detail-email">${ndEscape(m.email)}${categorizeMember(m) === "active" ? ` <span class="sub-badge">✅ Subscribed</span>` : ""}</div>
       <div class="member-detail-ids">
-        <span class="member-id-chip">🆔 <bdi>${m.member_no || "—"}</bdi></span>
+        <span class="member-id-chip">🆔 <bdi>${ndEscape(m.member_no || "—")}</bdi></span>
         <span class="member-id-chip">🗓️ اتسجّل: <bdi dir="ltr">${m.created_at ? new Date(m.created_at).toLocaleString("en-GB", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) : "—"}</bdi></span>
       </div>
       <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:10px;">
@@ -2028,14 +2028,14 @@ async function renderAdminFieldsList() {
     row.className = "admin-field-row";
     row.innerHTML = `
       <div class="admin-field-row-top">
-        <input type="text" class="admin-input admin-field-label-input" value="${(f.label || "").replace(/"/g, "&quot;")}">
+        <input type="text" class="admin-input admin-field-label-input" value="${ndEscape(f.label || "")}">
         <button class="admin-url-remove admin-field-delete" aria-label="حذف">✕</button>
       </div>
       <div class="admin-field-row-mid">
-        <span class="admin-field-type-tag">${fieldTypeLabel(f.field_type)}</span>
+        <span class="admin-field-type-tag">${ndEscape(fieldTypeLabel(f.field_type))}</span>
         <label class="admin-checkbox-row"><input type="checkbox" class="admin-field-required" ${f.is_required ? "checked" : ""}> إجباري</label>
       </div>
-      <textarea class="admin-textarea admin-field-help-input" rows="1" placeholder="شرح/مثال يظهر تحت الحقل">${f.help_text || ""}</textarea>
+      <textarea class="admin-textarea admin-field-help-input" rows="1" placeholder="شرح/مثال يظهر تحت الحقل">${ndEscape(f.help_text || "")}</textarea>
       ${(f.field_type === "select" || f.field_type === "multi_select") ? `<label class="admin-label">الاختيارات</label><div class="admin-field-options-editor"></div>` : ""}
     `;
     const labelInput = row.querySelector(".admin-field-label-input");
@@ -2216,7 +2216,7 @@ async function renderAdminCountriesList() {
     .order("display_order");
 
   if (error) {
-    list.innerHTML = `<div class="auth-field-help">معرفتش أجيب الدول (${error.message || "خطأ"}) — لازم تكون مسجّل دخول</div>`;
+    list.innerHTML = `<div class="auth-field-help">معرفتش أجيب الدول (${ndEscape(error.message || "خطأ")}) — لازم تكون مسجّل دخول</div>`; // (1.2)
     return;
   }
 
@@ -2238,8 +2238,8 @@ async function renderAdminCountriesList() {
     row.innerHTML = `
       <label style="display:flex;align-items:center;gap:8px;flex:1;">
         <input type="checkbox" ${m.is_active ? "checked" : ""}>
-        <span>${m.countries.flag_emoji || ""} ${m.countries.name_ar || m.countries.name_en}</span>
-        ${listKey === "contact_code" ? `<span class="admin-country-code">${m.countries.dial_code || ""}</span>` : ""}
+        <span>${ndEscape(m.countries.flag_emoji || "")} ${ndEscape(m.countries.name_ar || m.countries.name_en)}</span>
+        ${listKey === "contact_code" ? `<span class="admin-country-code">${ndEscape(m.countries.dial_code || "")}</span>` : ""}
       </label>
       <button class="admin-url-remove admin-country-delete" aria-label="حذف الدولة نهائيًا">✕</button>
     `;
@@ -2970,7 +2970,7 @@ function renderAdminComingSoonList() {
     const row = document.createElement("div");
     row.className = "admin-url-row";
     row.innerHTML = `
-      <input type="text" class="admin-cs-edit" value="${item.text.replace(/"/g, '&quot;')}" dir="rtl">
+      <input type="text" class="admin-cs-edit" value="${ndEscape(item.text)}" dir="rtl">
       <button class="admin-url-remove" aria-label="حذف">✕</button>
     `;
     const editInput = row.querySelector(".admin-cs-edit");

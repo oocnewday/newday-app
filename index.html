@@ -182,6 +182,8 @@ body{position:relative; overflow:clip;}
 }
 .screen.active{opacity:1; pointer-events:auto; transform:translateX(0);}
 .screen.exit-left{transform:translateX(-30px);}
+/* (9.6) بند 74: قدّام في شاشات البداية الصفحة الجاية بتيجي من الشمال (زي اتجاه السهم ←)، والقديمة بتمشي يمين */
+.screen.nd-from-left{ transform:translateX(-30px); transition:none !important; }
 
 /* ============================================================
    4) SPLASH SCREEN
@@ -2838,6 +2840,37 @@ html:not(.mode-ready) #sunGroup, html:not(.mode-ready) #moonGroup, html:not(.mod
 .cpick-empty{ padding:10px 12px; opacity:.7; font-size:13px; color:#fff; }
 
 
+/* ---------- (9.6) بند 74: أول شاشة كاملة على كل الشاشات، وتوفير المساحة (طلب صاحب المشروع 2/10) ----------
+   (1) شريحة الوقت وزرار الجو على جنبين OOC في نفس سطره (كانوا سطر لوحدهم فوقه، 46px)؛ والشريحة: العربي فوق والإنجليزي تحته أصغر سنة.
+   (2) "يوم جديد · بداية جديدة" بشكلها وأصغر سنة، على أقصى يمين وشمال اسم التطبيق فوق الخط مباشرة (كانت سطر لوحدها، حوالي 39px).
+   (3) المسافة بين السطور أقل 15% (line-height ×0.85) في الهدف والحديثين والأثر.
+   (4) صورة المنظر بتصغر لوحدها لو الصفحة لسه أطول من الشاشة، لحد 110px (من كود 74 في 9.5)، والـ SVG بـ slice فبيتقص ومابيتمطش.
+   (5) على الشاشات اللي ارتفاعها 800 أو أقل: مسافات أقل بين العناصر (من كود 74 في 9.5)، والكلام بنفس مقاسه. */
+#splash .topbar{
+  position:absolute; top:22px; left:50%; transform:translateX(-50%);
+  width:calc(100% - 40px); max-width:460px; height:75px; padding:0;
+  pointer-events:none; /* السطر نفسه فوق اللوجو، فاللمس يعدّي للّوجو والشريحة والزرار بس */
+}
+#splash .topbar > *{ pointer-events:auto; }
+#splash .time-chip{ max-width:calc(50% - 62px); padding:5px 10px; line-height:1.3; }
+#splash .time-chip .tl-ar{ display:block; text-align:center; }
+#splash .time-chip .tl-en{ display:block; text-align:center; font-size:10px; opacity:.85; }
+#splash .wordmark-wrap .app-sub{
+  position:absolute; left:0; right:0; bottom:12px; margin:0;
+  display:flex; justify-content:space-between; direction:rtl;
+  font-size:11.5px; line-height:1.2; pointer-events:none;
+}
+#splash .goal{ line-height:1.66; }
+#splash .hadith{ line-height:1.74; }
+#splash .athar{ line-height:1.62; }
+#splash .garden{ flex-shrink:1; min-height:110px; }
+@media (max-height:800px){
+  #splash .garden{ margin-bottom:14px; }
+  #splash .goal{ margin-bottom:14px; }
+  #splash .divider{ margin-bottom:14px; }
+  #splash .athar{ margin:10px 0 18px; }
+}
+
 /* ============================================================
    (د) الأداء والطاقة
    ============================================================ */
@@ -3206,12 +3239,12 @@ html.lite .raindrop{ display:none !important; }
     cupFloat 3.2s ease-in-out 1.1s infinite;
 }
 /* (9.5) بند 73: التوهج كان على العلبة اللي جواها الهالة النابضة، فكان بيتحسب من جديد مع كل فريم (الكاس كان بيقطّع).
-   دلوقتي التوهج على رسمة الكاس بس (بيتحسب مرة)، والهالة أوسع وأفتح شوية تعوّض التوهج اللي كان عليها. نفس الشكل تقريبًا. */
+   دلوقتي التوهج على رسمة الكاس بس (بيتحسب مرة)، والهالة أوسع وأفتح شوية تعوّض التوهج اللي كان عليها. نفس الشكل تقريبًا.
+   (9.6) بند 79: الظلين الكبار (44px و90px) كانوا بيعملوا وقفة لحد ثانية وربع وقت ظهور الكاس (متقاس بإبطاء ×4)، فبقوا ظل واحد
+   22px حوالين شكل الكاس (اختيار صاحب المشروع 2/10، حل ب). ماتكبّرش الظل تاني من غير قياس tt/perf79.py. */
 .reward-cup svg{
   width:100%; height:100%; display:block;
-  filter:
-    drop-shadow(0 0 44px rgba(244,208,63,0.95))
-    drop-shadow(0 0 90px rgba(244,208,63,0.55));
+  filter:drop-shadow(0 0 22px rgba(244,208,63,0.9));
 }
 .reward-cup::after{
   content:""; position:absolute; inset:-90px;
@@ -3666,7 +3699,7 @@ html.lite .raindrop{ display:none !important; }
       <div class="topbar">
         <div class="time-chip">
           <span class="dot"></span>
-          <span id="timeLabel">الليل · Night</span><script>(function(){var b=window.__ndBoot;if(!b)return;var sp=document.getElementById("splash");if(sp)sp.dataset.mode=b.key;var t=document.getElementById("timeLabel");if(t)t.textContent=b.label+" · "+b.sub+" (تلقائي)";})();</script>
+          <span id="timeLabel">الليل · Night</span><script>(function(){var b=window.__ndBoot;if(!b)return;var sp=document.getElementById("splash");if(sp)sp.dataset.mode=b.key;var t=document.getElementById("timeLabel");if(t){t.textContent="";var a=document.createElement("span");a.className="tl-ar";a.textContent=b.label+" (تلقائي)";var e=document.createElement("span");e.className="tl-en";e.textContent=b.sub;t.appendChild(a);t.appendChild(e);}})();</script>
         </div>
         <button class="mode-btn" id="modeBtn" aria-label="اختيار الجو">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -3684,9 +3717,8 @@ html.lite .raindrop{ display:none !important; }
           <span class="day">D<span class="rise"><span class="rise-disc" id="riseDisc"></span></span>y</span>
         </div>
         <div class="horizon-line"></div>
+        <p class="app-sub"><span>يوم جديد</span><span>بداية جديدة</span></p><!-- (9.6) بند 74: على جنبين الاسم فوق الخط (كانت سطر لوحدها تحته) -->
       </div>
-
-      <p class="app-sub">يوم جديد · بداية جديدة</p>
 
       <div class="garden">
         <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice">
@@ -3875,8 +3907,8 @@ html.lite .raindrop{ display:none !important; }
       <p class="motivation-text">
         للمنافسة والحصول على نقاط يومية، يجب عليك استخدام التطبيق من خلال تسجيل الدخول.
       </p>
-      <button class="motivation-btn" id="authGoLogin">
-        <span>←</span><span>تسجيل الدخول</span>
+      <button class="motivation-btn" id="authGoLogin"><!-- (9.6) بند 74: من غير سهم -->
+        <span>تسجيل الدخول</span>
       </button>
       <p class="auth-switch-text">ليس لديك حساب؟ <span class="auth-link" id="authGoSignupFromGate">إنشاء حساب جديد</span></p>
       <button class="auth-guest-btn" id="authContinueGuest">المتابعة كزائر</button>
@@ -3894,12 +3926,12 @@ html.lite .raindrop{ display:none !important; }
       <input type="email" class="onboarding-input" id="loginEmail" placeholder="البريد الإلكتروني" autocomplete="email">
       <input type="password" class="onboarding-input" id="loginPassword" placeholder="كلمة السر" autocomplete="current-password">
       <p class="auth-error" id="loginError"></p>
-      <button class="motivation-btn" id="loginSubmit">
-        <span>←</span><span>دخول</span>
+      <button class="motivation-btn" id="loginSubmit"><!-- (9.6) بند 74: من غير سهم -->
+        <span>دخول</span>
       </button>
       <p class="auth-switch-text"><span class="auth-link" id="loginGoForgot">نسيت كلمة السر؟</span></p>
       <p class="auth-switch-text">ليس لديك حساب؟ <span class="auth-link" id="loginGoSignup">إنشاء حساب جديد</span></p>
-      <p class="auth-switch-text"><span class="auth-link" id="loginGoBack">← رجوع</span></p>
+      <p class="auth-switch-text"><span class="auth-link" id="loginGoBack">→ رجوع</span><!-- (9.6) بند 74 --></p>
     </div>
   </div>
 
@@ -3917,11 +3949,11 @@ html.lite .raindrop{ display:none !important; }
       <div id="signupDynamicFields"></div>
 
       <p class="auth-error" id="signupError"></p>
-      <button class="motivation-btn" id="signupSubmit">
-        <span>←</span><span>إنشاء الحساب</span>
+      <button class="motivation-btn" id="signupSubmit"><!-- (9.6) بند 74: من غير سهم -->
+        <span>إنشاء الحساب</span>
       </button>
       <p class="auth-switch-text">لديك حساب؟ <span class="auth-link" id="signupGoLogin">تسجيل الدخول</span></p>
-      <p class="auth-switch-text"><span class="auth-link" id="signupGoBack">← رجوع</span></p>
+      <p class="auth-switch-text"><span class="auth-link" id="signupGoBack">→ رجوع</span><!-- (9.6) بند 74 --></p>
     </div>
   </div>
 
@@ -3936,10 +3968,10 @@ html.lite .raindrop{ display:none !important; }
       <input type="email" class="onboarding-input" id="forgotEmail" placeholder="البريد الإلكتروني" autocomplete="email">
       <p class="auth-error" id="forgotError"></p>
       <p class="auth-success" id="forgotSuccess"></p>
-      <button class="motivation-btn" id="forgotSubmit">
-        <span>←</span><span>أرسل الرابط</span>
+      <button class="motivation-btn" id="forgotSubmit"><!-- (9.6) بند 74: من غير سهم -->
+        <span>أرسل الرابط</span>
       </button>
-      <p class="auth-switch-text"><span class="auth-link" id="forgotGoLogin">← العودة إلى تسجيل الدخول</span></p>
+      <p class="auth-switch-text"><span class="auth-link" id="forgotGoLogin">→ العودة إلى تسجيل الدخول</span><!-- (9.6) بند 74 --></p>
     </div>
   </div>
 
@@ -5906,7 +5938,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 9.5; // (9.5) أخطاء وطلبات الطالب قبل الإطلاق: 56 و35 و36 و71 و70 و72 و54 و44 (4) و34 و75 و67 و68 و73. و(9.4) بنود 61 و62 و63: النقاط وحد الـ 149، والرسم مع الجهاز الواحد، ورسايل النت. و(9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
+const APP_VERSION = 9.6; // (9.6) الواجهة والحركة: 82 و80 و79 و74. و(9.5) أخطاء وطلبات الطالب قبل الإطلاق: 56 و35 و36 و71 و70 و72 و54 و44 (4) و34 و75 و67 و68 و73. و(9.4) بنود 61 و62 و63: النقاط وحد الـ 149، والرسم مع الجهاز الواحد، ورسايل النت. و(9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
 const APP_VERSION_LABEL = Number(APP_VERSION).toFixed(1); // للعرض بس (6.0 مش 6)
 
 const CONFIG = {
@@ -10016,14 +10048,16 @@ async function renderRace() {
     const meClass = u.isMe ? "me" : "";
     // المعدل السالب شريطه فاضي (قبل كده كان عرضه بالسالب فالمتصفح بيتجاهله ويظهر مليان للآخر)
     const barWidth = (maxAvg > 0 && avg > 0) ? Math.min(100, (avg / maxAvg) * 100) : 0;
-    const dotStyle = u.isMe ? ` style="background:${u.color}"` : "";
-    const barStyle = u.isMe ? ` style="width:${barWidth}%; background:${u.color}"` : ` style="width:${barWidth}%"`;
+    // (9.6) بند 82: الاسم واللون من القاعدة بيتعرضوا بـ ndEscape (قبل كده كانوا بيتحطوا زي ما هم، فأي كود في اسم عضو كان بيشتغل عند الباقيين)
+    const safeColor = ndEscape(u.color);
+    const dotStyle = u.isMe ? ` style="background:${safeColor}"` : "";
+    const barStyle = u.isMe ? ` style="width:${barWidth}%; background:${safeColor}"` : ` style="width:${barWidth}%"`;
 
     html += `<div class="race-row ${rankClass} ${meClass}">`;
     if (medal) html += `<div class="race-medal">${medal}</div>`;
     else html += `<div class="race-rank-num">${i + 1}</div>`;
     html += `<div class="race-info">`;
-    html += `<div class="race-name">${u.isMe ? `<span class="race-color-dot"${dotStyle}></span> ` : ''}${u.name}${u.isMe ? ' <span class="race-you-badge">you</span>' : ''}</div>`;
+    html += `<div class="race-name">${u.isMe ? `<span class="race-color-dot"${dotStyle}></span> ` : ''}${ndEscape(u.name)}${u.isMe ? ' <span class="race-you-badge">you</span>' : ''}</div>`;
     html += `<div class="race-bar-track"><div class="race-bar-fill"${barStyle}></div></div>`;
     html += `<div class="race-stats${avg < 0 ? " race-neg" : ""}"><b>${avg.toFixed(1)}</b> pts/day · ${u.days} days · ${Math.floor(u.points)} pts</div>`;
     html += `</div></div>`;
@@ -10090,7 +10124,10 @@ function renderStats() {
    25) RENDER PROFILE
    ============================================================ */
 // (ج) ترتيبك الفعلي في المضمار (بنفس ترتيب قايمة المنافسة بالظبط)
+// (9.6) بند 80: بيتظبط true من أيقونة الملف الشخصي اللي فوق بس، فالحركة تشتغل مع الفتحة دي حتى لو الترتيب ماتغيّرش
+let ndRankPopOnOpen = false;
 async function updateProfileRaceRank() {
+  const forcePop = ndRankPopOnOpen; ndRankPopOnOpen = false; // (9.6) بند 80: مرة واحدة لكل فتحة
   const el = document.querySelector(".profile-rank-value");
   const hint = document.getElementById("profileRankHint");
   const box = document.querySelector(".profile-rank");
@@ -10111,7 +10148,8 @@ async function updateProfileRaceRank() {
     const medal = rank === 1 ? "🥇 " : rank === 2 ? "🥈 " : rank === 3 ? "🥉 " : "";
     const txt = `${medal}#${rank} of ${all.length}`;
     // (ج) كله بالإنجليزي عشان يتعرض مظبوط، والحركة بتشتغل بس لما الترتيب يتغيّر (مش مع كل فتحة)
-    if (el.textContent !== txt) {
+    // (9.6) بند 80: وكمان مع كل فتحة من الأيقونة اللي فوق (forcePop)، قرار صاحب المشروع 2/10
+    if (el.textContent !== txt || forcePop) {
       el.textContent = txt;
       el.classList.remove("rank-pop"); void el.offsetWidth; el.classList.add("rank-pop");
     }
@@ -11532,7 +11570,7 @@ function renderComingSoonSheetList() {
   }
   list.innerHTML = comingSoonItems.map(item => `
     <div class="notification-row">
-      <div class="notification-text">${item.text}</div>
+      <div class="notification-text">${ndEscape(item.text)}</div>
       <span class="comingsoon-sheet-badge">قريبًا</span>
     </div>
   `).join("");
@@ -12013,13 +12051,15 @@ function goToMotivation() {
    ============================================================ */
 function formatWelcomeMessageHtml(text) {
   const lines = String(text || "").split("\n").map(l => l.trim()).filter(Boolean);
+  // (9.6) بند 82 (ب): النص من القاعدة بيتعرض بـ ndEscape (نوع السطر بيتحدد من النص الأصلي زي ما هو)
   return lines.map(line => {
-    if (line.includes("﴿") || line.includes("۝")) return `<p class="welcome-ayah">${line}</p>`;
+    const t = ndEscape(line);
+    if (line.includes("﴿") || line.includes("۝")) return `<p class="welcome-ayah">${t}</p>`;
     if (line.startsWith("قال") || line.startsWith("أعوذ") || line.startsWith("بسم الله")) {
-      return `<p class="welcome-invocation">${line}</p>`;
+      return `<p class="welcome-invocation">${t}</p>`;
     }
-    if (/حل\s*\d+\s*أسئلة/.test(line)) return `<p class="welcome-emphasis">${line}</p>`;
-    return `<p>${line}</p>`;
+    if (/حل\s*\d+\s*أسئلة/.test(line)) return `<p class="welcome-emphasis">${t}</p>`;
+    return `<p>${t}</p>`;
   }).join("");
 }
 
@@ -12867,7 +12907,8 @@ function buildCountryPicker(list, opts) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "cpick-item";
-      b.innerHTML = `<span>${m.countries.flag_emoji || ""}</span><span>${ndEscape(m.countries.name_ar || m.countries.name_en)}</span>` +
+      // (9.6) بند 82 (ج): العلم من القاعدة بـ ndEscape زي الاسم والكود
+      b.innerHTML = `<span>${ndEscape(m.countries.flag_emoji || "")}</span><span>${ndEscape(m.countries.name_ar || m.countries.name_en)}</span>` +
         `<span class="cpick-en" dir="ltr">${ndEscape(m.countries.name_en || "")}${opts.showCode && m.countries.dial_code ? " · " + ndEscape(m.countries.dial_code) : ""}</span>`;
       b.addEventListener("pointerdown", (e) => e.preventDefault()); // عشان الخانة ماتفقدش التركيز قبل الاختيار
       b.addEventListener("click", () => {
@@ -13477,6 +13518,15 @@ function setupAuthScreens() {
 /* ============================================================
    26) NAVIGATE (Screen transitions)
    ============================================================ */
+// (9.6) بند 74: ترتيب شاشات البداية. قدّام (أو دخول التطبيق منها) = الجاية من الشمال والقديمة يمين، ورجوع = العكس
+// (زي الحركة القديمة). أي انتقال تاني (جوه التطبيق) زي ما هو.
+const ND_START_STEP = { splash: 0, motivation: 1, authGate: 2, authLogin: 3, authSignup: 3, authForgot: 4 };
+function ndStartDir(cur, tgt) {
+  if (!cur || !tgt || !(cur.id in ND_START_STEP)) return "";
+  if (!(tgt.id in ND_START_STEP)) return "fwd";
+  return ND_START_STEP[tgt.id] >= ND_START_STEP[cur.id] ? "fwd" : "";
+}
+
 function navigate(screenId) {
   const current = document.querySelector(".screen.active");
   const target = document.getElementById(screenId);
@@ -13490,12 +13540,20 @@ function navigate(screenId) {
   closeModeDrawer();
   if (screenId !== "questions") { try { cancelLastQDoneTimer(); } catch (e) {} } // أ3: خرج من السؤال
 
+  const ndDir = ndStartDir(current, target); // (9.6) بند 74
   if (current) {
     current.classList.remove("active");
-    current.classList.add("exit-left");
-    setTimeout(() => current.classList.remove("exit-left"), 250);
+    if (ndDir !== "fwd") { // قدّام: القديمة بتمشي يمين (مكان الشاشة المستخبية)، فمن غير exit-left
+      current.classList.add("exit-left");
+      setTimeout(() => current.classList.remove("exit-left"), 250);
+    }
   }
 
+  if (ndDir === "fwd") { // الجاية تبدأ من الشمال من غير حركة، وبعدين تتحرك لمكانها
+    target.classList.add("nd-from-left");
+    void target.offsetWidth;
+    target.classList.remove("nd-from-left");
+  }
   target.classList.add("active");
   target.scrollTop = 0;
   if (screenId === "authGate") ndUpdateAuthQLinkHint(); // (8.9) سطر "سجّل الدخول لعرض السؤال…" لو جاي من رابط سؤال
@@ -13556,7 +13614,12 @@ function applyMode(key) {
 
   const timeLabel = document.getElementById("timeLabel");
   if (timeLabel) {
-    timeLabel.textContent = m.label + " · " + m.sub + (key === "auto" ? " (تلقائي)" : "");
+    // (9.6) بند 74: العربي فوق والإنجليزي تحته أصغر سنة (كان سطر واحد "الليل · Night (تلقائي)")
+    timeLabel.textContent = "";
+    const tlAr = document.createElement("span"); tlAr.className = "tl-ar";
+    tlAr.textContent = m.label + (key === "auto" ? " (تلقائي)" : "");
+    const tlEn = document.createElement("span"); tlEn.className = "tl-en"; tlEn.textContent = m.sub;
+    timeLabel.appendChild(tlAr); timeLabel.appendChild(tlEn);
   }
 
   const sunG = document.getElementById("sunGroup");
@@ -14776,7 +14839,12 @@ async function init() {
 
   if (profileBtn && profileOverlay) {
     profileBtn.addEventListener("click", () => {
+      ndRankPopOnOpen = true; // (9.6) بند 80
       renderProfile();
+      // (9.6) بند 80: من الأيقونة اللي فوق بيفتح من أوله عشان الترتيب يظهر (الرجوع من جوه بيفضل في نفس المكان)،
+      // وحركة الترتيب بتشتغل مع الفتحة دي (ndRankPopOnOpen اتظبط قبل renderProfile)
+      const profileSheetEl = profileOverlay.querySelector(".profile-sheet");
+      if (profileSheetEl) profileSheetEl.scrollTop = 0;
       profileOverlay.classList.add("open");
       if (typeof window.refreshPushButtonState === "function") window.refreshPushButtonState(); // أ4: حالة الجهاز من السيرفر كل ما يفتح
     });
