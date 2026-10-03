@@ -797,6 +797,7 @@ body{position:relative; overflow:clip;}
 .commitment-day.green{ background:linear-gradient(135deg, #4CC985, #2f9e63); }
 .commitment-day.yellow{ background:linear-gradient(135deg, #F2C230, #B8860B); }
 .commitment-day.gray{ background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.4); }
+.commitment-day.red{ background:linear-gradient(135deg, #E06C6C, #A93D45); } /* (9.7) يوم الخصم، قرار صاحب المشروع 3/10 */
 .commitment-day .day-number{ font-weight:800; font-size:11px; }
 .commitment-day .day-count{ font-size:8.5px; opacity:0.85; margin-top:1px; }
 
@@ -3124,6 +3125,15 @@ html.lite .raindrop{ display:none !important; }
   color:#fff; font-size:15px; font-weight:700;
   text-align:center; margin-bottom:14px;
 }
+/* (9.7) بند 83: زرار ✕ على يمين العنوان (زي باقي النوافذ)، والعنوان في النص زي ما هو */
+.sheet-head{ position:relative; padding:0 40px; }
+.sheet-close{
+  position:absolute; right:0; top:50%; transform:translateY(calc(-50% - 7px));
+  width:34px; height:34px; border-radius:50%;
+  border:none; background:rgba(255,255,255,.12);
+  color:#fff; font-size:16px; font-weight:700; line-height:1;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
 .mode-grid{
   display:grid; grid-template-columns:1fr 1fr;
   gap:10px;
@@ -4960,8 +4970,11 @@ html.lite .raindrop{ display:none !important; }
      ============================================================ -->
 <div class="sheet-overlay" id="sheetOverlay">
   <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">اختر جو الشاشة</div>
+    <div class="sheet-handle" id="modeSheetHandle"></div>
+    <div class="sheet-head" id="modeSheetHeader"><!-- (9.7) بند 83: ✕ والسحب لتحت زي باقي النوافذ -->
+      <div class="sheet-title">اختر جو الشاشة</div>
+      <button class="sheet-close" id="modeSheetClose" aria-label="إغلاق">✕</button>
+    </div>
     <div class="mode-grid" id="modeGrid"></div>
   </div>
 </div>
@@ -5938,7 +5951,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 9.6; // (9.6) الواجهة والحركة: 82 و80 و79 و74. و(9.5) أخطاء وطلبات الطالب قبل الإطلاق: 56 و35 و36 و71 و70 و72 و54 و44 (4) و34 و75 و67 و68 و73. و(9.4) بنود 61 و62 و63: النقاط وحد الـ 149، والرسم مع الجهاز الواحد، ورسايل النت. و(9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
+const APP_VERSION = 9.7; // (9.7) النقاط والعدّ خطوة 1 (77 و78) و83 و84 والدليل. و(9.6) الواجهة والحركة: 82 و80 و79 و74. و(9.5) أخطاء وطلبات الطالب قبل الإطلاق: 56 و35 و36 و71 و70 و72 و54 و44 (4) و34 و75 و67 و68 و73. و(9.4) بنود 61 و62 و63: النقاط وحد الـ 149، والرسم مع الجهاز الواحد، ورسايل النت. و(9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
 const APP_VERSION_LABEL = Number(APP_VERSION).toFixed(1); // للعرض بس (6.0 مش 6)
 
 const CONFIG = {
@@ -8131,6 +8144,9 @@ async function loadState() {
     }
   });
   await purgeLegacyTestQuestions();
+  // (9.7) بند 78: بعد تحميل حالة أي حساب (فتح التطبيق، أو تبديل الحساب، أو الخروج لزائر، أو تحميل التقدّم بعد رجوع النت)
+  // اليوم يتصفّر علطول لو تاريخه قديم، ومعاه خصم أيام الغياب للحساب ده، قبل أي حل (كان بيستنى الرجوع للتطبيق)
+  await checkDailyReset();
   ndStateReady = true;
 }
 
@@ -8454,8 +8470,14 @@ function calculatePoints(qCode, isCorrect) {
  * @returns {{ earned: number, bonusAwarded: boolean, bonusCount: number }}
  */
 async function awardPoints(qCode, isCorrect, answered) {
+  // (9.7) بند 78: لو 4 الفجر عدّت والتطبيق مفتوح، اليوم يتصفّر (ومعاه خصم الغياب) قبل أول حل، مش بعد الرجوع للتطبيق
+  if (dailyDate !== getTodayKey()) { await checkDailyReset(); try { updatePointsDisplay(false); } catch (e) {} }
   // 1) احسب النقاط
   const result = calculatePoints(qCode, isCorrect);
+  // (9.7) بند 77 (خطة النقاط والعدّ، قرار صاحب المشروع 2/10): السؤال بيتعدّ في المحطات وحافز الـ 20 وحد الـ 149 وعدد اليوم والالتزام
+  // بس لو الحل ده بيدّي نقطة أو أكتر حسب جدول النقاط (والزائر بنفس الجدول من غير نقاط). إعادة حل الكاملة جوه دورتها، والنص لما يتجاوب
+  // غلط أو تتظهر إجابته، والحالة القديمة من قبل 9.4 (نص جوه دورة كانت كاملة) لما تتحل صح = 0 ومابيتعدّوش. السيرفر هيطبّق نفس القاعدة في 57
+  const ndCounts = (result.earned || 0) > 0;
   // الضيف (من غير حساب) مفيش له نقاط خالص — لا موجب ولا سالب
   const earned = isGuest ? 0 : (result.earned || 0);
 
@@ -8514,13 +8536,14 @@ async function awardPoints(qCode, isCorrect, answered) {
     if (lastQDoneTimer && lastQDoneTimer.qCode === qCode) cancelLastQDoneTimer();
   }
 
-  // 7) لو ده سؤال جديد النهاردة → ضيفه للـ dailyNewIds
+  // 7) لو ده سؤال جديد النهاردة وبيتعدّ (بند 77) → ضيفه للـ dailyNewIds
   const isNewToday = dailyNewIds.indexOf(qCode) === -1;
-  if (isNewToday && dailyNewIds.length < CONFIG.DAILY_LIMIT) {
+  if (isNewToday && ndCounts && dailyNewIds.length < CONFIG.DAILY_LIMIT) {
     dailyNewIds.push(qCode);
     dailyProgress = Math.min(dailyNewIds.length, CONFIG.MIN_MILESTONES);
-    lastActiveDate = getTodayKey();
   }
+  // (9.7) قرار صاحب المشروع 2/10 (سؤال 2): أي إجابة في Study أو Test بتمنع خصم اليوم ده، حتى لو مااتعدّتش (زي نص الدليل)
+  lastActiveDate = getTodayKey();
 
   // 8) شريط الـ 10 محطات — Reward مرة واحدة/يوم
   if (dailyProgress === CONFIG.MIN_MILESTONES && !daily10RewardShown) {
@@ -11615,6 +11638,11 @@ function renderCommitmentLog() {
       if (log.completed) { cls += " green"; countText = log.solved; }
       else if (log.solved > 0) { cls += " yellow"; countText = log.solved; }
       else { cls += " gray"; }
+    } else if (!isGuest && i > 0 && i < totalDaysCount - 1) {
+      // (9.7) قرار صاحب المشروع 3/10: يوم الخصم بالأحمر وتحته −10. أي إجابة في Study أو Test بتعمل سجل لليوم (awardPoints) وبتمنع الخصم
+      // في نفس الخطوة، فاليوم اللي عدّى ومالوش سجل = يوم اتخصم (نفس قاعدة checkDailyReset). مش النهارده (لسه ماخلصش)، ومش أول يوم
+      // (أول فتحة بتبدأ lastActiveDate بيه فمالوش خصم)، ومش للزائر (مالوش خصم). الرمادي اللي ليه سجل = اتجاوب فيه ومااتحتسبش
+      cls += " red"; countText = "\u221210";
     } else {
       cls += " gray";
     }
@@ -11752,9 +11780,12 @@ const APP_GUIDE_ITEMS = [
         <li>+2 إذا أجبت إجابة صحيحة من أول مرة</li>
         <li>+1 إذا كانت إجابتك غير صحيحة</li>
         <li>+1 إضافية إذا عدت وحللته حلًا صحيحًا بعد أن كان خاطئًا</li>
-        <li>حافز +5 نقاط عن كل 20 سؤالًا جديدًا تحلّها في اليوم نفسه</li>
+        <li>حافز +5 نقاط عن كل 20 سؤالًا محتسبًا تحلّها في اليوم نفسه</li>
       </ul>
-      <p>يوجد حد أقصى قدره 149 سؤالًا جديدًا يوميًا تحصل عليها على نقاط، لا لتقييدك، بل للحفاظ على جودة المذاكرة، حتى لا تُستهلك أسئلة كثيرة دون استيعاب حقيقي.</p>
+      <p><b>علامة السؤال ودورته:</b> عندما تحل سؤالًا حلًا صحيحًا تكتمل علامته، وتبدأ له دورة مدتها <span class="ag-cycle-days">9 أيام</span>. خلال الدورة لا يمنحك هذا السؤال نقاطًا جديدة، ولا يُحتسب في شريط المحطات ولا في عدد أسئلة اليوم، حتى إذا أعدت حله. وعند انتهاء الدورة تُزال العلامة، ويُحتسب السؤال من جديد كأنك تحله أول مرة.</p>
+      <p>وإذا أجبت عن سؤال إجابة غير صحيحة أو أظهرت إجابته دون اختيار، تصبح علامته نصفًا ويُحتسب في يومك، ثم لا يُحتسب مرة أخرى حتى تحله حلًا صحيحًا، فتكتمل علامته وتحصل على نقطته.</p>
+      <p>قد يخطر في ذهنك سؤال: عندما تُزال العلامة، كيف أعرف الأسئلة التي لم أذاكرها أو لم أحلها، وقد كنت أعرفها بالعلامة؟ والإجابة: ستجدها بإذن الله داخل فولدر Remaining.</p>
+      <p>يوجد حد أقصى قدره 149 سؤالًا محتسبًا يوميًا تحصل عليها على نقاط، لا لتقييدك، بل للحفاظ على جودة المذاكرة، حتى لا تُستهلك أسئلة كثيرة دون استيعاب حقيقي.</p>
       <p>بُني هذا النظام بفضل الله على أن المذاكرة اليومية المستمرة أهم من الكمّ في يوم واحد، وهذا ما يرسّخه شريط المحطات العشر وحساب الالتزام (في الأسفل).</p>
     `
   },
@@ -11772,7 +11803,7 @@ const APP_GUIDE_ITEMS = [
     title: "اختيار الفصل والعودة التلقائية",
     html: `
       <p>يبدأ التطبيق دائمًا من الشاشة الأولى دون تخطٍّ تلقائي لأي شاشة، لتبقى الرسائل التحفيزية والمقدمة جزءًا من كل جلسة.</p>
-      <p>لكن إذا عدت إلى المجلد نفسه الذي كنت تحل فيه، فستكمل من السؤال نفسه والوضع نفسه الذي توقفت عنده تمامًا، دون العودة إلى أول سؤال. وإذا دخلت مجلدًا مختلفًا فسيبدأ من أوله.</p>
+      <p>لكن إذا عدت إلى المجلد نفسه الذي كنت تحل فيه، فستكمل من السؤال نفسه والوضع نفسه الذي توقفت عنده تمامًا، دون العودة إلى أول سؤال. وإذا دخلت مجلدًا آخر سبق أن حللت فيه، فستكمل من السؤال والوضع اللذين توقفت عندهما فيه، وإذا كانت أول مرة تدخله فسيبدأ من أوله.</p>
       <p>الترتيب: Chapter ← Exam ← نوع الأسئلة، وكل مستوى منها يحدّد اختيارك قبل الوصول إلى الأسئلة نفسها.</p>
     `
   },
@@ -11820,10 +11851,11 @@ const APP_GUIDE_ITEMS = [
     icon: "🔥",
     title: "سجل الالتزام",
     html: `
-      <p><b>الالتزام اليومي المطلوب: حل 10 أسئلة يوميًا</b> (شريط المحطات العشر)، سواء حللتها في وضع Test أو وضع Study، فكلاهما يُحتسب للالتزام نفسه بإذن الله.</p>
+      <p><b>الالتزام اليومي المطلوب: حل 10 أسئلة محتسبة يوميًا</b> (شريط المحطات العشر)، سواء حللتها في وضع Test أو وضع Study، فكلاهما يُحتسب للالتزام نفسه بإذن الله.</p>
       <p>إذا مرّ يوم دون أن تحل فيه أي سؤال، تُخصم منك <b>10 نقاط</b> عن كل يوم غياب، لتكون للاستمرارية نفسها قيمة ملموسة، لا للحل وحده.</p>
       <p>تعرض الصفحة نسبة التزامك (Commitment Rate)، وسلسلة أيامك المتتالية الحالية (Streak) وأفضل سلسلة وصلت إليها، وتقويمًا لكل الأيام منذ أول يوم دخلت فيه التطبيق.</p>
-      <p>يُلوَّن اليوم بالأخضر إذا حللت فيه 10 أسئلة (يوم مكتمل)، وبالأصفر إذا حللت أقل من 10، وبالرمادي إذا لم يكن فيه أي نشاط.</p>
+      <p>يُلوَّن اليوم بالأخضر إذا حللت فيه 10 أسئلة محتسبة (يوم مكتمل)، وبالأصفر إذا حللت أقل من 10، وبالرمادي إذا لم يُحتسب فيه أي سؤال، فلا تحصل فيه على أي نقاط.</p>
+      <p>ويختلف اليوم الرمادي عن يوم الخصم: فإذا أجبت فيه عن سؤال واحد على الأقل في وضع Study أو Test، ولو لم يُحتسب، فلا يُخصم منك شيء؛ أما إذا لم تُجب فيه عن أي سؤال، فيُخصم منك 10 نقاط، ويظهر يوم الخصم باللون الأحمر.</p>
     `
   },
   {
@@ -11866,7 +11898,7 @@ const APP_GUIDE_ITEMS = [
 function renderAppGuide() {
   const list = document.getElementById("appGuideList");
   if (!list) return;
-  if (list.children.length > 0) return; // اتبنت قبل كده، ما تتكررش
+  if (list.children.length > 0) { ndFillGuideCycleDays(list); return; } // اتبنت قبل كده، ما تتكررش (والمدة تتحدّث)
 
   APP_GUIDE_ITEMS.forEach((item, i) => {
     const card = document.createElement("div");
@@ -11886,6 +11918,13 @@ function renderAppGuide() {
     });
     list.appendChild(card);
   });
+  ndFillGuideCycleDays(list);
+}
+// (9.7) مدة الدورة في الدليل من إعداد لوحة الأدمن (recomputeCycleDays)، بالتمييز الصح
+function ndFillGuideCycleDays(root) {
+  const n = Math.round(Number(recomputeCycleDays) || 0);
+  const t = n === 1 ? "يوم واحد" : n === 2 ? "يومان" : (n >= 3 && n <= 10) ? n + " أيام" : n + " يومًا";
+  root.querySelectorAll(".ag-cycle-days").forEach(e => { e.textContent = t; });
 }
 
 /* ============================================================
@@ -13521,6 +13560,7 @@ function setupAuthScreens() {
 // (9.6) بند 74: ترتيب شاشات البداية. قدّام (أو دخول التطبيق منها) = الجاية من الشمال والقديمة يمين، ورجوع = العكس
 // (زي الحركة القديمة). أي انتقال تاني (جوه التطبيق) زي ما هو.
 const ND_START_STEP = { splash: 0, motivation: 1, authGate: 2, authLogin: 3, authSignup: 3, authForgot: 4 };
+let ndNextFromLeft = false; // (9.7) بند 84: الانتقال الجاي يبقى من الشمال (زرار رسالة الترحيب بس)
 function ndStartDir(cur, tgt) {
   if (!cur || !tgt || !(cur.id in ND_START_STEP)) return "";
   if (!(tgt.id in ND_START_STEP)) return "fwd";
@@ -13540,7 +13580,8 @@ function navigate(screenId) {
   closeModeDrawer();
   if (screenId !== "questions") { try { cancelLastQDoneTimer(); } catch (e) {} } // أ3: خرج من السؤال
 
-  const ndDir = ndStartDir(current, target); // (9.6) بند 74
+  let ndDir = ndStartDir(current, target); // (9.6) بند 74
+  if (ndNextFromLeft) { ndDir = "fwd"; ndNextFromLeft = false; } // (9.7) بند 84
   if (current) {
     current.classList.remove("active");
     if (ndDir !== "fwd") { // قدّام: القديمة بتمشي يمين (مكان الشاشة المستخبية)، فمن غير exit-left
@@ -14381,6 +14422,10 @@ async function init() {
     modeOverlayEarly.addEventListener("click", (e) => {
       if (e.target === modeOverlayEarly) modeOverlayEarly.classList.remove("open");
     });
+    // (9.7) بند 83: ✕ والسحب لتحت من المقبض أو العنوان
+    const modeCloseEarly = document.getElementById("modeSheetClose");
+    if (modeCloseEarly) modeCloseEarly.addEventListener("click", () => modeOverlayEarly.classList.remove("open"));
+    try { wireSheetDragToClose(["modeSheetHandle", "modeSheetHeader"], ".sheet", "sheetOverlay"); } catch (e) {}
   }
 
   // 1-a) لو المستخدم مسجّل دخوله من قبل (جلسة محفوظة)، حدّد هويته الأول
@@ -14546,6 +14591,7 @@ async function init() {
     welcomeAgreeBtn.addEventListener("click", async () => {
       welcomeShownDate = getTodayKey();
       await saveWelcomeShownDate(welcomeShownDate);
+      ndNextFromLeft = true; // (9.7) بند 84: سهم الزرار ← فصفحة الأسئلة تيجي من الشمال (قرار صاحب المشروع 2/10: هنا بس)
       navigate("questions");
       renderQuestion();
     });
