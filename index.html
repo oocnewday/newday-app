@@ -2680,6 +2680,11 @@ bdi{ unicode-bidi: isolate; }
 .notification-row.notif-leaving{ opacity:0; transform:translateX(30px); }
 .notif-action{ font-size:12px; font-weight:700; color:var(--q-teal); margin-top:4px; }
 .race-stats.race-neg, .race-stats.race-neg b{ color:#ff8f8f; }
+/* (9.8) بند 42: الفاصل بين أول 30 وصف الطالب لما يكون في صفوف مخفية بينهم: 3 نقط تحت عمود الترتيب */
+.race-gap{ display:flex; flex-direction:column; align-items:center; gap:4px; width:32px; margin:-2px 0 -2px 14px; padding:2px 0; }
+.race-gap i{ width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,0.32); }
+/* (9.8) بند 42 (قرار صاحب المشروع 3/10): الجملة تحت اللوحة لما بتتعرض من آخر ترتيب محفوظ (من غير نت أو لو التحميل فشل) */
+.race-offline-note{ font-family:'Cairo',sans-serif; font-size:12.5px; line-height:1.7; color:rgba(255,255,255,0.6); text-align:center; direction:rtl; unicode-bidi:plaintext; padding:2px 8px 0; text-wrap:balance; }
 
 /* ============ (6.7) ============ */
 .boot-ooc{ display:block; font-family:'Cairo',sans-serif; font-weight:800; letter-spacing:.45em; padding-left:.45em;
@@ -5951,7 +5956,7 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 9.7; // (9.7) النقاط والعدّ خطوة 1 (77 و78) و83 و84 والدليل. و(9.6) الواجهة والحركة: 82 و80 و79 و74. و(9.5) أخطاء وطلبات الطالب قبل الإطلاق: 56 و35 و36 و71 و70 و72 و54 و44 (4) و34 و75 و67 و68 و73. و(9.4) بنود 61 و62 و63: النقاط وحد الـ 149، والرسم مع الجهاز الواحد، ورسايل النت. و(9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
+const APP_VERSION = 9.8; // (9.8) النقاط والعدّ خطوة 2 (57: النقاط على السيرفر) و42 (لوحة المضمار) و86 (الأسهم) و87 (الأخطاء من غير حد) والحفظ وقت الخروج. و(9.7) النقاط والعدّ خطوة 1 (77 و78) و83 و84 والدليل. و(9.6) الواجهة والحركة: 82 و80 و79 و74. و(9.5) أخطاء وطلبات الطالب قبل الإطلاق: 56 و35 و36 و71 و70 و72 و54 و44 (4) و34 و75 و67 و68 و73. و(9.4) بنود 61 و62 و63: النقاط وحد الـ 149، والرسم مع الجهاز الواحد، ورسايل النت. و(9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
 const APP_VERSION_LABEL = Number(APP_VERSION).toFixed(1); // للعرض بس (6.0 مش 6)
 
 const CONFIG = {
@@ -5964,8 +5969,8 @@ const CONFIG = {
   POINTS_CORRECT_FIRST: 2,  // صح من أول مرة
   POINTS_WRONG: 1,          // غلط
   POINTS_AFTER_WRONG: 1,    // كان غلط، دلوقتي صح (الباقي)
-  MAX_HISTORY: 50,          // أقصى عدد في qHistory
-  MAX_WRONG_SET: 100        // أقصى عدد في wrongSet
+  MAX_HISTORY: 50           // أقصى عدد في qHistory
+  // (9.8) بند 87: MAX_WRONG_SET (100) اتشال — فولدر الأخطاء من غير حد (التفاصيل في awardPoints)
 };
 
 /* ============================================================
@@ -6189,7 +6194,7 @@ function ndMirrorDropNeedsMsg(m, base) {
   return ndMirrorUnsentSolve(m, base);
 }
 // نسخة الحفظ اللي بتروح للقاعدة: الحالة + __dev (memberState نفسه مابيتلمسش)
-function ndWithDev(st) { return Object.assign({}, st, { __dev: ndDeviceId() }); }
+function ndWithDev(st) { const o = Object.assign({}, st, { __dev: ndDeviceId() }); delete o.__ansQ; return o; } // (9.8) بند 57: طابور الإجابات على الجهاز بس
 // (هـ2) رسالة الحل اللي اتلغى (نص صاحب المشروع 30/9)، وعلامة في sessionStorage عشان تظهر بعد إعادة الفتح من "المتابعة"
 // (9.4) بند 62 (القرار 4، نص صاحب المشروع 1/10): الرسالة لو اتلغى حل أو رسم
 const ND_DEV_DROPPED_MSG = "حُمِّل تقدّمك المحفوظ من جهازك الآخر. ولضمان العدالة بين جميع المشتركين يُحفظ التقدّم من جهاز واحد في الوقت نفسه، لذلك لم يُحفظ ما سجّلته على هذا الجهاز دون اتصال من إجابات أو كتابة على الأسئلة. ننصحك بالاتصال بالإنترنت قبل الانتقال إلى جهاز آخر.";
@@ -6409,6 +6414,10 @@ async function loadMemberState() {
     } else {
       memberState = server;
       ndDevSetBase(currentUserId, ndSolvedAt(server)); // (9.3) بند 44 (1) و(هـ3): آخر علامة حل الجهاز ده شافها على الحساب
+      // (9.8) بند 57: الحالة من الحساب مافيهاش طابور الإجابات (مابيترفعش)، فاللي لسه ماوصلش السيرفر بيتنقل من نسخة الجهاز لو ماتلغتش
+      if (mirrorOk && mirrorOk.state && mirrorOk.state !== server && Array.isArray(mirrorOk.state.__ansQ) && mirrorOk.state.__ansQ.length) {
+        memberState.__ansQ = mirrorOk.state.__ansQ.slice();
+      }
     }
     const epochBefore = epochOf(memberState);
     memberState.__epoch = progressEpoch;
@@ -6477,8 +6486,7 @@ async function persistMemberState() {
   try {
     // (7.8) النقاط بتتحفظ مع التقدّم في نفس الطلب (عشان السيرفر يتأكد من رقم التصفير للاتنين)
     // (9.3) بند 44 (1): رقم الجهاز (__dev) في النسخة اللي بتتبعت بس، والقاعدة بتشيله قبل التخزين
-    const upd = { app_state: ndWithDev(memberState) };
-    if (typeof memberState.totalPoints === "number") upd.total_points = memberState.totalPoints;
+    const upd = { app_state: ndWithDev(memberState) }; // (9.8) بند 57: من غير total_points (السيرفر بس اللي بيكتبه، والصلاحية بتتسحب في item57b)
     const { error } = await supabaseClient.from("users").update(upd).eq("id", userAtStart);
     if (error) throw error;
     if (currentUserId !== userAtStart) return; // الحساب اتغيّر في النص
@@ -6547,6 +6555,7 @@ if (typeof window !== "undefined") {
     if (isGuest || !currentUserId) return;
     if (!memberStateSafeToUpload) { recoverMemberStateAfterOffline(); return; }
     if (memberStatePendingSync) { clearTimeout(memberStateSaveTimer); persistMemberState(); }
+    ndAnsFlush(); // (9.8) بند 57
     ndAnnSyncSoon(); // (9.2) بند 44 (2)
     ndDeviceCheck(); // (9.3) بند 44 (1)
   });
@@ -6564,11 +6573,298 @@ if (typeof window !== "undefined") {
       clearTimeout(memberStateSaveTimer);
       persistMemberState();
     }
+    if (ndAnsQueue().length) ndAnsFlush(); // (9.8) بند 57
   });
   window.addEventListener("pagehide", () => {
     flushMemberMirror();
     if (memberStatePendingSync) { clearTimeout(memberStateSaveTimer); persistMemberState(); }
+    if (ndAnsQueue().length) ndAnsFlush(); // (9.8) بند 57
   });
+}
+
+// (9.8) ملحوظة 85 (قرار صاحب المشروع 3/10): الخروج بيصفّر الحساب علطول، فالحفظ المستني (2.5 ثانية) ونسخة الجهاز (0.4) كانوا بيضيعوا.
+// دلوقتي: نسخة الجهاز فورًا، وصورة ثابتة من الحالة بتترفع في خلفية الخروج قبل قفل الجلسة. لو نجح: النسخة مابقتش مستنية، وعلامة
+// الحل اللي الجهاز شافها بتتحدّث (وإلا الدخول الجاي هنا يطلّع رسالة إلغاء غلط). لو فشل: النسخة مستنية وتترفع في الدخول الجاي زي قبل
+const ND_LOGOUT_SAVE_MS = 5000; // أقصى زيادة للدخول بعد الخروج علطول (بند 68 بيستنى الخروج)
+function ndLogoutSnapshot() {
+  if (!useCloudState()) return null;
+  const canSave = !!supabaseClient && memberStateSafeToUpload && memberStatePendingSync && !ndDevLocked;
+  // (9.8) بند 57: الإجابات اللي في الطابور بتتبعت هي كمان قبل قفل الجلسة، حتى لو الحالة نفسها مش مستنية رفع
+  const ans = (!!supabaseClient && memberStateSafeToUpload && !ndDevLocked) ? ndAnsQueue().slice(0, ND_ANS_BATCH_MAX) : [];
+  if (canSave) memberState.__epoch = progressEpoch; // (7.8) زي persistMemberState
+  flushMemberMirror(); // نسخة الجهاز باسم الحساب ده قبل ما يتصفّر
+  if (!canSave && !ans.length) return null;
+  clearTimeout(memberStateSaveTimer);
+  clearTimeout(ndAnsTimer);
+  try {
+    const upd = canSave ? { app_state: JSON.parse(JSON.stringify(ndWithDev(memberState))) } : null; // (9.8) بند 57: من غير total_points
+    return { uid: currentUserId, upd: upd, savedAt: memberState.__savedAt, solvedSent: ndSolvedAt(memberState),
+             ans: JSON.parse(JSON.stringify(ans)), args: ndPtsArgs() };
+  } catch (e) {
+    console.warn("[ND] logout save: snapshot failed; kept on this device", e && e.name);
+    return null;
+  }
+}
+async function ndLogoutSaveRun(s) {
+  if (!s) return;
+  // (9.8) بند 57: الطابور. لو فشل، بيفضل في نسخة الجهاز ويتبعت في الدخول الجاي هنا (الإعادة آمنة بالرقم).
+  // (مراجعة (ل)) بيتبعت جنب حفظ الحالة مش قبله، عشان على نت بطيء حفظ الحالة (ملحوظة 85) مايستناش الدفعة جوه نفس الـ 5 ثواني
+  const ansReq = (async () => {
+    if (s.ans && s.ans.length) {
+      try {
+        const r = await supabaseClient.rpc("nd_points_batch", Object.assign({}, s.args, { p_answers: s.ans }));
+        if (r && r.error) ndPtsErr(r.error, "logout");
+        else {
+          const sent = new Set(s.ans.map(a => a.seq));
+          try {
+            const k = "nd_member_state_" + s.uid;
+            const m = JSON.parse(localStorage.getItem(k) || "null");
+            if (m && m.state && Array.isArray(m.state.__ansQ)) {
+              m.state.__ansQ = m.state.__ansQ.filter(a => !sent.has(a.seq));
+              localStorage.setItem(k, JSON.stringify(m));
+            }
+          } catch (e) { /* الطابور فاضل في النسخة، والسيرفر هيتجاهله كمكرر */ }
+          if (r && r.data && typeof r.data.last_seq === "number" && r.data.last_seq > ndAnsSeqGet(s.uid)) ndAnsSeqSet(s.uid, r.data.last_seq);
+        }
+      } catch (e) { ndPtsErr(e, "logout"); }
+    }
+  })();
+  const req = (async () => {
+    if (!s.upd) return;
+    const { error } = await supabaseClient.from("users").update(s.upd).eq("id", s.uid);
+    if (error) throw error;
+    ndDevSetBase(s.uid, s.solvedSent); // (هـ3) علامة الحل اللي بقت على الحساب
+    try {
+      const k = "nd_member_state_" + s.uid;
+      const m = JSON.parse(localStorage.getItem(k) || "null");
+      if (m && m.state && m.pending && memberSavedAt(m.state) === s.savedAt) { // نفس الحالة اللي اترفعت بس
+        m.pending = false; m.failed = false;
+        localStorage.setItem(k, JSON.stringify(m));
+      }
+    } catch (e) { /* النسخة تفضل مستنية وتترفع تاني في الدخول الجاي (نفس المحتوى) */ }
+    ndOffChgClear(s.uid);
+  })();
+  req.catch((e) => {
+    console.warn("[ND] logout save failed; kept on this device for next sign-in:",
+      ndIsReplacedError(e) ? "device_replaced" : String((e && (e.message || e)) || "").slice(0, 120));
+  });
+  try { await withTimeout(Promise.all([ansReq, req.catch(() => {})]), ND_LOGOUT_SAVE_MS, "logout-save"); } catch (e) { /* المهلة خلصت: الخروج يكمّل */ }
+}
+
+// (9.8) بند 57 (خطة طلاب 9.8، اتعتمدت 3/10): النقاط والعدّ والحافز والخصم بتتحسب على السيرفر بنفس قواعد 9.7، والسيرفر هو المرجع.
+//  - التطبيق بيحسب فورًا زي 9.7 للعرض والاحتفال والشريط ومن غير نت، وبيفضل شايل نسخته في app_state.
+//  - كل إجابة عضو (والإدارة) في Study أو Test بتتسجّل في طابور جوه memberState (__ansQ): بيتحفظ مع نسخة الجهاز، ومابيترفعش جوه
+//    app_state (ndWithDev بتشيله)، وقواعد الجهاز الواحد بتلغيه مع الحلول لوحدها. الزائر مالوش طابور ولا أي نداء جديد.
+//  - الطابور بيترفع لـ nd_points_batch بعد الحل بنفس تأخير الحفظ، ومع رجوع النت، وإخفاء التطبيق، والفتح (nd_points_open لو الطابور
+//    فاضي، وغير كده الدفعة نفسها: اكتشاف (ط) 4)، والخروج (ndLogoutSaveRun بنفس المهلة). الإعادة آمنة بالرقم المسلسل.
+//  - بعد كل رد ناجح: الإجابات اللي اتبعتت بتتشال، والتطبيق بياخد علامات أسئلة الدفعة (إلا اللي ليها إجابة لسه في الطابور)، ولو الطابور
+//    فضي: الرصيد والأيام وأرقام النهارده وآخر نشاط والخصم، ويكتبهم في نسخته (cloudSet للي اتغيّر بس، عشان مفيش رفع زيادة).
+//  - الرقم المسلسل: عدّاد على الجهاز لكل حساب (nd_ans_seq_ + الحساب) جنب nd_device_id، وبعد أي رد = أكبر من (العدّاد، last_seq).
+//    وكل إجابة = أكبر من (العدّاد + 1، Date.now()) (قرار صاحب المشروع 3/10): الرقم الجديد أكبر من أي رقم قديم حتى لو العدّاد
+//    اتمسح من الجهاز (زي مسح الجهاز في بند 52)، فمفيش إجابة تتجاهل كمكررة. الاستثناء: العدّاد يتمسح والساعة ترجع لورا مع بعض.
+//  - الأخطاء: nd_device_replaced = شاشة "حسابك مفتوح الآن على جهاز آخر"؛ الدالة مش موجودة أو خطأ نت = الطابور يفضل من غير ضياع؛
+//    أي خطأ تاني بيتسجّل في console من غير بيانات شخصية. العقد في آخر i57s/README.txt (مستند الشغل).
+// ------------------------------------------------------------
+const ND_ANSQ = "__ansQ";
+const ND_ANS_BATCH_MAX = 500; // حد السيرفر للدفعة؛ الأكتر بيتقسّم
+let ndDayStartHour = 4;   // day_start_hour (من app_settings أو رد السيرفر)، و4 لو مش موجودة أو من غير نت
+let ndOfflineDays = 2;    // offline_answer_days (للدليل بس؛ السيرفر هو اللي بيطبّقها)
+let ndClockSkewMs = 0;    // فرق ساعة الجهاز عن السيرفر، بس لو أكبر من دقيقة (عشان فرق الشبكة مايحرّكش اليوم)
+let ndAnsTimer = null;
+let ndAnsBusy = null;
+let ndAnsAgain = false;
+let ndAnsSeqMem = 0;
+let ndPtsMissingWarned = false;
+let ndPtsErrSeen = {}; // (مراجعة (ل)) الأخطاء اللي اتسجّلت في الجلسة دي
+function ndAnsQueue() { const q = memberState && memberState[ND_ANSQ]; return Array.isArray(q) ? q : []; }
+function ndAnsSeqKey(uid) { return "nd_ans_seq_" + uid; }
+function ndAnsSeqGet(uid) { let v = 0; try { v = parseInt(localStorage.getItem(ndAnsSeqKey(uid)), 10) || 0; } catch (e) {} return Math.max(v, ndAnsSeqMem); }
+function ndAnsSeqSet(uid, v) { ndAnsSeqMem = Math.max(ndAnsSeqMem, v); try { localStorage.setItem(ndAnsSeqKey(uid), String(v)); } catch (e) {} }
+function ndAnsChapter(qCode) {
+  try {
+    const all = (window.NEWDAY_DATA && window.NEWDAY_DATA.QUESTIONS) || [];
+    for (let i = 0; i < all.length; i++) if (all[i].qCode === qCode) return String(all[i].chapter || "").slice(0, 32);
+  } catch (e) {}
+  return "";
+}
+// بتتنادى من awardPoints بس (بعد ndMarkSolved). الوقت "t" بساعة الجهاز الحقيقية (من غير السفر في الزمن)، والسيرفر بيصحّحه بالفرق
+function ndAnsRecord(qCode, isCorrect, answered) {
+  if (!useCloudState() || qSubMode === "review") return;
+  const uid = currentUserId;
+  const seq = Math.max(ndAnsSeqGet(uid) + 1, Date.now()); // (قرار 3/10) شوف الرقم المسلسل فوق
+  ndAnsSeqSet(uid, seq);
+  const q = ndAnsQueue().slice();
+  q.push({ seq: seq, q: String(qCode), r: isCorrect ? "c" : (answered === false ? "s" : "w"), m: qSubMode === "test" ? "test" : "study",
+           ch: ndAnsChapter(qCode), sec: Math.max(0, Math.min(3600, Math.round(Number(qTimerSeconds) || 0))), t: Date.now() });
+  memberState[ND_ANSQ] = q;
+  queueMemberMirror(); // نسخة الجهاز (من غير ما __savedAt يتغير؛ ndMarkSolved غيّرته)
+  ndAnsSchedule(2500);
+}
+function ndAnsSchedule(ms) { clearTimeout(ndAnsTimer); ndAnsTimer = setTimeout(() => { ndAnsTimer = null; ndAnsFlush(); }, ms); }
+function ndPtsCanSend() {
+  return !!supabaseClient && useCloudState() && memberStateSafeToUpload && !ndDevLocked && !offlineAccountMode
+    && !(typeof navigator !== "undefined" && navigator.onLine === false);
+}
+function ndPtsArgs() {
+  let tz = "";
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {} // للإحصاء بس، من غير أي أثر
+  return { p_device: ndDeviceId(), p_device_now: Date.now(), p_tz: String(tz).slice(0, 64) };
+}
+function ndPtsMissing(e) {
+  const t = String((e && e.code) || "") + " " + String((e && (e.message || e)) || "");
+  return /PGRST202|Could not find the function/.test(t);
+}
+function ndPtsErr(e, where) {
+  if (ndPtsMissing(e)) {
+    if (!ndPtsMissingWarned) { ndPtsMissingWarned = true; console.warn("[ND] points: server functions not available; answers kept on this device"); }
+    return;
+  }
+  const msg = String((e && (e.message || e)) || "");
+  // nd_bad_batch وnd_batch_too_big وnd_not_authenticated = خطأ في التطبيق نفسه. غير كده (غالبًا النت): الطابور بيفضل ويتبعت تاني بهدوء
+  if (/nd_bad_batch|nd_batch_too_big|nd_not_authenticated|nd_not_allowed/.test(msg)) { console.error("[ND] points " + where + " rejected:", msg.slice(0, 80)); return; }
+  // (مراجعة (ل) 4/10) النت أو المهلة بس اللي بيعدّوا بهدوء (الطابور بيتبعت تاني). أي خطأ تاني من السيرفر (500، صلاحية، نوع بيانات…)
+  // بيتسجّل مرة واحدة لكل نوع في الجلسة، عشان الطابور مايفضلش يتبعت ويترفض من غير ما حد يعرف السبب. من غير بيانات شخصية
+  const code = String((e && e.code) || "");
+  if (!code && /fetch|network|load failed|انتهت المهلة/i.test(msg)) return;
+  const sig = where + "|" + code + "|" + msg.slice(0, 40);
+  if (ndPtsErrSeen[sig]) return;
+  ndPtsErrSeen[sig] = 1;
+  console.warn("[ND] points " + where + " failed; answers kept on this device:", code || "-", msg.slice(0, 80));
+}
+function ndAnsFlush() {
+  if (ndAnsBusy) { ndAnsAgain = true; return ndAnsBusy; }
+  ndAnsBusy = (async () => {
+    try { do { ndAnsAgain = false; await ndAnsFlushRun(); } while (ndAnsAgain); }
+    catch (e) { console.warn("[ND] points flush:", e && e.name); }
+    finally { ndAnsBusy = null; }
+  })();
+  return ndAnsBusy;
+}
+async function ndAnsFlushRun() {
+  clearTimeout(ndAnsTimer); ndAnsTimer = null;
+  if (!ndPtsCanSend()) return;
+  const uid = currentUserId;
+  const st = memberState;
+  for (;;) {
+    const q = ndAnsQueue();
+    if (!q.length) return;
+    const part = q.slice(0, ND_ANS_BATCH_MAX);
+    let res;
+    try {
+      res = await withTimeout(supabaseClient.rpc("nd_points_batch", Object.assign(ndPtsArgs(), { p_answers: part })), 10000, "points");
+    } catch (e) { ndPtsErr(e, "batch"); return; } // من غير نت أو المهلة خلصت
+    // الحساب اتغيّر في النص: الطابور فاضل في نسخة الحساب ده، ولو اتبعت تاني السيرفر بيتجاهل المكرر بالرقم
+    if (currentUserId !== uid || memberState !== st) return;
+    if (res && res.error) {
+      if (ndIsReplacedError(res.error)) { ndDeviceReplaced(); return; }
+      ndPtsErr(res.error, "batch");
+      return;
+    }
+    const sent = new Set(part.map(a => a.seq));
+    const rest = ndAnsQueue().filter(a => !sent.has(a.seq)); // الدفعة كلها اتعالجت (اتقبلت أو مكررة أو مرفوضة لشكلها)
+    memberState[ND_ANSQ] = rest;
+    queueMemberMirror();
+    ndPtsApply(res && res.data, uid, rest);
+    ndRaceInvalidate(); // (9.8) بند 42، قرار 3/10: اللوحة تجيب النقاط الجديدة في الفتحة الجاية
+  }
+}
+// الفتح: بعد تحميل الحالة (loadState). لو فيه إجابات مستنية، الفتح = الدفعة نفسها (عشان وقتها ما يتحسبش على يوم الوصول)
+async function ndPointsOpen() {
+  if (!ndPtsCanSend()) return;
+  if (ndAnsQueue().length) { await ndAnsFlush(); return; }
+  const uid = currentUserId;
+  const st = memberState;
+  let res;
+  try { res = await withTimeout(supabaseClient.rpc("nd_points_open", ndPtsArgs()), 10000, "points"); }
+  catch (e) { ndPtsErr(e, "open"); return; }
+  if (currentUserId !== uid || memberState !== st) return;
+  if (res && res.error) {
+    if (ndIsReplacedError(res.error)) { ndDeviceReplaced(); return; }
+    ndPtsErr(res.error, "open");
+    return;
+  }
+  if (ndAnsQueue().length) { ndAnsFlush(); return; } // اتحل سؤال والرد في الطريق ← رد الدفعة هيجيب الأرقام كاملة
+  ndPtsApply(res && res.data, uid, []);
+}
+function ndSameSec(a, b) {
+  if (a === b) return true;
+  if (typeof a !== "number" || typeof b !== "number") return false;
+  return Math.floor(a / 1000) === Math.floor(b / 1000); // السيرفر بيخزّن بالثانية
+}
+// ياخد أرقام السيرفر ويكتبها في نسخة التطبيق. rest = الإجابات اللي لسه في الطابور بعد الرد
+function ndPtsApply(r, uid, rest) {
+  if (!r || typeof r !== "object" || currentUserId !== uid || isGuest) return;
+  const set = r.settings || {};
+  const h = parseInt(set.day_start_hour, 10);
+  if (h >= 0 && h <= 23) ndDayStartHour = h;
+  const w = parseInt(set.offline_answer_days, 10);
+  if (w > 0) ndOfflineDays = w;
+  const cyc = parseInt(set.recompute_cycle_days, 10);
+  if (cyc > 0) recomputeCycleDays = cyc;
+  if (typeof r.server_now === "number") { const sk = r.server_now - Date.now(); ndClockSkewMs = Math.abs(sk) > 60000 ? sk : 0; }
+  if (typeof r.last_seq === "number" && r.last_seq > ndAnsSeqGet(uid)) ndAnsSeqSet(uid, r.last_seq);
+  const pend = new Set((rest || []).map(a => a.q));
+  let qChanged = false, logChanged = false, bonusChanged = false;
+  const qs = (r.q && typeof r.q === "object") ? r.q : {};
+  Object.keys(qs).forEach(k => {
+    if (pend.has(k)) return; // عليه إجابة لسه ماوصلتش ← الرد الجاي
+    const v = qs[k];
+    if (!v || typeof v !== "object" || !/^Q\d+$/.test(k)) return;
+    const nv = {
+      state: ["empty", "half", "full"].indexOf(v.state) >= 0 ? v.state : "empty",
+      lastScoredAt: typeof v.lastScoredAt === "number" ? v.lastScoredAt : null,
+      firstCorrectAt: typeof v.firstCorrectAt === "number" ? v.firstCorrectAt : null,
+      earnedPoints: Number(v.earnedPoints) || 0
+    };
+    const ov = questionState[k];
+    if (!ov || ov.state !== nv.state || !ndSameSec(ov.lastScoredAt, nv.lastScoredAt) || !ndSameSec(ov.firstCorrectAt, nv.firstCorrectAt)
+        || (Number(ov.earnedPoints) || 0) !== nv.earnedPoints) {
+      questionState[k] = nv;
+      qChanged = true;
+    }
+  });
+  if (!rest || !rest.length) {
+    if (typeof r.balance === "number") totalPoints = r.balance;
+    if (typeof r.last_active === "string" && r.last_active) lastActiveDate = r.last_active;
+    if (typeof r.penalty_through === "string" && r.penalty_through) penaltyThroughDate = r.penalty_through;
+    const days = (r.days && typeof r.days === "object") ? r.days : {};
+    Object.keys(days).forEach(k => {
+      const v = days[k];
+      if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+      const nv = { solved: Number(v.solved) || 0, points: Number(v.points) || 0, completed: !!v.completed };
+      const ov = dailyLog[k];
+      if (!ov || ov.solved !== nv.solved || ov.points !== nv.points || !!ov.completed !== nv.completed) {
+        dailyLog[k] = Object.assign({}, ov || {}, nv);
+        logChanged = true;
+      }
+    });
+    if (r.today && typeof r.server_day === "string" && r.server_day === dailyDate && r.server_day === getTodayKey()) {
+      dailyProgress = Math.max(dailyProgress, Math.min(Number(r.today.counted) || 0, CONFIG.MIN_MILESTONES)); // الشريط مابيرجعش لورا
+      const lb = Math.max(0, Number(r.today.bonus) || 0) * CONFIG.BONUS_STEP;
+      // الحافز زي الشريط مابيرجعش لورا في نفس اليوم: لو نزل، الحل الجاي كان هيدّي الحافز ويحتفل بيه تاني على الجهاز
+      if (lb > (Number(bonusCounter.lastBonusAt) || 0)) { bonusCounter.lastBonusAt = lb; bonusChanged = true; }
+    }
+  }
+  const saves = [savePoints(totalPoints), saveLastActiveDate(lastActiveDate), savePenaltyThrough(penaltyThroughDate), saveDailyProgress(dailyProgress)];
+  if (qChanged) saves.push(saveQuestionState(questionState));
+  if (logChanged) saves.push(saveDailyLog(dailyLog));
+  if (bonusChanged) saves.push(saveBonusCounter(bonusCounter));
+  Promise.all(saves).catch(() => {});
+  try { updatePointsDisplay(false); } catch (e) {}
+}
+// ساعة بداية اليوم ومدة الإجابات اللي من غير نت من app_settings، للعضو بس (مراجعة (ل) 4/10): الزائر من غير أي نداء جديد، فيومه
+// بيبدأ بالقيمة الافتراضية 4 زي 9.7 والدليل. لما ساعة بداية اليوم تتغير من اللوحة (بند 89)، الزائر هيحتاج يقراها هو كمان
+async function ndLoadDaySettings(gen) {
+  if (!supabaseClient || offlineAccountMode) return;
+  try {
+    const { data, error } = await withTimeout(supabaseClient.from("app_settings").select("key, value").in("key", ["day_start_hour", "offline_answer_days"]), 8000, "settings");
+    if (error || gen !== loadStateGen || !Array.isArray(data)) return;
+    data.forEach(row => {
+      const n = parseInt(row && row.value, 10);
+      if (row.key === "day_start_hour" && n >= 0 && n <= 23) ndDayStartHour = n;
+      if (row.key === "offline_answer_days" && n > 0) ndOfflineDays = n;
+    });
+  } catch (e) { /* من غير نت: 4 ويومين */ }
 }
 
 // بترجع true لو المستخدم عضو مسجّل وحالته السحابية جاهزة نستخدمها (بدل rawStorage المحلي)
@@ -7456,6 +7752,16 @@ async function resetAll() {
     // (9.2) بند 44 (2): الرسم بقى في جدول لوحده ← يتمسح من الحساب والجهاز كمان (زي ما كان بيتمسح مع app_state)
     const annUid = currentUserId;
     try { await supabaseClient.rpc("nd_annotations_clear_mine"); } catch (e) {}
+    // (9.8) بند 57: النقاط والعلامات والأيام على السيرفر بتتمسح هي كمان، عشان المسح يفضل بيعمل اللي بيعمله في 9.7 (اكتشاف الأساسي 3/10)
+    // دفعة في الطريق تخلص الأول، والطابور يتفضّى قبل المسح، عشان مفيش إجابة قديمة توصل السيرفر بعده وتتحسب من جديد
+    clearTimeout(ndAnsTimer);
+    if (ndAnsBusy) { try { await ndAnsBusy; } catch (e) {} }
+    if (memberState) memberState[ND_ANSQ] = [];
+    try {
+      const pr = await supabaseClient.rpc("nd_points_reset_mine");
+      if (pr && pr.error && !ndPtsMissing(pr.error)) console.warn("[ND] points reset:", String(pr.error.message || "").slice(0, 80));
+    } catch (e) {}
+    ndRaceForget(); // (9.8) بند 42، قرار صاحب المشروع 4/10 (ب): اللوحة تجيب من جديد، والترتيب المحفوظ بيتمسح
     try { for (const [k] of await ndAnnMetas(annUid)) await ndAnnDel(k); } catch (e) {}
     memberState = {};
     memberStatePendingSync = false;
@@ -7513,13 +7819,32 @@ async function saveRecomputeCycleDays(n) {
   return { error };
 }
 
+// (9.8) بند 57 (قرار صاحب المشروع 3/10): اليوم موحّد للكل بتوقيت القاهرة، ويبدأ الساعة ndDayStartHour (day_start_hour في app_settings،
+// و4 لو مش موجودة أو من غير نت)، زي السيرفر بالظبط (nd57_day: ساعة القاهرة ناقص الساعة، والتاريخ). الناتج Date محلي تاريخه = يوم
+// التطبيق، الساعة 12 الضهر عشان حساب الأيام بـ setDate مايتأثرش بالتوقيت الصيفي، فكل اللي بينادوها زي ما هم. ووقت الجهاز بيتصحّح
+// بفرق ساعة السيرفر لو أكبر من دقيقة. والسفر في الزمن على العرض بس (السيرفر على الوقت الحقيقي). وجو أول صفحة بساعة الجهاز زي ما هو.
+let ndCairoFmt = null;
+function ndCairoParts(t) {
+  try {
+    if (!ndCairoFmt) ndCairoFmt = new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Cairo", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", hour12: false });
+    const o = {};
+    ndCairoFmt.formatToParts(new Date(t)).forEach(p => { if (p.type !== "literal") o[p.type] = parseInt(p.value, 10); });
+    if (!(o.year > 2000 && o.month >= 1 && o.day >= 1 && o.hour >= 0)) return null;
+    return { y: o.year, m: o.month, d: o.day, h: o.hour % 24, mi: o.minute || 0 };
+  } catch (e) { return null; }
+}
 function getAdjustedToday() {
-  const now = new Date(Date.now() + debugTimeOffsetMs);
-  const adjusted = new Date(now);
-  if (now.getHours() < 4) {
-    adjusted.setDate(adjusted.getDate() - 1);
+  const t = Date.now() + ndClockSkewMs + debugTimeOffsetMs;
+  const p = ndCairoParts(t);
+  if (!p) { // المتصفح مابيعرفش توقيت القاهرة (نادر جدًا) ← زي 9.7: ساعة الجهاز
+    const now = new Date(t);
+    const adjusted = new Date(now);
+    if (now.getHours() < ndDayStartHour) adjusted.setDate(adjusted.getDate() - 1);
+    return adjusted;
   }
-  return adjusted;
+  const d = new Date(p.y, p.m - 1, p.d, 12, 0, 0, 0);
+  if (p.h < ndDayStartHour) d.setDate(d.getDate() - 1);
+  return d;
 }
 
 function getTodayKey() {
@@ -8148,6 +8473,8 @@ async function loadState() {
   // اليوم يتصفّر علطول لو تاريخه قديم، ومعاه خصم أيام الغياب للحساب ده، قبل أي حل (كان بيستنى الرجوع للتطبيق)
   await checkDailyReset();
   ndStateReady = true;
+  if (useCloudState()) ndPointsOpen(); // (9.8) بند 57: الخصم المستحق وأرقام السيرفر (أو الإجابات المستنية) — في الخلفية
+  if (useCloudState()) ndLoadDaySettings(gen); // (9.8) بند 57. (مراجعة (ل)) للعضو بس: الزائر من غير أي نداء جديد (الخطة)، وساعته 4 زي 9.7
 }
 
 /* (8.4) الأسئلة الـ 13 التجريبية (Qc0000001–Qc0000013) اتشالت: بنشيل تقدّم المستخدم عليها مرة واحدة لكل حساب/جهاز
@@ -8489,6 +8816,7 @@ async function awardPoints(qCode, isCorrect, answered) {
   // (9.3) بند 44 (1) (هـ3): علامة الحل (__solvedAt) للعضو، والجهاز التاني بيعرف منها إن الطالب حل هنا.
   // أي طريق جديد بيسجّل حل من غير awardPoints لازم ينادي ndMarkSolved هو كمان
   ndMarkSolved();
+  ndAnsRecord(qCode, isCorrect, answered); // (9.8) بند 57: الإجابة للطابور (العضو والإدارة بس)
 
   // 3) حدّث حالة السؤال
   const st = getQuestionState(qCode);
@@ -8513,11 +8841,8 @@ async function awardPoints(qCode, isCorrect, answered) {
   // 5) لو الإجابة غلط → ضيف في Wrong Set
   if (!isCorrect) {
     wrongSet.add(qCode);
-    // حد أقصى
-    if (wrongSet.size > CONFIG.MAX_WRONG_SET) {
-      const first = wrongSet.values().next().value;
-      wrongSet.delete(first);
-    }
+    // (9.8) بند 87 (قرار صاحب المشروع 3/10): من غير حد (كان بيشيل الأقدم بعد 100). السؤال بيخرج بس لما يتجاوب صح.
+    // الحجم متقاس: 11 بايت للسؤال، وكل سؤال محلول عليه أصلًا حوالي 104 بايت في questionState
   }
 
   // 6) ضيف للـ solvedSet (لو أول مرة يتحل)
@@ -8540,7 +8865,7 @@ async function awardPoints(qCode, isCorrect, answered) {
   const isNewToday = dailyNewIds.indexOf(qCode) === -1;
   if (isNewToday && ndCounts && dailyNewIds.length < CONFIG.DAILY_LIMIT) {
     dailyNewIds.push(qCode);
-    dailyProgress = Math.min(dailyNewIds.length, CONFIG.MIN_MILESTONES);
+    dailyProgress = Math.max(dailyProgress, Math.min(dailyNewIds.length, CONFIG.MIN_MILESTONES)); // (9.8) بند 57: لو رد السيرفر رفعه مايرجعش لورا
   }
   // (9.7) قرار صاحب المشروع 2/10 (سؤال 2): أي إجابة في Study أو Test بتمنع خصم اليوم ده، حتى لو مااتعدّتش (زي نص الدليل)
   lastActiveDate = getTodayKey();
@@ -8561,7 +8886,7 @@ async function awardPoints(qCode, isCorrect, answered) {
   }
   if (earned > 0) dailyLog[todayKey].points += earned;
   // "solved" بتتبع نفس عداد dailyNewIds بالظبط — نفس المصدر اللي شريط الـ10 محطات بيتحسب منه
-  dailyLog[todayKey].solved = dailyNewIds.length;
+  dailyLog[todayKey].solved = Math.max(Number(dailyLog[todayKey].solved) || 0, dailyNewIds.length); // (مراجعة (ل)) لو رد السيرفر رفعه مايرجعش لورا
   dailyLog[todayKey].completed = dailyProgress >= CONFIG.MIN_MILESTONES;
 
   const curStreak = calculateCurrentStreak();
@@ -10017,74 +10342,143 @@ function renderFolders() {
    ============================================================ */
 
 const RACE_CACHE_MS = 30000;
-let raceCache = { data: null, at: 0, meJoined: null };
-async function loadRaceData() {
-  const { data, error } = await supabaseClient.rpc("get_leaderboard");
-  if (error) throw error;
-  let meJoined = null;
-  const others = (data || []).map(u => {
-    if (u.id === currentUserId) meJoined = new Date(u.joined_at).getTime();
-    return {
-      name: u.display_name,
-      points: Number(u.total_points) || 0,
-      days: Math.max(1, getDaysSinceJoin(new Date(u.joined_at).getTime())),
-      isMe: u.id === currentUserId,
-      color: u.track_color || "#3DBE68",
-    };
-  }).filter(u => !u.isMe);
-  raceCache = { data: others, at: Date.now(), meJoined };
+// (9.8) بند 42: اللوحة بقت من nd_race_board على السيرفر (لـ authenticated بس): أول 30 بالترتيب، وصف الطالب، والعدد،
+// ومتوسط اللي قبله، من غير أي رقم حساب. الترتيب والأرقام كلها من السيرفر (مفيش حساب ترتيب على الموبايل).
+// قبل كده get_leaderboard كانت بترجّع كل الأعضاء بأرقام حساباتهم، والترتيب كان بيتحسب هنا بنقاط الجهاز وأيامه بساعة الجهاز.
+// الكاش 30 ثانية زي 9.7، بس مربوط بالحساب (uid)، عشان رد السيرفر فيه صف me بتاع الحساب اللي سأل.
+let raceCache = { data: null, at: 0, uid: null };
+function ndRaceNum(v, d) { const n = Number(v); return Number.isFinite(n) ? n : d; }
+function ndRaceRow(r) {
+  if (!r || typeof r !== "object") return null;
+  const rank = Math.floor(ndRaceNum(r.rank, 0));
+  if (rank < 1) return null;
+  const points = ndRaceNum(r.points, 0);
+  const days = Math.max(1, Math.floor(ndRaceNum(r.days, 1)));
+  return { rank, name: String(r.name == null ? "" : r.name), color: String(r.color == null ? "" : r.color),
+           points, days, avg: ndRaceNum(r.avg, points / days), isMe: r.is_me === true };
 }
+// الرد بالعقد: { server_day, total, top: [حتى 30], me: {...} | null, ahead_avg: n | null }. أي شكل تاني = خطأ.
+function ndRaceBoardNorm(d) {
+  if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { return null; } }
+  if (!d || typeof d !== "object" || !Array.isArray(d.top)) return null;
+  const top = d.top.map(ndRaceRow).filter(Boolean).slice(0, 30);
+  const me = d.me ? ndRaceRow(d.me) : null;
+  if (me) me.isMe = true;
+  return { total: Math.max(0, Math.floor(ndRaceNum(d.total, top.length))), top, me,
+           aheadAvg: d.ahead_avg == null ? null : ndRaceNum(d.ahead_avg, null) };
+}
+function ndRaceFresh() {
+  return !!(raceCache.data && raceCache.uid === currentUserId && Date.now() - raceCache.at < RACE_CACHE_MS);
+}
+async function loadRaceData() {
+  const uid = currentUserId; // (9.8) بند 42: الحساب اللي سأل (لو اتبدّل والرد في الطريق، الرد مايتسجّلش باسم الحساب التاني)
+  const { data, error } = await supabaseClient.rpc("nd_race_board");
+  if (error) throw error;
+  const b = ndRaceBoardNorm(data);
+  if (!b) throw new Error("nd_race_board: unexpected response");
+  if (uid !== currentUserId) throw new Error("nd_race_board: account changed");
+  raceCache = { data: b, at: Date.now(), uid };
+  ndRaceSave(data, uid);
+}
+// (9.8) بند 42، قرار صاحب المشروع 3/10: آخر ترتيب اتحمّل بيتحفظ على الجهاز للحساب الشغال بس (مفتاح واحد)، عشان من غير نت أو لو
+// التحميل فشل اللوحة وسطر الملف الشخصي يعرضوه. الرد بيتحفظ زي ما جه، وبيتقري بنفس فحص الشكل (ndRaceBoardNorm).
+// بيتمسح مع الخروج (handleLogout)، ومع المسح من أدوات الاختبار (resetAll، قرار 4/10).
+const ND_RACE_LAST_KEY = "nd_race_last_v1";
+function ndRaceSave(raw, uid) {
+  try { localStorage.setItem(ND_RACE_LAST_KEY, JSON.stringify({ uid, at: Date.now(), board: raw })); }
+  catch (e) { console.warn("race board: last ranking not saved on this device", e && e.name); } // اللوحة نفسها شغالة عادي
+}
+function ndRaceForget() {
+  try { localStorage.removeItem(ND_RACE_LAST_KEY); } catch (e) { /* مفيش تخزين: مفيش حاجة محفوظة أصلًا */ }
+  raceCache = { data: null, at: 0, uid: null };
+}
+// آخر ترتيب للحساب الشغال: اللي في الذاكرة لو موجود (أحدث)، وإلا المحفوظ على الجهاز. غير كده null
+function ndRaceLast() {
+  if (raceCache.data && raceCache.uid === currentUserId) return raceCache.data;
+  try {
+    const sv = JSON.parse(localStorage.getItem(ND_RACE_LAST_KEY) || "null");
+    if (!sv || !currentUserId || sv.uid !== currentUserId) return null;
+    return ndRaceBoardNorm(sv.board);
+  } catch (e) { return null; } // نسخة بايظة = كأن مفيش ترتيب محفوظ
+}
+// (9.8) بند 42، قرار 3/10: بعد كل رد ناجح من nd_points_batch، الفتحة الجاية للوحة بتجيب من السيرفر بالنقاط الجديدة
+// (من غير كده نقاط الطالب في صفه كانت ممكن تفضل قديمة لحد 30 ثانية). الترتيب المحفوظ على الجهاز بيفضل لحد الرد الجاي.
+function ndRaceInvalidate() { raceCache.at = 0; }
+// اللون بيتحط في style، فلازم يكون لون hex بس (اللون بيظهر لصف الطالب نفسه بس زي 9.7)
+function ndRaceColor(c) { return /^#[0-9a-fA-F]{3,8}$/.test(String(c || "")) ? String(c) : null; }
 
 async function renderRace() {
   const list = document.getElementById("raceList");
   if (!list) return;
 
-  let others = [];
-  if (supabaseClient) {
+  let b = null;
+  // الزائر مابيوصلش للشاشة دي (requireAccount)، والدالة مش متاحة لـ anon، فمفيش نداء من غير حساب
+  if (supabaseClient && !isGuest) {
     try {
       // كاش بسيط 30 ثانية عشان مانضربش القاعدة بكل فتحة للشاشة
-      if (!(raceCache.data && Date.now() - raceCache.at < RACE_CACHE_MS)) await loadRaceData();
-      others = raceCache.data || [];
-    } catch (e) { others = []; }
+      if (!ndRaceFresh()) await loadRaceData();
+      b = raceCache.data;
+    } catch (e) {
+      // (9.8) بند 42: من غير نت أو خطأ في السيرفر = زي 9.7 (صف الطالب لوحده بأرقام الجهاز). مش بنكتب رسالة للطالب هنا.
+      console.warn("race board:", (e && (e.code || e.message)) || e);
+      b = null;
+    }
   }
-  // (6.7) أيامي من نفس المصدر اللي الباقيين شايفيني بيه (بداية السباق على السيرفر) — قبل كده كانت من الجهاز،
-  // فكان الرقم عندي مختلف عن الرقم عند الباقيين
-  const myDays = (!isGuest && raceCache.meJoined) ? Math.max(1, getDaysSinceJoin(raceCache.meJoined)) : getDaysSinceJoin(joinedAt);
-  const myData = { name: displayName || "You", points: totalPoints, days: myDays, isMe: true, color: trackColor };
 
-  const combined = isGuest ? [myData, ...others] : [...others, myData];
+  let rows, meOutside = null, offlineNote = false;
+  // (9.8) بند 42، قرار صاحب المشروع 3/10: من غير نت أو لو التحميل فشل (للعضو) = آخر ترتيب اتحمّل للحساب ده، وتحته جملة
+  if (!b && !isGuest) { b = ndRaceLast(); offlineNote = true; }
+  if (b) {
+    rows = b.top.slice();
+    const meInTop = rows.some(r => r.isMe);
+    if (b.me && !meInTop) meOutside = b.me;
+  } else if (offlineNote) {
+    // مفيش ترتيب محفوظ خالص: صف الطالب بنقاط الجهاز، من غير ميدالية ولا رقم (noRank)، وتحته نفس الجملة
+    const days = getDaysSinceJoin(joinedAt);
+    rows = [{ rank: 0, noRank: true, name: displayName || "You", color: trackColor, points: totalPoints, days, avg: totalPoints / Math.max(days, 1), isMe: true }];
+  } else {
+    // الزائر (مابيوصلش للشاشة دي أصلًا، requireAccount): زي 9.7، لوحده بنقاط الجهاز
+    const days = getDaysSinceJoin(joinedAt);
+    rows = [{ rank: 1, name: displayName || "You", color: trackColor, points: totalPoints, days, avg: totalPoints / Math.max(days, 1), isMe: true }];
+  }
 
-  const ranked = combined.sort((a, b) => {
-    const aAvg = a.points / Math.max(a.days, 1);
-    const bAvg = b.points / Math.max(b.days, 1);
-    if (bAvg !== aAvg) return bAvg - aAvg;
-    return a.days - b.days;
-  });
+  const all = meOutside ? rows.concat([meOutside]) : rows;
+  const maxAvg = all.length ? Math.max(...all.map(u => u.avg)) : 0;
 
-  const maxAvg = Math.max(...ranked.map(u => u.points / Math.max(u.days, 1)));
-
-  let html = "";
-  ranked.forEach((u, i) => {
-    const avg = u.points / Math.max(u.days, 1);
+  const rowHtml = (u) => {
+    const avg = u.avg;
+    const i = u.rank - 1;
     const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
     const rankClass = i === 0 ? "top1" : i === 1 ? "top2" : i === 2 ? "top3" : "";
     const meClass = u.isMe ? "me" : "";
     // المعدل السالب شريطه فاضي (قبل كده كان عرضه بالسالب فالمتصفح بيتجاهله ويظهر مليان للآخر)
     const barWidth = (maxAvg > 0 && avg > 0) ? Math.min(100, (avg / maxAvg) * 100) : 0;
-    // (9.6) بند 82: الاسم واللون من القاعدة بيتعرضوا بـ ndEscape (قبل كده كانوا بيتحطوا زي ما هم، فأي كود في اسم عضو كان بيشتغل عند الباقيين)
-    const safeColor = ndEscape(u.color);
+    // (9.6) بند 82: الاسم من القاعدة بيتعرض بـ ndEscape. (9.8) بند 42: اللون لازم hex (ndRaceColor).
+    // صف الطالب نفسه: الاسم واللون من الجهاز زي 9.7 (فأي تغيير منه بيبان فورًا من غير ما يستنى الكاش)، والأرقام والترتيب من السيرفر
+    const safeColor = ndEscape((u.isMe ? (ndRaceColor(trackColor) || ndRaceColor(u.color)) : ndRaceColor(u.color)) || "#3DBE68");
+    const shownName = u.isMe ? (displayName || u.name || "You") : u.name;
     const dotStyle = u.isMe ? ` style="background:${safeColor}"` : "";
     const barStyle = u.isMe ? ` style="width:${barWidth}%; background:${safeColor}"` : ` style="width:${barWidth}%"`;
+    let h = `<div class="race-row ${rankClass} ${meClass}">`;
+    if (u.noRank) h += `<div class="race-rank-num"></div>`; // (9.8) بند 42: من غير ترتيب محفوظ = من غير ميدالية ولا رقم
+    else if (medal) h += `<div class="race-medal">${medal}</div>`;
+    else h += `<div class="race-rank-num">${u.rank}</div>`;
+    h += `<div class="race-info">`;
+    h += `<div class="race-name">${u.isMe ? `<span class="race-color-dot"${dotStyle}></span> ` : ''}${ndEscape(shownName)}${u.isMe ? ' <span class="race-you-badge">you</span>' : ''}</div>`;
+    h += `<div class="race-bar-track"><div class="race-bar-fill"${barStyle}></div></div>`;
+    h += `<div class="race-stats${avg < 0 ? " race-neg" : ""}"><b>${avg.toFixed(1)}</b> pts/day · ${u.days} days · ${Math.floor(u.points)} pts</div>`;
+    h += `</div></div>`;
+    return h;
+  };
 
-    html += `<div class="race-row ${rankClass} ${meClass}">`;
-    if (medal) html += `<div class="race-medal">${medal}</div>`;
-    else html += `<div class="race-rank-num">${i + 1}</div>`;
-    html += `<div class="race-info">`;
-    html += `<div class="race-name">${u.isMe ? `<span class="race-color-dot"${dotStyle}></span> ` : ''}${ndEscape(u.name)}${u.isMe ? ' <span class="race-you-badge">you</span>' : ''}</div>`;
-    html += `<div class="race-bar-track"><div class="race-bar-fill"${barStyle}></div></div>`;
-    html += `<div class="race-stats${avg < 0 ? " race-neg" : ""}"><b>${avg.toFixed(1)}</b> pts/day · ${u.days} days · ${Math.floor(u.points)} pts</div>`;
-    html += `</div></div>`;
-  });
+  let html = rows.map(rowHtml).join("");
+  if (meOutside) {
+    // (9.8) بند 42: الطالب برّه أول 30 = صفه تحتهم بترتيبه الحقيقي. الفاصل بس لو فيه صفوف مخفية بينهم (مثلًا 30 ثم 38، مش 30 ثم 31)
+    const last = rows.length ? rows[rows.length - 1].rank : 0;
+    if (meOutside.rank > last + 1) html += `<div class="race-gap" aria-hidden="true"><i></i><i></i><i></i></div>`;
+    html += rowHtml(meOutside);
+  }
+  if (offlineNote) html += `<div class="race-offline-note">سيُعاد ترتيب القائمة عند عودة الاتصال بالإنترنت بإذن الله.</div>`;
   list.innerHTML = html;
 }
 
@@ -10156,36 +10550,44 @@ async function updateProfileRaceRank() {
   const box = document.querySelector(".profile-rank");
   if (!el) return;
   const setHint = (t) => { if (hint) hint.textContent = t || ""; };
-  if (isGuest || !supabaseClient) { el.textContent = "—"; setHint(""); return; }
+  if (isGuest) { el.textContent = "—"; setHint(""); return; }
+  // (9.8) بند 42، قرار صاحب المشروع 3/10: من غير نت أو لو التحميل فشل = آخر ترتيب محفوظ للحساب ده بدل «—»
+  let b = null, fromLast = false;
   try {
-    if (!(raceCache.data && Date.now() - raceCache.at < RACE_CACHE_MS)) await loadRaceData();
-    const others = raceCache.data || [];
-    const avgOf = (u) => u.points / Math.max(u.days, 1);
-    const me = { points: totalPoints, days: raceCache.meJoined ? Math.max(1, getDaysSinceJoin(raceCache.meJoined)) : getDaysSinceJoin(joinedAt), isMe: true };
-    const all = others.concat([me]).sort((a, b) => {
-      const d = avgOf(b) - avgOf(a);
-      if (d !== 0) return d;
-      return a.days - b.days;
-    });
-    const rank = all.indexOf(me) + 1;
+    // (9.8) بند 42: الترتيب والعدد ومتوسط اللي قبله من رد nd_race_board (مفيش حساب ترتيب على الموبايل)
+    if (!supabaseClient) throw new Error("no client");
+    if (!ndRaceFresh()) await loadRaceData();
+    b = raceCache.data;
+  } catch (e) {
+    // من غير نت ده المتوقع فمفيش تسجيل؛ غير كده بيتسجّل (اللوحة نفسها بتسجّل خطأها لوحدها)
+    if (navigator.onLine !== false) console.warn("race rank:", (e && (e.code || e.message)) || e);
+    b = ndRaceLast(); fromLast = true;
+  }
+  try {
+    const me = b && b.me;
+    if (!me) { el.textContent = "—"; setHint(""); if (box) box.classList.remove("is-top1"); return; }
+    const rank = me.rank, total = Math.max(b.total, rank);
     const medal = rank === 1 ? "🥇 " : rank === 2 ? "🥈 " : rank === 3 ? "🥉 " : "";
-    const txt = `${medal}#${rank} of ${all.length}`;
+    const txt = `${medal}#${rank} of ${total}`;
     // (ج) كله بالإنجليزي عشان يتعرض مظبوط، والحركة بتشتغل بس لما الترتيب يتغيّر (مش مع كل فتحة)
     // (9.6) بند 80: وكمان مع كل فتحة من الأيقونة اللي فوق (forcePop)، قرار صاحب المشروع 2/10
     if (el.textContent !== txt || forcePop) {
       el.textContent = txt;
       el.classList.remove("rank-pop"); void el.offsetWidth; el.classList.add("rank-pop");
     }
-    if (box) box.classList.toggle("is-top1", rank === 1 && all.length > 1);
-    // سطر تحفيزي: كام نقطة في اليوم ناقصاك عشان تعدّي اللي قدامك
-    if (all.length === 1) {
+    if (box) box.classList.toggle("is-top1", rank === 1 && total > 1);
+    // (9.8) بند 42، قرار صاحب المشروع 4/10 (أ): من الترتيب المحفوظ السطر التحفيزي بيختفي، لأن أرقامه قديمة (ممكن الطالب حل من غير نت)
+    if (fromLast) { setHint(""); return; }
+    // سطر تحفيزي: كام نقطة في اليوم ناقصاك عشان تعدّي اللي قدامك (متوسط اللي قدامك من السيرفر: ahead_avg)
+    if (total === 1) {
       setHint("🏁 You're the first on the track!");
     } else if (rank === 1) {
       setHint("🏆 You're leading the race — keep it up!");
-    } else {
-      const above = all[rank - 2];
-      const gap = Math.max(0.1, Math.ceil((avgOf(above) - avgOf(me)) * 10 + 1e-9) / 10);
+    } else if (b.aheadAvg != null) {
+      const gap = Math.max(0.1, Math.ceil((b.aheadAvg - me.avg) * 10 + 1e-9) / 10);
       setHint(`${rank <= 3 ? "🔥 On the podium! " : "⬆️ "}+${gap.toFixed(1)} pts/day to pass #${rank - 1}`);
+    } else {
+      setHint("");
     }
   } catch (e) { el.textContent = "—"; setHint(""); }
 }
@@ -11769,6 +12171,8 @@ const APP_GUIDE_ITEMS = [
     html: `
       <p><b>استخدام أكثر من جهاز:</b> يعمل حسابك على جهاز واحد في الوقت نفسه حرصًا على العدالة بين جميع المشتركين. عند فتح حسابك على جهاز آخر يتوقّف حفظ التقدّم على الجهاز الأول، ويمكنك العودة إليه بالضغط على «المتابعة على هذا الجهاز».</p>
       <p><b>الاستخدام دون اتصال بالإنترنت:</b> يمكنك حل الأسئلة دون اتصال، ويُحفظ تقدّمك على الجهاز ثم يُرفع إلى حسابك تلقائيًا عند عودة الاتصال بإذن الله. أما إذا حللت أسئلة على جهاز آخر قبل رفع هذا التقدّم، فيُعتمد تقدّم الجهاز الآخر ولا تُحفظ إجابات هذا الجهاز ولا الكتابة على أسئلته. وإذا لم تحلّ أسئلة على الجهاز الآخر، يُرفع تقدّم هذا الجهاز، وقد يحلّ محل تغييرات أخرى أجريتها هناك مثل المفضلة أو مكان التوقف. لذلك ننصحك بالاتصال بالإنترنت قبل الانتقال إلى جهاز آخر.</p>
+      <p><b>توقيت اليوم في التطبيق:</b> يبدأ اليوم الجديد الساعة <span class="ag-day-hour">4</span> فجرًا بتوقيت القاهرة لجميع المستخدمين أينما كانوا، ليُحتسب اليوم بطريقة واحدة للجميع، وتبقى المنافسة عادلة بينهم. وإن كنت خارج مصر، فنشكر لك تفهّمك.</p>
+      <p class="ag-local-hour" hidden></p>
     `
   },
   {
@@ -11852,10 +12256,12 @@ const APP_GUIDE_ITEMS = [
     title: "سجل الالتزام",
     html: `
       <p><b>الالتزام اليومي المطلوب: حل 10 أسئلة محتسبة يوميًا</b> (شريط المحطات العشر)، سواء حللتها في وضع Test أو وضع Study، فكلاهما يُحتسب للالتزام نفسه بإذن الله.</p>
+      <p>يبدأ اليوم الجديد في التطبيق الساعة <span class="ag-day-hour">4</span> فجرًا بتوقيت القاهرة، أينما كنت.</p>
       <p>إذا مرّ يوم دون أن تحل فيه أي سؤال، تُخصم منك <b>10 نقاط</b> عن كل يوم غياب، لتكون للاستمرارية نفسها قيمة ملموسة، لا للحل وحده.</p>
       <p>تعرض الصفحة نسبة التزامك (Commitment Rate)، وسلسلة أيامك المتتالية الحالية (Streak) وأفضل سلسلة وصلت إليها، وتقويمًا لكل الأيام منذ أول يوم دخلت فيه التطبيق.</p>
       <p>يُلوَّن اليوم بالأخضر إذا حللت فيه 10 أسئلة محتسبة (يوم مكتمل)، وبالأصفر إذا حللت أقل من 10، وبالرمادي إذا لم يُحتسب فيه أي سؤال، فلا تحصل فيه على أي نقاط.</p>
       <p>ويختلف اليوم الرمادي عن يوم الخصم: فإذا أجبت فيه عن سؤال واحد على الأقل في وضع Study أو Test، ولو لم يُحتسب، فلا يُخصم منك شيء؛ أما إذا لم تُجب فيه عن أي سؤال، فيُخصم منك 10 نقاط، ويظهر يوم الخصم باللون الأحمر.</p>
+      <p>إذا انقطع الاتصال بالإنترنت، تُحفظ إجاباتك على جهازك وتُرفع تلقائيًا عند عودته. وينتظرها التطبيق <span class="ag-off-days">يومين</span> قبل أن يخصم عن أي يوم: فإن وصلت <span class="ag-off-within">خلالهما</span> احتُسبت في أيامها، ولم يُخصم منك عن يوم أجبت فيه. أما ما يصل بعد أكثر من <span class="ag-off-days-gen">يومين</span>، فتُحتسب نقاطه في يوم وصوله.</p>
     `
   },
   {
@@ -11925,6 +12331,42 @@ function ndFillGuideCycleDays(root) {
   const n = Math.round(Number(recomputeCycleDays) || 0);
   const t = n === 1 ? "يوم واحد" : n === 2 ? "يومان" : (n >= 3 && n <= 10) ? n + " أيام" : n + " يومًا";
   root.querySelectorAll(".ag-cycle-days").forEach(e => { e.textContent = t; });
+  ndFillGuideDay57(root); // (9.8) بند 57
+}
+// (9.8) بند 57: ساعة بداية اليوم ومدة الإجابات اللي من غير نت في الدليل من app_settings، والسطر المحسوب للي ساعته مختلفة عن القاهرة
+function ndFillGuideDay57(root) {
+  root.querySelectorAll(".ag-day-hour").forEach(e => { e.textContent = String(ndDayStartHour); });
+  const n = Math.max(1, Math.round(Number(ndOfflineDays) || 2));
+  const acc = n === 1 ? "يومًا واحدًا" : n === 2 ? "يومين" : n <= 10 ? n + " أيام" : n + " يومًا";
+  const gen = n === 1 ? "يوم واحد" : n === 2 ? "يومين" : n <= 10 ? n + " أيام" : n + " يومًا";
+  const within = n === 1 ? "خلاله" : n === 2 ? "خلالهما" : "خلالها";
+  root.querySelectorAll(".ag-off-days").forEach(e => { e.textContent = acc; });
+  root.querySelectorAll(".ag-off-days-gen").forEach(e => { e.textContent = gen; });
+  root.querySelectorAll(".ag-off-within").forEach(e => { e.textContent = within; });
+  const t = ndLocalDayStartText();
+  root.querySelectorAll(".ag-local-hour").forEach(e => { e.textContent = t; e.hidden = !t; });
+}
+// بداية يوم النهارده بتوقيت القاهرة ← بساعة الجهاز (نص عرض بس، من غير أي أثر على الحساب). فاضي لو هي هي
+function ndLocalDayStartText() {
+  try {
+    const p = ndCairoParts(Date.now());
+    if (!p) return "";
+    const want = Date.UTC(p.y, p.m - 1, p.d, ndDayStartHour, 0);
+    let t = want;
+    for (let i = 0; i < 3; i++) {
+      const q = ndCairoParts(t);
+      if (!q) return "";
+      const diff = Date.UTC(q.y, q.m - 1, q.d, q.h, q.mi) - want;
+      if (!diff) break;
+      t -= diff;
+    }
+    const d = new Date(t);
+    const lh = d.getHours(), lm = d.getMinutes();
+    if (lh === ndDayStartHour && lm === 0) return "";
+    const h12 = lh % 12 === 0 ? 12 : lh % 12;
+    const per = (lh === 12 && lm === 0) ? "ظهرًا" : lh < 12 ? "صباحًا" : "مساءً";
+    return "أي الساعة " + h12 + (lm ? ":" + String(lm).padStart(2, "0") : "") + " " + per + " بتوقيتك الآن.";
+  } catch (e) { return ""; }
 }
 
 /* ============================================================
@@ -13317,11 +13759,13 @@ function ndAwaitLogout() {
 async function handleLogout() {
   const profileOverlay = document.getElementById("profileOverlay");
   if (profileOverlay) profileOverlay.classList.remove("open");
+  const ndSave = ndLogoutSnapshot(); // (9.8) ملحوظة 85: قبل تصفير الحساب
 
   // (9.5) بند 68: الشبكة في الخلفية بنفس الترتيب القديم، وصفحة الدخول بعد الجزء المحلي علطول (قبل كده لحد 5.5 ثانية على نت بطيء)
   // قبل الخروج: افصل الجهاز ده عن إشعارات الحساب اللي خارج (عشان إشعاراته متوصلش لجهاز مش داخل بيه)
   // الاشتراك نفسه بيفضل في المتصفح، فلما أي حساب يدخل تاني بيتسجّل له تلقائيًا
   const ndBg = (async () => {
+    await ndLogoutSaveRun(ndSave); // (9.8) ملحوظة 85: الحفظ الأول، والجلسة لسه موجودة (مابترميش خطأ)
     try {
       if (supabaseClient && "serviceWorker" in navigator && "PushManager" in window) {
         const reg = await withTimeout(navigator.serviceWorker.ready, 2000, "sw");
@@ -13346,6 +13790,7 @@ async function handleLogout() {
   currentUserId = null;
   currentUserEmail = null;
   clearAccountCache(); // (ج) خرج بنفسه ← منفتحش بحسابه من غير نت بعد كده
+  ndRaceForget(); // (9.8) بند 42، قرار 3/10: آخر ترتيب محفوظ بيتمسح مع الخروج (ومعاه كاش اللوحة)
   offlineAccountMode = false;
   currentUserTrialStart = null;
   currentUserApproved = false;
@@ -13560,14 +14005,16 @@ function setupAuthScreens() {
 // (9.6) بند 74: ترتيب شاشات البداية. قدّام (أو دخول التطبيق منها) = الجاية من الشمال والقديمة يمين، ورجوع = العكس
 // (زي الحركة القديمة). أي انتقال تاني (جوه التطبيق) زي ما هو.
 const ND_START_STEP = { splash: 0, motivation: 1, authGate: 2, authLogin: 3, authSignup: 3, authForgot: 4 };
-let ndNextFromLeft = false; // (9.7) بند 84: الانتقال الجاي يبقى من الشمال (زرار رسالة الترحيب بس)
+let ndNextFromLeft = false; // (9.7) بند 84: الانتقال الجاي يبقى من الشمال (زرار رسالة الترحيب). و(9.8) بند 86: وأسهم الرجوع ← واسم الشابتر جنبها
 function ndStartDir(cur, tgt) {
+  if (cur && tgt && cur.id === "onboarding") return "fwd"; // (9.8) بند 86: الخروج من خطوات البداية قدّام (قرار صاحب المشروع 3/10، زي 74)
   if (!cur || !tgt || !(cur.id in ND_START_STEP)) return "";
   if (!(tgt.id in ND_START_STEP)) return "fwd";
   return ND_START_STEP[tgt.id] >= ND_START_STEP[cur.id] ? "fwd" : "";
 }
 
 function navigate(screenId) {
+  const ndFromLeft = ndNextFromLeft; ndNextFromLeft = false; // (9.8) بند 86: بتتمسح حتى لو الانتقال اتلغى تحت
   const current = document.querySelector(".screen.active");
   const target = document.getElementById(screenId);
   if (!target || current === target) return;
@@ -13581,7 +14028,7 @@ function navigate(screenId) {
   if (screenId !== "questions") { try { cancelLastQDoneTimer(); } catch (e) {} } // أ3: خرج من السؤال
 
   let ndDir = ndStartDir(current, target); // (9.6) بند 74
-  if (ndNextFromLeft) { ndDir = "fwd"; ndNextFromLeft = false; } // (9.7) بند 84
+  if (ndFromLeft) ndDir = "fwd"; // (9.7) بند 84 و(9.8) بند 86
   if (current) {
     current.classList.remove("active");
     if (ndDir !== "fwd") { // قدّام: القديمة بتمشي يمين (مكان الشاشة المستخبية)، فمن غير exit-left
@@ -14598,8 +15045,9 @@ async function init() {
   }
 
   // 5) Events — Breadcrumbs
-  document.querySelectorAll(".crumb-back").forEach(btn => {
+  document.querySelectorAll(".crumb-back").forEach(btn => { // (9.8) بند 86: كلهم رجوع (سهمهم ←، واسم الشابتر زيه بقرار صاحب المشروع 3/10)؛ زرار قفل اللوحة مش منهم (بيتحمّل بعدين)
     btn.addEventListener("click", () => {
+      ndNextFromLeft = true; // (9.8) بند 86: الصفحة تيجي من الشمال
       const goto = btn.dataset.goto;
       if (goto === "chapters") navigate("chapters");
       else if (goto === "exams") { renderExams(); navigate("exams"); }
@@ -14615,7 +15063,7 @@ async function init() {
 
   // 6) Events — Questions back
   const qBack = document.getElementById("qBack");
-  if (qBack) qBack.addEventListener("click", () => navigate("folders"));
+  if (qBack) qBack.addEventListener("click", () => { ndNextFromLeft = true; navigate("folders"); }); // (9.8) بند 86: السهم ← فالصفحة من الشمال
 
   // 7) Events — Mode tabs (Primary)
   const primary = document.getElementById("qModeTabsPrimary");
