@@ -8,7 +8,7 @@
 
 <!-- PWA: manifest + أيقونات + إعدادات آبل -->
 <link rel="manifest" href="./manifest.json">
-<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="apple-touch-icon" href="./icon-v2-180.png"><!-- (9.9) بند 91: الأيقونة الجديدة باسم ملف جديد -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="OOC New Day">
@@ -2684,7 +2684,8 @@ bdi{ unicode-bidi: isolate; }
 .race-gap{ display:flex; flex-direction:column; align-items:center; gap:4px; width:32px; margin:-2px 0 -2px 14px; padding:2px 0; }
 .race-gap i{ width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,0.32); }
 /* (9.8) بند 42 (قرار صاحب المشروع 3/10): الجملة تحت اللوحة لما بتتعرض من آخر ترتيب محفوظ (من غير نت أو لو التحميل فشل) */
-.race-offline-note{ font-family:'Cairo',sans-serif; font-size:12.5px; line-height:1.7; color:rgba(255,255,255,0.6); text-align:center; direction:rtl; unicode-bidi:plaintext; padding:2px 8px 0; text-wrap:balance; }
+/* (9.9) فوق قبل المتسابقين، بلون ذهبي واضح */
+.race-offline-note{ font-family:'Cairo',sans-serif; font-size:13px; font-weight:700; line-height:1.7; color:#E8CE7A; background:rgba(232,206,122,0.12); border:1px solid rgba(232,206,122,0.35); border-radius:10px; text-align:center; direction:rtl; unicode-bidi:plaintext; padding:6px 10px; margin:0 0 10px; text-wrap:balance; }
 
 /* ============ (6.7) ============ */
 .boot-ooc{ display:block; font-family:'Cairo',sans-serif; font-weight:800; letter-spacing:.45em; padding-left:.45em;
@@ -5956,7 +5957,8 @@ let currentUserIsPrimaryOwner = false;
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 9.8; // (9.8) النقاط والعدّ خطوة 2 (57: النقاط على السيرفر) و42 (لوحة المضمار) و86 (الأسهم) و87 (الأخطاء من غير حد) والحفظ وقت الخروج. و(9.7) النقاط والعدّ خطوة 1 (77 و78) و83 و84 والدليل. و(9.6) الواجهة والحركة: 82 و80 و79 و74. و(9.5) أخطاء وطلبات الطالب قبل الإطلاق: 56 و35 و36 و71 و70 و72 و54 و44 (4) و34 و75 و67 و68 و73. و(9.4) بنود 61 و62 و63: النقاط وحد الـ 149، والرسم مع الجهاز الواحد، ورسايل النت. و(9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
+const APP_VERSION = 9.9; // (9.9) بند 91 (الأيقونة ج1) وجملة المضمار من غير نت فوق بلون ذهبي (قرارات صاحب المشروع 4/10، كانت مخططة 9.8.1)
+// قبلها: const APP_VERSION = 9.8; // (9.8) النقاط والعدّ خطوة 2 (57: النقاط على السيرفر) و42 (لوحة المضمار) و86 (الأسهم) و87 (الأخطاء من غير حد) والحفظ وقت الخروج. و(9.7) النقاط والعدّ خطوة 1 (77 و78) و83 و84 والدليل. و(9.6) الواجهة والحركة: 82 و80 و79 و74. و(9.5) أخطاء وطلبات الطالب قبل الإطلاق: 56 و35 و36 و71 و70 و72 و54 و44 (4) و34 و75 و67 و68 و73. و(9.4) بنود 61 و62 و63: النقاط وحد الـ 149، والرسم مع الجهاز الواحد، ورسايل النت. و(9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
 const APP_VERSION_LABEL = Number(APP_VERSION).toFixed(1); // للعرض بس (6.0 مش 6)
 
 const CONFIG = {
@@ -10471,14 +10473,15 @@ async function renderRace() {
     return h;
   };
 
-  let html = rows.map(rowHtml).join("");
+  // (9.9) قرار صاحب المشروع 4/10: الجملة فوق قبل المتسابقين وبلون ذهبي واضح (كانت تحت اللوحة بلون باهت)
+  let html = offlineNote ? `<div class="race-offline-note">سيُعاد ترتيب القائمة عند عودة الاتصال بالإنترنت بإذن الله.</div>` : "";
+  html += rows.map(rowHtml).join("");
   if (meOutside) {
     // (9.8) بند 42: الطالب برّه أول 30 = صفه تحتهم بترتيبه الحقيقي. الفاصل بس لو فيه صفوف مخفية بينهم (مثلًا 30 ثم 38، مش 30 ثم 31)
     const last = rows.length ? rows[rows.length - 1].rank : 0;
     if (meOutside.rank > last + 1) html += `<div class="race-gap" aria-hidden="true"><i></i><i></i><i></i></div>`;
     html += rowHtml(meOutside);
   }
-  if (offlineNote) html += `<div class="race-offline-note">سيُعاد ترتيب القائمة عند عودة الاتصال بالإنترنت بإذن الله.</div>`;
   list.innerHTML = html;
 }
 

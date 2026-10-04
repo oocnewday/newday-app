@@ -9,7 +9,7 @@
    بدل الجديدة.
    ============================================================ */
 
-const CACHE_NAME = "newday-cache-v53"; // (9.8)
+const CACHE_NAME = "newday-cache-v54"; // (9.9)
 // (ج) مكتبة الدخول (Supabase) جاية من برّه — بنخزّنها عشان التطبيق يفتح بحسابك من غير نت
 const CDN_CACHE = "newday-cdn-v1";
 const CDN_ALLOW = ["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"];
@@ -17,9 +17,9 @@ const CDN_ALLOW = ["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/um
 const APP_SHELL = [
   "./index.html",
   "./manifest.json",
-  "./icon-192.png",
-  "./icon-512.png",
-  "./icon-180.png"
+  "./icon-v2-192.png",
+  "./icon-v2-512.png",
+  "./icon-v2-180.png"
 ];
 
 // 1) التثبيت — خزّن نسخة من كل ملفات التطبيق
