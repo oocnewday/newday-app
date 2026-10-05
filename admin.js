@@ -1,4 +1,4 @@
-/*! ND-ADMIN-JS 1.2 api=1 */
+/*! ND-ADMIN-JS 1.3 api=1 */
 /* ============================================================
    ملف الإدارة (admin.js) — لوحة الأدمن في تطبيق OOC New Day
    ------------------------------------------------------------
@@ -16,7 +16,7 @@
      وapi= في أول سطر = أقل apiVersion محتاجه الملف ده من ملف الطلاب.
    ============================================================ */
 (function (ND) {
-  const ADMIN_JS_VERSION = "1.2"; // (1.2) نصوص الإدارة والسيرفر بـ ndEscape (التدوير بعد بند 82). و(1.1) بند 44 (1): قسم "تبديل الأجهزة"
+  const ADMIN_JS_VERSION = "1.3"; // (1.3) طلاب 10.0: مستويات المسح وأوامرها، وصلاحية member_wipe، و"اختصارات"، و"🔎 اختلافات البنك"، والإصدار المطلوب بـ APP_VERSION_LABEL. و (1.2) نصوص الإدارة والسيرفر بـ ndEscape (التدوير بعد بند 82). و(1.1) بند 44 (1): قسم "تبديل الأجهزة"
   const ADMIN_API_MIN = 1;
   // ملف طلاب أقدم من ملف الإدارة ← ملف الطلاب بيعرض «لوحة الإدارة محتاجة تحديث التطبيق»، والملف ده مابيشتغلش
   if (!ND || !(ND.apiVersion >= ADMIN_API_MIN)) { if (ND && typeof ND.registerAdmin === "function") ND.registerAdmin({ outdated: true }); return; }
@@ -350,6 +350,13 @@ const ADMIN_PANEL_HTML = `<div class="screen" id="adminPanel">
               <button type="button" class="member-back-btn" id="membersBackToList">← رجوع للقائمة</button>
               <div id="membersDetailContent"></div>
             </div>
+
+            <!-- (1.3) أوامر المسح والحذف لكل الأعضاء (ومنهم اللي اتحذفوا)، لصلاحية member_wipe بس -->
+            <div class="admin-wipe-all" id="adminWipeAllWrap" style="display:none;">
+              <div class="admin-wipe-all-title">🧹 أوامر المسح والحذف</div>
+              <button class="admin-save-btn" id="adminWipeAllRefresh" type="button">🔄 تحديث</button>
+              <div id="adminWipeAllList"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -366,6 +373,18 @@ const ADMIN_PANEL_HTML = `<div class="screen" id="adminPanel">
         </div>
       </div>
 
+      <!-- (1.3) بند 49: الأجهزة اللي فضل فيها اختلاف بين الأسئلة على الجهاز والسيرفر بعد التصليح التلقائي — قراية بس -->
+      <div class="app-guide-item admin-item" id="adminBankChecksItem" data-perm="members">
+        <div class="app-guide-header"><span class="app-guide-icon">🔎</span><span class="app-guide-title">اختلافات البنك</span><span class="app-guide-chevron">▾</span></div>
+        <div class="app-guide-content-wrap">
+          <div class="app-guide-content admin-form">
+            <span class="ag-note">التطبيق بيقارن الأسئلة اللي على موبايل العضو بالسيرفر مرة في اليوم، ولو لقى اختلاف بينزّلها كلها تاني لوحده. هنا آخر 30 جهاز فضل فيهم اختلاف بعد كده. الحل: "🧹 امسح بنك الأسئلة من موبايله" من كارت العضو، فالأسئلة تتنزّل من جديد.</span>
+            <button class="admin-save-btn" id="bankChecksRefresh" type="button">🔄 تحديث</button>
+            <div id="bankChecksList"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- 6) إعدادات نظام النقاط — دائمة، بتطبّق على كل المستخدمين (مش اختبار) -->
       <div class="app-guide-item admin-item" data-perm="points">
         <div class="app-guide-header"><span class="app-guide-icon">🏆</span><span class="app-guide-title">إعدادات نظام النقاط</span><span class="app-guide-chevron">▾</span></div>
@@ -375,6 +394,18 @@ const ADMIN_PANEL_HTML = `<div class="screen" id="adminPanel">
             <label class="admin-label">⏱️ مدة دورة إعادة احتساب النقاط (بالأيام) — بعد ما تعدّي من أول مرة يحل فيها المستخدم السؤال صح، السؤال يرجع فاضي تمامًا ويقدر ياخد نقاط عليه تاني</label>
             <input type="number" class="admin-input" id="recomputeCycleInput" min="1" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
             <button class="admin-save-btn" id="recomputeCycleSave">💾 حفظ المدة لكل المستخدمين</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- (1.3) بند 49، طلب صاحب المشروع 4/10: مرجع ثابت لكل الإدارة عشان الفريق مايتساش (من غير data-perm = ظاهر لكل اللي بيفتح اللوحة) -->
+      <div class="app-guide-item admin-item" id="adminShortcutsItem">
+        <div class="app-guide-header"><span class="app-guide-icon">👆</span><span class="app-guide-title">اختصارات</span><span class="app-guide-chevron">▾</span></div>
+        <div class="app-guide-content-wrap">
+          <div class="app-guide-content admin-form">
+            <div class="admin-shortcut-row"><b>اختصار الزائر:</b> 5 لمسات ورا بعض على سطر رقم الإصدار (Version) في About، والطالب مش داخل بحساب ← الأسئلة على الموبايل ده بتتحدّث لحدود الزائر (أول 10 أسئلة في كل فولدر).</div>
+            <div class="admin-shortcut-row"><b>اختصار العضو:</b> نفس اللمسات والطالب داخل بحسابه ← الأسئلة بتتحدّث لمستوى حسابه (غير المفعّل أول 20 في كل فولدر، والمفعّل البنك كامل).</div>
+            <span class="ag-note">الاتنين محتاجين نت، والأسئلة القديمة بتفضل لحد ما الجديدة توصل كاملة. مفيدين لو طالب بيشتكي إن أسئلة ناقصة أو قديمة عنده.</span>
           </div>
         </div>
       </div>
@@ -783,6 +814,18 @@ const ADMIN_PANEL_CSS = String.raw`.admin-item.admin-locked{ opacity:0.55; }
 .dev-row-label{ flex:1; min-width:120px; direction:ltr; text-align:right; overflow-wrap:anywhere; }
 .dev-row .mer-badge{ font-size:10px; font-weight:700; padding:3px 8px; border-radius:8px; }
 .dev-row .dev-known{ background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.75); }
+/* (1.3) المسح والاختلافات والاختصارات */
+.admin-wipe-box{ margin-top:10px; padding:10px; border:1px solid rgba(255,154,154,0.25); border-radius:10px; background:rgba(255,154,154,0.05); }
+.admin-wipe-box .admin-member-actions{ margin-top:0; }
+.admin-wipe-orders{ margin-top:8px; }
+.admin-wipe-row{ font-size:11.5px; line-height:1.7; padding:7px 0; border-top:1px solid rgba(255,255,255,0.08); color:#fff; overflow-wrap:anywhere; }
+.admin-wipe-name{ font-weight:700; direction:ltr; text-align:right; }
+.admin-wipe-status{ opacity:.85; }
+.admin-wipe-empty{ font-size:11.5px; opacity:.7; padding:6px 0; }
+.admin-wipe-all{ margin-top:14px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.12); }
+.admin-wipe-all-title{ font-size:12.5px; font-weight:700; margin-bottom:8px; color:#fff; }
+#adminWipeAllRefresh, #bankChecksRefresh{ margin-bottom:10px; }
+.admin-shortcut-row{ font-size:12px; line-height:1.8; color:#fff; margin-bottom:8px; }
 `;
 
 
@@ -1643,11 +1686,107 @@ const ADMIN_SECTIONS = [
   { key: "comingsoon", label: "قريبًا" },
   { key: "points", label: "إعدادات نظام النقاط" },
   { key: "members", label: "الأعضاء" },
+  { key: "member_wipe", label: "🧹 مسح بيانات الأعضاء من أجهزتهم وحذفهم" }, // (1.3) طلاب 10.0
   { key: "version", label: "إصدار التطبيق (فرض تحديث)" },
   { key: "feedback", label: "رسائل الأعضاء (Feedback)" },
   { key: "admin_names", label: "🏷️ أسماء الأدمن" },
   { key: "testing_tools", label: "Testing Tools" }
 ];
+
+/* (1.3) طلاب 10.0 (قرارات صاحب المشروع 4/10): مستويات المسح من موبايل العضو. المستوى 1 = بنك الأسئلة بس (وبرضه
+   "إعادة تحميل الأسئلة" لعضو مفعّل)، و2 = حظر (كل حاجة + خروج، والتفعيل بيتلغي)، و3 = حذف العضو. "❌ إلغاء التفعيل" تحت members
+   زي ما هو، ونتيجته على الموبايل المستوى 1 تلقائي من السيرفر. كل النصوص بـ ndEscape. */
+function ndCanWipe() {
+  return ND.currentUserRole === "owner" ||
+    (Array.isArray(ND.currentUserPermissions) && ND.currentUserPermissions.includes("member_wipe"));
+}
+function ndWipeButtonsHtml(m) {
+  const ownerOk = m.role !== "owner" || (!m.is_primary_owner && ND.currentUserIsPrimaryOwner);
+  if (!ndCanWipe() || !ownerOk) return "";
+  return `
+    <div class="admin-wipe-box">
+      <div class="admin-member-actions">
+        <button class="admin-add-btn admin-wipe1-btn">🧹 امسح بنك الأسئلة من موبايله</button>
+        <button class="admin-add-btn admin-wipe2-btn">⛔ حظر</button>
+        <button class="admin-add-btn admin-delete-btn">🗑️ حذف العضو</button>
+      </div>
+      <div class="admin-wipe-orders" aria-live="polite"></div>
+    </div>`;
+}
+const ND_WIPE_REASON = { admin: "من اللوحة", expired: "انتهاء العضوية", revoked: "إلغاء التفعيل", banned: "حظر", deleted: "حذف العضو" };
+const ND_WIPE_LEVEL = { 1: "بنك الأسئلة", 2: "كل حاجة + خروج", 3: "حذف الحساب" };
+function ndWipeWhen(t) {
+  try { return t ? new Date(t).toLocaleString("ar-EG", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : ""; }
+  catch (e) { return ""; }
+}
+function ndWipeOrdersHtml(rows, withName) {
+  if (!rows || !rows.length) return `<div class="admin-wipe-empty">مفيش أوامر مسح.</div>`;
+  return rows.map(r => {
+    const st = r.done_at
+      ? (r.done_note === "not_needed" ? `↩️ اتلغى لوحده (اتفعّل تاني أو جدّد) ${ndEscape(ndWipeWhen(r.done_at))}`
+                                       : `✅ تم التنفيذ ${ndEscape(ndWipeWhen(r.done_at))}`)
+      : `⏳ مازال منتظر التنفيذ`;
+    const seen = r.device_last_seen ? ` · آخر ظهور ${ndEscape(ndWipeWhen(r.device_last_seen))}` : "";
+    return `<div class="admin-wipe-row">
+      ${withName ? `<div class="admin-wipe-name">${ndEscape(r.member_label || "—")}</div>` : ""}
+      <div>${ndEscape(ND_WIPE_LEVEL[r.level] || "")} · ${ndEscape(ND_WIPE_REASON[r.reason] || "")} · ${ndEscape(ndWipeWhen(r.created_at))}${r.created_by_name ? " · " + ndEscape(r.created_by_name) : ""}</div>
+      <div>📱 ${ndEscape(r.device_label || "جهاز")}${seen}</div>
+      <div class="admin-wipe-status">${st}</div>
+    </div>`;
+  }).join("");
+}
+async function ndWipeLoadOrders(box, uid) {
+  if (!box) return;
+  try {
+    const { data, error } = await supabaseClient.rpc("admin_wipe_orders", { p_user_id: uid, p_limit: 50 });
+    if (error) { console.warn("[admin] wipe orders", error.code || error.message); box.textContent = "معرفتش أجيب أوامر المسح."; return; }
+    box.innerHTML = ndWipeOrdersHtml(data, false);
+  } catch (e) { console.warn("[admin] wipe orders", e && e.message); box.textContent = "معرفتش أجيب أوامر المسح."; }
+}
+function ndWireWipeButtons(content, m, refresh) {
+  const box = content.querySelector(".admin-wipe-orders");
+  if (!box) return;
+  ndWipeLoadOrders(box, m.id);
+  let busy = false;
+  const run = async (level) => {
+    if (busy) return;
+    const txt = level === 1
+      ? `مسح بنك الأسئلة من موبايل ${m.email}؟ لو العضو لسه مفعّل، البنك هيتنزّل تاني أول مزامنة.`
+      : `حظر ${m.email}؟ تفعيله هيتلغي، وكل حاجة تخص التطبيق هتتمسح من موبايله ويخرج. بياناته على السيرفر بتفضل زي ما هي.`;
+    if (!confirm(txt)) return;
+    busy = true;
+    try {
+      const { data, error } = level === 1
+        ? await supabaseClient.rpc("admin_wipe_member", { p_user_id: m.id })
+        : await supabaseClient.rpc("admin_ban_member", { p_user_id: m.id });
+      if (error) { console.warn("[admin] wipe", error.code || error.message); showAuthError("adminMembersWarning", "معرفتش أعمل الأمر — لازم صلاحية مسح بيانات الأعضاء"); return; }
+      if (level === 2 && typeof refresh === "function") { await refresh(); refreshAdminBadges(true); } // التفعيل اتلغى ← الكارت يتحدّث
+      showAuthError("adminMembersWarning", data > 0
+        ? `اتعمل أمر لـ ${data} جهاز، وهيتنفذ أول ما الموبايل يفتح بالنت.`
+        : "مفيش أجهزة متسجلة للعضو ده (مافتحش التطبيق بالنت من إصدار 9.3).");
+      if (level === 1) ndWipeLoadOrders(box, m.id);
+    } catch (e) {
+      console.warn("[admin] wipe", e && e.message);
+      showAuthError("adminMembersWarning", "معرفتش أعمل الأمر — اتأكد من النت وجرّب تاني");
+    } finally { busy = false; }
+  };
+  const b1 = content.querySelector(".admin-wipe1-btn"); if (b1) b1.addEventListener("click", () => run(1));
+  const b2 = content.querySelector(".admin-wipe2-btn"); if (b2) b2.addEventListener("click", () => run(2));
+}
+// قايمة "🧹 أوامر المسح والحذف" تحت الأعضاء (للأعضاء اللي اتحذفوا وكارتهم اختفى)، لـ member_wipe بس، وبتتحمّل مع فتح القسم
+async function ndWipeLoadAll() {
+  const wrap = document.getElementById("adminWipeAllWrap");
+  const box = document.getElementById("adminWipeAllList");
+  if (!wrap || !box) return;
+  wrap.style.display = ndCanWipe() ? "" : "none";
+  if (!ndCanWipe()) return;
+  box.textContent = "بيتحمّل...";
+  try {
+    const { data, error } = await supabaseClient.rpc("admin_wipe_orders", { p_user_id: null, p_limit: 100 });
+    if (error) { console.warn("[admin] wipe orders all", error.code || error.message); box.textContent = "معرفتش أجيب أوامر المسح."; return; }
+    box.innerHTML = ndWipeOrdersHtml(data, true);
+  } catch (e) { console.warn("[admin] wipe orders all", e && e.message); box.textContent = "معرفتش أجيب أوامر المسح."; }
+}
 
 let membersCache = [];
 let currentMembersCategory = null; // "pending" | "active" | "revoked" | null (يعني نتيجة بحث عام)
@@ -1821,11 +1960,11 @@ async function renderMemberDetail(memberId) {
       <div class="admin-member-actions">
         <button class="admin-add-btn admin-approve-btn ${m.admin_approved ? "is-active" : ""}">${m.admin_approved ? "❌ إلغاء التفعيل" : "✅ موافقة..."}</button>
         <button class="admin-add-btn admin-name-reset-btn" ${m.name_change_count === 0 ? "disabled" : ""}>🔓 اسمح بتغيير الاسم</button>
-        ${(m.role !== "owner" || (!m.is_primary_owner && ND.currentUserIsPrimaryOwner)) ? `<button class="admin-add-btn admin-delete-btn">🗑️ حذف العضو</button>` : ""}
         ${ND.currentUserRole === "owner" && m.role === "member" ? `<button class="admin-add-btn admin-role-toggle-btn">⬆️ ترقية لأدمن</button>` : ""}
         ${ND.currentUserRole === "owner" && m.role === "admin" ? `<button class="admin-add-btn admin-role-toggle-btn">⬇️ تراجع لعضو</button>` : ""}
         ${ND.currentUserIsPrimaryOwner && m.role === "owner" && !m.is_primary_owner ? `<button class="admin-add-btn admin-demote-owner-btn">⬇️ تنزيل من مالك لأدمن</button>` : ""}
       </div>
+      ${ndWipeButtonsHtml(m)}
       <div class="admin-approve-panel" style="display:none;">
         <div class="admin-approve-shortcuts">
           <button type="button" class="admin-add-btn app-1d">+ يوم</button>
@@ -1906,12 +2045,13 @@ async function renderMemberDetail(memberId) {
     else { showAuthError("adminMembersWarning", ""); await refresh(); }
   });
 
+  ndWireWipeButtons(content, m, refresh); // (1.3)
   const deleteBtn = content.querySelector(".admin-delete-btn");
   if (deleteBtn) {
     deleteBtn.addEventListener("click", async () => {
       if (!confirm(`حذف ${m.email} نهائيًا؟ ده هيمسح حسابه بالكامل ومش هينفع يرجع.`)) return;
       const { error } = await supabaseClient.rpc("admin_delete_member", { p_user_id: m.id });
-      if (error) { showAuthError("adminMembersWarning", "معرفتش أحذف — لازم صلاحية أدمن"); return; }
+      if (error) { showAuthError("adminMembersWarning", "معرفتش أحذف — لازم صلاحية مسح بيانات الأعضاء وحذفهم"); return; }
       showAuthError("adminMembersWarning", "");
       const { data: fresh } = await supabaseClient.rpc("admin_list_members");
       if (fresh) { membersCache = fresh; renderMembersCategoryCards(); }
@@ -2449,7 +2589,7 @@ function setupAdminForms() {
   if (publishVersionBtn) {
     publishVersionBtn.addEventListener("click", async () => {
       const { error } = await supabaseClient.from("app_settings")
-        .upsert({ key: "required_app_version", value: String(APP_VERSION), updated_at: new Date().toISOString() });
+        .upsert({ key: "required_app_version", value: APP_VERSION_LABEL, updated_at: new Date().toISOString() }); // (1.3) "10.0" مش "10"
       if (error) {
         showAuthError("adminMembersWarning", "معرفتش أنشر — لازم تكون المالك");
       } else {
@@ -3085,6 +3225,7 @@ function mountAdminPanel() {
   wireAdminHeaders();
   setupAdminForms();
   setupDeviceSwitches(); // (1.1) بند 44 (1)
+  setupBankChecksAndWipeList(); // (1.3) بند 49 و52
 }
 
 /* ============================================================
@@ -3162,6 +3303,48 @@ async function renderDeviceSwitches() {
     devSwitchLoading = false;
   }
 }
+// (1.3) بند 49
+let bankChecksLoading = false, bankChecksLoaded = false;
+const ND_TIER_LABEL = { full: "مفعّل", trial: "غير مفعّل" };
+async function renderBankChecks() {
+  const wrap = document.getElementById("bankChecksList");
+  if (!wrap || bankChecksLoading) return;
+  bankChecksLoading = true;
+  wrap.innerHTML = `<div class="auth-field-help">بيتحمّل...</div>`;
+  try {
+    const { data, error } = await supabaseClient.rpc("admin_bank_checks", { p_limit: 30 });
+    if (error) { console.warn("[admin] bank checks", error.code || error.message); wrap.innerHTML = `<div class="auth-field-help">معرفتش أجيب القايمة — لازم صلاحية الأعضاء.</div>`; return; }
+    bankChecksLoaded = true;
+    if (!Array.isArray(data) || !data.length) { wrap.innerHTML = `<div class="auth-field-help">مفيش أي جهاز فضل فيه اختلاف.</div>`; return; }
+    wrap.innerHTML = data.map(r => `<div class="dev-row bank-check-row">
+        <span class="dev-row-label">${ndEscape(r.member_label || "—")}${r.device_label ? " — " + ndEscape(r.device_label) : ""}</span>
+        <span class="dev-row-time">${ndEscape(fmtActTime(r.at))}</span>
+        <span>${ndEscape(ND_TIER_LABEL[r.tier] || r.tier || "")} · إصدار <bdi dir="ltr">${ndEscape(r.app_version || "?")}</bdi> · على الجهاز ${Number(r.local_n) || 0} وعلى السيرفر ${Number(r.server_n) || 0}</span>
+      </div>`).join("");
+  } catch (e) {
+    console.warn("[admin] bank checks", e && e.message);
+    wrap.innerHTML = `<div class="auth-field-help">معرفتش أجيب القايمة — اتأكد من النت وجرّب تاني.</div>`;
+  } finally {
+    bankChecksLoading = false;
+  }
+}
+function setupBankChecksAndWipeList() {
+  const item = document.getElementById("adminBankChecksItem");
+  const header = item && item.querySelector(".app-guide-header");
+  if (header) header.addEventListener("click", () => {
+    setTimeout(() => { if (item.classList.contains("open") && !bankChecksLoaded) renderBankChecks(); }, 0);
+  });
+  const btn = document.getElementById("bankChecksRefresh");
+  if (btn) btn.addEventListener("click", () => renderBankChecks());
+  const memItem = document.querySelector('#adminSectionsList .admin-item[data-perm="members"]');
+  const memHeader = memItem && memItem.querySelector(".app-guide-header");
+  if (memHeader) memHeader.addEventListener("click", () => {
+    setTimeout(() => { if (memItem.classList.contains("open")) ndWipeLoadAll(); }, 0);
+  });
+  const wb = document.getElementById("adminWipeAllRefresh");
+  if (wb) wb.addEventListener("click", () => ndWipeLoadAll());
+}
+
 function setupDeviceSwitches() {
   const item = document.getElementById("adminDevicesItem");
   if (!item) return;

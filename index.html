@@ -2782,6 +2782,10 @@ h1, h2, h3, .motivation-title, .motivation-text, .mg-hello, .mg-line, .push-row-
 
 /* ============ (7.9) وسائل التواصل + علامة الجديد ============ */
 .contact-btns[hidden]{ display:none; }
+.nd-error-contact{ margin-top:10px; }
+.nd-sheet-contact{ margin:0 4px 14px; }
+.nd-email-box{ background:rgba(127,127,127,.08); border-color:rgba(127,127,127,.3); margin:0 0 10px; }
+.nd-email-box span{ color:inherit; }
 .profile-contact-btn.profile-contact-whatsapp{ background:#25D366; color:#fff; }
 .profile-contact-btn.profile-contact-generic{ background:#3a4a66; color:#fff; }
 .fb-direct-btn.profile-contact-messenger{ background:#0a7cff; } .fb-direct-btn.profile-contact-telegram{ background:#229ED9; }
@@ -4879,7 +4883,7 @@ html.lite .raindrop{ display:none !important; }
         <div class="profile-about-text">
           بفضل الله إحدى خدمات<br>
           <span class="ag-word" id="agWordOnline">Online</span> <span class="ag-word" id="agWordOphthalmology">Ophthalmology</span> <span class="ag-word" id="agWordCorporation">Corporation</span> 6/6<br>
-          Version <span id="profileAppVersionLabel"></span>
+          <span id="profileVersionLine">Version <span id="profileAppVersionLabel"></span></span>
         </div>
       </div>
     </div>
@@ -5040,6 +5044,7 @@ html.lite .raindrop{ display:none !important; }
           <li>🚫 لن تستطيع العودة إلى التطبيق واستخدامه دون اتصال بالإنترنت</li>
           <li>🚫 لن تصل حضرتك تذكيرات جلسات المذاكرة</li>
           <li>🚫 لن تصل حضرتك إشعارات التطبيق</li>
+          <li>⏳ عند تسجيل الدخول مرة أخرى، قد تلاحظ بطئًا بسيطًا في المرة الأولى فقط نظرًا لتحديث بالتطبيق</li>
         </ul>
         <div class="logout-warn-note">يمكن لحضرتك إغلاق نافذة التطبيق فقط للخروج، وستظل الخدمات السابقة متاحة بإذن الله.</div>
       </div>
@@ -5081,6 +5086,7 @@ html.lite .raindrop{ display:none !important; }
       <button class="profile-edit-save" id="globalErrorCopyBtn">📋 انسخ النص</button>
       <button class="profile-edit-cancel" id="globalErrorCloseBtn" type="button">إغلاق</button>
     </div>
+    <div class="contact-btns nd-error-contact" data-place="error" hidden></div>
   </div>
 </div>
 
@@ -5314,12 +5320,20 @@ window.NEWDAY_DATA = {
    - أي سؤال يرجع is_removed = true بيتشال من الجهاز فورًا.
    - كل النصوص الجاية من البنك بتتحوّل لـ HTML آمن (escape) هنا مرة
      واحدة، لأن شاشة السؤال بتحط النصوص كـ HTML.
+   - (10.0) بند 41 الجزء 2: البنك بيتنزّل بـ get_bank على قد مستوى الحساب (التذكرة من nd_bank_ticket):
+     المفعّل والإدارة كامل، وغير المفعّل أول 20 والزائر أول 10 في كل فولدر، والباقي "مقفول" (رقم وتصنيف
+     بس، من غير أي نص)، عشان الأعداد والإحصائيات وروابط ?q= تفضل زي ما هي. نموذج الموازي (ج) 4/10.
+   - (10.0) بند 50: كل سؤال متخزّن لوحده (store "q")، والكتابة للي اتغير بس. البنك القديم (rows) بيتنقل مرة واحدة
+     من غير نت. بند 49: مرة في اليوم بالكتير بنقارن عدد وبصمة اللي على الجهاز بالسيرفر (p_check)؛ لو مختلفين
+     بنعيد التحميل مرة واحدة، ولو الاختلاف فضل بيتسجّل للأدمن (للأعضاء بس) ومفيش محاولة تانية لحد بكرة.
    ============================================================ */
 (function () {
   "use strict";
   var QB_URL = "https://djqsffknczddefukbuzu.supabase.co";
   var QB_KEY = "sb_publishable_ruh8u20eDj8CO3h_5-s49g_j78edPxA"; // مفتاح عام (publishable) للقراءة بس
-  var DB_NAME = "nd_qbank", STORE = "kv";
+  var DB_NAME = "nd_qbank", STORE = "kv", Q_STORE = "q"; // (10.0) بند 50: q = مجموعات (المفتاح "شابتر|امتحان|نوع|رقم/200")، وkv للـ meta بس
+  var LIMITS = { trial: 20, guest: 10 };   // (10.0) لازم تطابق getAllQuestionsInContext وget_bank على السيرفر
+  var CHECK_MS = 24 * 60 * 60 * 1000;      // (10.0) بند 49: الفحص اليومي
   var OVERLAP_MS = 5 * 60 * 1000;
   var MIN_GAP_MS = 30 * 1000;            // أقل مدة بين مزامنتين تلقائيتين
   var EXAM_MAP = { AB: "ARB" };          // كود الامتحان في البنك ← كوده في التطبيق
@@ -5339,9 +5353,18 @@ window.NEWDAY_DATA = {
     if (dbp) return dbp;
     dbp = new Promise(function (res, rej) {
       if (!("indexedDB" in window)) { rej(new Error("IndexedDB غير متاح")); return; }
-      var r = indexedDB.open(DB_NAME, 1);
-      r.onupgradeneeded = function () { r.result.createObjectStore(STORE); };
-      r.onsuccess = function () { res(r.result); };
+      var r = indexedDB.open(DB_NAME, 2);
+      r.onupgradeneeded = function () { // (10.0) بند 50: نسخة 2 فيها q. والجهاز اللي عليه نسخة 1 بيتنقل بنكه في loadAll
+        var db = r.result;
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+        if (!db.objectStoreNames.contains(Q_STORE)) db.createObjectStore(Q_STORE);
+      };
+      r.onsuccess = function () {
+        var db = r.result;
+        // (10.0) لو تاب تاني عايز نسخة أحدث أو المسح (deleteDatabase) شغال: نقفل عشان مانوقفهوش
+        db.onversionchange = function () { try { db.close(); } catch (e) {} dbp = null; };
+        res(db);
+      };
       r.onerror = function () { rej(r.error); };
       r.onblocked = function () { rej(new Error("IndexedDB مشغول")); };
     });
@@ -5369,6 +5392,127 @@ window.NEWDAY_DATA = {
         tx.onabort = function () { rej(tx.error); };
       });
     });
+  }
+
+  /* (10.0) بند 50 (قرار صاحب المشروع 4/10، خيار ب): البنك على الجهاز مجموعات. المجموعة = الفولدر (شابتر|امتحان|نوع)
+     + كل 200 رقم سؤال، فمجموعة السؤال ثابتة طول عمره (الحذف بيسيب مكانه فاضي، ومفيش سؤال بيتحرك)، والتعديل بيكتب مجموعته
+     بس. الوصف الكامل والقياس: قسم "بندي 50 و53" في مستند الشغل */
+  var CHUNK_QIDS = 200;
+  var chunkOf = new Map(), chunkSets = new Map();   // رقم السؤال ← مفتاح مجموعته، ومفتاح المجموعة ← أرقام أسئلتها
+  function chunkKey(r) {
+    var tax = r.taxonomy || {};
+    return firstCode(tax, "chapter") + "|" + firstCode(tax, "exam") + "|" + firstCode(tax, "question_type") + "|" +
+           Math.floor(Number(r.qid) / CHUNK_QIDS);
+  }
+  function chunkDel(qid) {                          // بيرجّع مفتاح المجموعة اللي كان فيها
+    var old = chunkOf.get(qid);
+    if (old === undefined) return undefined;
+    chunkOf.delete(qid);
+    var s = chunkSets.get(old);
+    if (s) { s.delete(qid); if (!s.size) chunkSets.delete(old); }
+    return old;
+  }
+  function chunkAdd(r) {                            // بيرجّع المفتاح القديم لو السؤال اتنقل فولدر، عشان مجموعته القديمة تتكتب كمان
+    var k = chunkKey(r), old = chunkOf.get(r.qid);
+    if (old === k) return undefined;
+    if (old !== undefined) chunkDel(r.qid);
+    chunkOf.set(r.qid, k);
+    var s = chunkSets.get(k);
+    if (!s) { s = new Set(); chunkSets.set(k, s); }
+    s.add(r.qid);
+    return old;
+  }
+  function chunkReset() {
+    chunkOf = new Map(); chunkSets = new Map();
+    byQid.forEach(function (r) { if (r && r.qid != null) chunkAdd(r); });
+  }
+  function chunkRows(k) {
+    var s = chunkSets.get(k), out = [];
+    if (s) s.forEach(function (qid) { var r = byQid.get(qid); if (r) out.push(r); });
+    return out;
+  }
+
+  /* القراية كلها مرة في البداية، ومعاها النقل من البنك القديم (قيمة واحدة rows، قبل 10.0) لمجموعات، في نفس المعاملة
+     ومن غير نت. لو النقل فشل، المعاملة بتتلغى والبنك القديم يفضل زي ما هو للمرة الجاية */
+  function loadAll() {
+    return openDb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction([STORE, Q_STORE], "readwrite"), kv = tx.objectStore(STORE), qs = tx.objectStore(Q_STORE);
+        var out = { meta: null, rows: [], moved: false };
+        var gm = kv.get("meta");
+        gm.onsuccess = function () { out.meta = gm.result; };
+        var gl = kv.get("rows");
+        gl.onsuccess = function () {
+          var legacy = gl.result;
+          if (Array.isArray(legacy)) {
+            var g = new Map();
+            legacy.forEach(function (r) {
+              if (!r || r.qid == null) return;
+              var k = chunkKey(r);
+              if (!g.has(k)) g.set(k, []);
+              g.get(k).push(r);
+              out.rows.push(r);
+            });
+            qs.clear();
+            g.forEach(function (rows, k) { qs.put(rows, k); });
+            kv.delete("rows");
+            out.moved = true;
+          } else {
+            var ga = qs.getAll();
+            ga.onsuccess = function () {
+              (ga.result || []).forEach(function (c) { if (Array.isArray(c)) c.forEach(function (r) { if (r && r.qid != null) out.rows.push(r); }); });
+            };
+          }
+        };
+        tx.oncomplete = function () { res(out); };
+        tx.onerror = function () { rej(tx.error); };
+        tx.onabort = function () { rej(tx.error); };
+      });
+    });
+  }
+  // replace = امسح الكل واكتب byQid كله مجموعات (تنزيل كامل، أو تبديل المحدود، أو التخفيض)؛
+  // غير كده اكتب المجموعات اللي فيها أسئلة اتغيرت بس (ومجموعة السؤال القديمة لو اتنقل فولدر)، والمجموعة اللي فضيت تتشال
+  function writeBank(replace, put, del) {
+    return openDb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction([STORE, Q_STORE], "readwrite"), qs = tx.objectStore(Q_STORE);
+        if (replace) {
+          chunkReset();
+          qs.clear();
+          chunkSets.forEach(function (s, k) { qs.put(chunkRows(k), k); });
+        } else {
+          var touched = new Set();
+          (put || []).forEach(function (r) {
+            if (!r || r.qid == null) return;
+            var old = chunkAdd(r);
+            touched.add(chunkOf.get(r.qid));
+            if (old !== undefined) touched.add(old);
+          });
+          (del || []).forEach(function (qid) { var old = chunkDel(qid); if (old !== undefined) touched.add(old); });
+          touched.forEach(function (k) { var rows = chunkRows(k); if (rows.length) qs.put(rows, k); else qs.delete(k); });
+        }
+        tx.objectStore(STORE).put(meta, "meta");
+        tx.oncomplete = function () { res(); };
+        tx.onerror = function () { rej(tx.error); };
+        tx.onabort = function () { rej(tx.error); };
+      });
+    });
+  }
+
+  /* (10.0) رسالة التنزيل الكامل (قرار صاحب المشروع 4/10): لو التنزيل الكامل عدّى 3 ثواني، ومن غير ذكر البنك.
+     بتختفي لوحدها لما يخلص (لو لسه هي اللي ظاهرة) */
+  var FULL_MSG = "⏳ قد تلاحظ بطئًا بسيطًا هذه المرة فقط نظرًا لتحديث بالتطبيق، ولن يتكرر بإذن الله";
+  function slowNotice(p) {
+    var shown = false;
+    var tm = setTimeout(function () {
+      if (typeof showToast === "function") { shown = true; showToast(FULL_MSG, 10 * 60 * 1000); }
+    }, 3000);
+    function done() {
+      clearTimeout(tm);
+      var el = shown && document.getElementById("updateSuccessToast");
+      if (el && el.textContent === FULL_MSG && typeof hideToast === "function") hideToast();
+    }
+    return Promise.resolve(p).then(function (v) { done(); return v; }, function (e) { done(); throw e; });
   }
 
   /* ---------- تحويل صف البنك لشكل سؤال التطبيق ---------- */
@@ -5421,6 +5565,8 @@ window.NEWDAY_DATA = {
     list.sort(function (a, b) { return a.qid - b.qid; });
     var qs = [];
     list.forEach(function (r) {
+      // (10.0) بند 41 الجزء 2: المقفول رقم وتصنيف بس، بيتعدّ ومابيتعرضش أبدًا (getAllQuestionsInContext بتشيله)
+      if (r.locked) { var st = toStub(r); if (st.chapter && st.exam && st.folder) qs.push(st); return; }
       var q = toQuestion(r);
       // سؤال من غير اختيارات أو من غير إجابة صح مايتحلش ← مايظهرش (المراجعين بيكمّلوه الأول)
       if (q.ch.length && q.correct >= 0 && q.chapter && q.exam && q.folder) qs.push(q);
@@ -5454,69 +5600,223 @@ window.NEWDAY_DATA = {
     });
   }
 
-  function persist() {
-    var rows = [];
-    byQid.forEach(function (r) { rows.push(r); });
-    return kvSetMany({ rows: rows, meta: meta }).catch(function () { /* من غير تخزين: هتتنزل تاني المرة الجاية */ });
+  /* (10.0) بند 50: الكتابة على الجهاز بتفشل بهدوء (من غير تخزين: البنك هيتنزل تاني المرة الجاية) */
+  function persist(replace, put, del) {
+    return writeBank(replace, put, del).catch(function (e) { console.warn("[qbank] persist", e && e.name); });
   }
 
-  function sync() {
-    if (syncing) return syncing;
+  /* ---------- (10.0) بند 41 الجزء 2: المستوى، والتذكرة، والصف المقفول (نموذج الموازي (ج)) ---------- */
+  function curTier() { return meta.tier || "full"; } // نسخة قبل 10.0 = كان عندها البنك كله، فالمفعّل مابينزّلش تاني
+  // التذكرة من التطبيق: window.ndBankTicket(force) ← Promise<string|null>. null = زائر أو حساب اتحذف (رد صريح).
+  // أي خطأ نت أو مهلة بيرمي، والمزامنة تفشل من غير ما تلمس البنك (عشان عضو مفعّل مايتخفّضش بسبب النت).
+  function ticket(force) {
+    if (typeof window.ndBankTicket !== "function") return Promise.resolve(null);
+    return window.ndBankTicket(!!force);
+  }
+  function fetchBank(t, force, check) {
+    var full = curTier() === "full";
+    var since = (!force && full && meta.maxUpdatedAt) ? new Date(ts(meta.maxUpdatedAt) - OVERLAP_MS).toISOString() : null;
+    return rpc("get_bank", {
+      p_ticket: t,
+      p_since: since,
+      p_epoch: (force || meta.epoch == null) ? null : meta.epoch,
+      p_have: (force || full) ? null : (meta.fp || null),
+      p_scope: null,                                   // بند 53 بعدين: شابتر أو فولدر
+      p_check: !!check                                 // بند 49
+    });
+  }
+  function lockRow(r) {
+    return { qid: r.qid, qid_display: r.qid_display, code: r.code, taxonomy: r.taxonomy,
+             repeat_count: r.repeat_count, updated_at: r.updated_at, locked: true };
+  }
+  // بدل toQuestion للصف المقفول: نفس الحقول اللي العدّ والفلترة بيستخدموها، من غير أي نص
+  function toStub(r) {
+    var tax = r.taxonomy || {};
+    var years = (tax.year || []).map(function (y) { return parseInt(y.code, 10); })
+      .filter(function (n) { return n > 0; }).sort(function (a, b) { return a - b; });
+    var exam = firstCode(tax, "exam");
+    return {
+      qCode: "Q" + r.qid_display, qId: String(r.code || "").toLowerCase(), qid: r.qid,
+      chapter: firstCode(tax, "chapter"), exam: EXAM_MAP[exam] || exam, folder: firstCode(tax, "question_type"),
+      year: years[0] || null, years: years,
+      repeatCount: Math.max(Number(r.repeat_count) || 0, years.length, 1),
+      q: "", qe: "", more: "", ch: [], correct: -1, notes: "", reviewed: false, aiLine: "", reviewedLine: "",
+      image: null, locked: true
+    };
+  }
+
+  /* التخفيض على الجهاز من غير نت (الخروج، أو الزائر، أو أمر المستوى 1): أول limit سؤال في كل فولدر
+     كاملين والباقي مقفول، بنفس حساب السيرفر. fp فاضية ← المزامنة الجاية تاخد رأي السيرفر */
+  function downgrade(tier) {
+    var lim = LIMITS[tier];
+    if (!lim) return Promise.resolve(false);
+    var cur = curTier();
+    if (cur !== "full" && LIMITS[cur] <= lim) return Promise.resolve(false); // أصلًا عند المستوى ده أو أقل
+    var list = [];
+    byQid.forEach(function (r) { if (r && !r.is_removed) list.push(r); });
+    list.sort(function (a, b) { return a.qid - b.qid; });
+    var nb = new Map(), seen = {};
+    list.forEach(function (r) {
+      if (r.locked) { nb.set(r.qid, r); return; }
+      var q = toQuestion(r);
+      if (!(q.ch.length && q.correct >= 0 && q.chapter && q.exam && q.folder)) return; // مابيظهرش أصلًا
+      var k = q.chapter + "|" + q.exam + "|" + q.folder;
+      seen[k] = (seen[k] || 0) + 1;
+      nb.set(r.qid, seen[k] <= lim ? r : lockRow(r));
+    });
+    byQid = nb;
+    meta = Object.assign({}, meta, { tier: tier, fp: null, maxUpdatedAt: null });
+    rebuild();
+    emit({ full: true, rows: 0, added: 0, removed: 0, downgrade: true });
+    return persist(true).then(function () { return true; });
+  }
+
+  function downgradeSafe(tier) {
+    return new Promise(function (r) { if (loaded) r(); else readyCbs.push(r); })
+      .then(function () { return syncing ? syncing.catch(function () {}) : null; })
+      .then(function () { return downgrade(tier); });
+  }
+
+  /* المسح الكامل (المستوى 2 و3): يقفل الاتصال عشان deleteDatabase مايستناش */
+  function closeDb() {
+    var p = dbp; dbp = null;
+    byQid = new Map(); meta = { epoch: null, maxUpdatedAt: null, notices: [], syncedAt: 0 };
+    chunkOf = new Map(); chunkSets = new Map();
+    Q.splice(0, Q.length);
+    if (!p) return Promise.resolve();
+    return p.then(function (db) { try { db.close(); } catch (e) {} }).catch(function () {});
+  }
+
+  /* ---------- (10.0) بند 49: البصمة ---------- */
+  function checkDue() {
+    var d = Date.now() - (Number(meta.checkedAt) || 0);
+    return d >= CHECK_MS || d < -CHECK_MS; // ساعة الجهاز رجعت لورا كتير ← نفحص
+  }
+  function canHash() { return !!(window.crypto && window.crypto.subtle && typeof TextEncoder !== "undefined"); }
+  function localCount() { var n = 0; byQid.forEach(function (r) { if (r && !r.is_removed) n++; }); return n; }
+  // true = مطابق، false = مختلف، null = مانقدرش نحسب (من غير crypto.subtle أو رد غريب) ← الفحص يتخطى بس
+  function localMatches(chk) {
+    if (!chk || typeof chk.n !== "number" || typeof chk.h !== "string" || !canHash()) return Promise.resolve(null);
+    var list = [];
+    byQid.forEach(function (r) { if (r && !r.is_removed) list.push(r); });
+    if (list.length !== chk.n) return Promise.resolve(false);
+    list.sort(function (a, b) { return a.qid - b.qid; });
+    var str = list.map(function (r) { return r.qid + ":" + r.updated_at; }).join(",");
+    return window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(str)).then(function (buf) {
+      var h = Array.prototype.map.call(new Uint8Array(buf), function (b) { return (b < 16 ? "0" : "") + b.toString(16); }).join("");
+      return h === chk.h;
+    }).catch(function () { return null; });
+  }
+
+  // بيطبّق رد get_bank على byQid وmeta. بيرجّع { changed, replace, put, del }
+  function applyBank(res, notices, force) {
+    var keep = { checkedAt: meta.checkedAt || 0 };
+    if (res.tier === "full") {
+      var full = !!res.full || curTier() !== "full" || !!force;
+      var rows = Array.isArray(res.rows) ? res.rows : [];
+      if (!full) rows = rows.filter(function (r) {       // نفس فلتر 9.0 (بند 47)، والمقفول بيتبدّل بالكامل
+        if (!r || r.qid == null) return false;
+        var cur = byQid.get(r.qid);
+        if (r.is_removed) return !!cur;
+        return !cur || cur.locked || String(cur.updated_at) !== String(r.updated_at);
+      });
+      if (!full && rows.length === 0) {
+        meta = Object.assign({}, meta, { epoch: res.epoch, notices: notices, syncedAt: Date.now() });
+        return { changed: false };
+      }
+      if (full) byQid = new Map();
+      var maxU = full ? null : meta.maxUpdatedAt, put = [], del = [];
+      rows.forEach(function (r) {
+        if (!r || r.qid == null) return;
+        if (r.is_removed) { byQid.delete(r.qid); del.push(r.qid); } else { byQid.set(r.qid, r); put.push(r); }
+        if (!maxU || ts(r.updated_at) > ts(maxU)) maxU = r.updated_at;
+      });
+      meta = Object.assign({ epoch: res.epoch, tier: "full", fp: null, maxUpdatedAt: maxU || null, notices: notices, syncedAt: Date.now() }, keep);
+      return { changed: true, replace: full, put: put, del: del };
+    }
+    if (res.same && curTier() === res.tier) {
+      meta = Object.assign({}, meta, { epoch: res.epoch, notices: notices, syncedAt: Date.now() });
+      return { changed: false };
+    }
+    byQid = new Map();                                    // المحدود بيتبدّل كله (صغير: 10 أو 20 لكل فولدر + أرقام)
+    (Array.isArray(res.rows) ? res.rows : []).forEach(function (r) { if (r && r.qid != null) byQid.set(r.qid, r); });
+    (Array.isArray(res.locked) ? res.locked : []).forEach(function (r) { if (r && r.qid != null) byQid.set(r.qid, lockRow(r)); });
+    meta = Object.assign({ epoch: res.epoch, tier: res.tier, fp: res.fp || null, maxUpdatedAt: null, notices: notices, syncedAt: Date.now() }, keep);
+    return { changed: true, replace: true };
+  }
+  function validTier(res) { return !!res && ["full", "trial", "guest"].indexOf(res.tier) !== -1; }
+
+  // force = إعادة تحميل كاملة لمستوى الحساب (الاختصار المخفي)؛ البنك القديم يفضل لحد ما الرد يوصل كامل
+  async function syncBody(force) {
+    var wantCheck = (force || checkDue()) && canHash();
+    var t = await ticket(false);
+    // التنزيل الكامل المتوقع: أول مرة على الجهاز، أو التفعيل (التذكرة full والجهاز لسه مش full)، أو إعادة التحميل
+    var tTier = t ? String(t).split(".")[2] : null;
+    var expectFull = !!force || byQid.size === 0 || (tTier === "full" && curTier() !== "full");
+    var bankP = fetchBank(t, force, wantCheck);
+    var both = await Promise.all([
+      expectFull ? slowNotice(bankP) : bankP,
+      rpc("get_student_notices").catch(function () { return null; })
+    ]);
+    var res = both[0];
+    if (res && res.tier === "expired") {                 // التذكرة خلصت: مرة واحدة بس، ومن غير تخفيض
+      t = await ticket(true);
+      res = await fetchBank(t, force, wantCheck);
+    }
+    if (!validTier(res)) throw new Error("بنك الأسئلة: رد غير متوقع");
+    var notices = Array.isArray(both[1]) ? both[1] : (meta.notices || []);
+    var before = {};
+    Q.forEach(function (q) { before[q.qCode] = q; });
+    var hadAny = Q.length > 0;
+
+    var a = applyBank(res, notices, force), replace = !!a.replace, put = a.put || [], del = a.del || [], changed = a.changed;
+    if (wantCheck && res.chk) {
+      var ok = await localMatches(res.chk);
+      if (ok === false) {
+        // مختلف ← تحميل كامل مرة واحدة بس (من غير دوامة)، ونقارن تاني
+        console.warn("[qbank] check mismatch", localCount(), res.chk.n);
+        var res2 = await slowNotice(fetchBank(t, true, true));
+        if (validTier(res2)) {
+          applyBank(res2, notices, true); replace = true; changed = true;
+          var ok2 = await localMatches(res2.chk);
+          if (ok2 === false && typeof window.ndBankCheckReport === "function") {
+            try { window.ndBankCheckReport(res2.tier, localCount(), Number(res2.chk && res2.chk.n) || 0); } catch (e) {}
+          }
+        }
+      }
+      if (ok !== null) meta = Object.assign({}, meta, { checkedAt: Date.now() });
+    }
+    if (!changed) {
+      kvSetMany({ meta: meta }).catch(function () {});
+      return { ok: true, added: 0, removed: 0, quiet: true };
+    }
+    rebuild();
+    await persist(replace, put, del);
+    askPersistentStorage();
+    var added = 0, removed = 0, now = {};
+    Q.forEach(function (q) { now[q.qCode] = 1; if (!before[q.qCode]) added++; });
+    Object.keys(before).forEach(function (c) { if (!now[c]) removed++; });
+    emit({ full: replace, rows: replace ? byQid.size : put.length + del.length, added: added, removed: removed, first: !hadAny && Q.length > 0 });
+    return { ok: true, added: added, removed: removed };
+  }
+
+  function sync(opts) {
+    var force = !!(opts && opts.force);
+    if (syncing) {
+      if (force) return syncing.then(function () { return sync(opts); });
+      if (opts && opts.after) return syncing.then(function () { return sync(); }); // (10.0) بعد تبديل الحساب
+      return syncing;
+    }
     if (typeof navigator !== "undefined" && navigator.onLine === false) { lastError = new Error("offline"); return Promise.resolve({ ok: false, offline: true }); }
     lastSyncAt = Date.now();
     syncing = (async function () {
       try {
-        var epoch = await rpc("get_sync_epoch");
-        var full = meta.epoch !== epoch || !meta.maxUpdatedAt;
-        var since = full ? null : new Date(ts(meta.maxUpdatedAt) - OVERLAP_MS).toISOString();
-        var res = await Promise.all([
-          rpc("get_published_questions", { p_since: since }),
-          rpc("get_student_notices").catch(function () { return null; })
-        ]);
-        var rows = Array.isArray(res[0]) ? res[0] : [];
-        var newNotices = Array.isArray(res[1]) ? res[1] : (meta.notices || []);
-        // (9.0) بند 47: هامش الـ 5 دقايق بيرجّع آخر سؤال اتعدّل مع كل مزامنة. الصف اللي عندنا بنفس updated_at بالظبط
-        // (مقارنة نص)، أو المشطوب وهو مش عندنا أصلًا، مالوش أثر ← بيتجاهل، فمفيش إعادة بناء ولا إعادة كتابة للبنك
-        if (!full) rows = rows.filter(function (r) {
-          if (!r || r.qid == null) return false;
-          var cur = byQid.get(r.qid);
-          if (r.is_removed) return !!cur;
-          return !cur || String(cur.updated_at) !== String(r.updated_at);
-        });
-        if (!full && rows.length === 0) {
-          meta = Object.assign({}, meta, { notices: newNotices, syncedAt: Date.now() });
-          kvSetMany({ meta: meta }).catch(function () {});
-          lastError = null;
-          return { ok: true, added: 0, removed: 0 };
-        }
-        var before = {};
-        Q.forEach(function (q) { before[q.qCode] = q; });
-        var hadAny = Q.length > 0;
-        if (full) byQid = new Map();
-        var maxU = full ? null : meta.maxUpdatedAt;
-        rows.forEach(function (r) {
-          if (!r || r.qid == null) return;
-          if (r.is_removed) byQid.delete(r.qid); else byQid.set(r.qid, r);
-          if (!maxU || ts(r.updated_at) > ts(maxU)) maxU = r.updated_at;
-        });
-        meta = {
-          epoch: epoch,
-          maxUpdatedAt: maxU || null,
-          notices: newNotices,
-          syncedAt: Date.now()
-        };
-        rebuild();
-        await persist();
-        askPersistentStorage();
-        var added = 0, removed = 0;
-        var now = {};
-        Q.forEach(function (q) { now[q.qCode] = 1; if (!before[q.qCode]) added++; });
-        Object.keys(before).forEach(function (c) { if (!now[c]) removed++; });
+        var r = await syncBody(force);
         lastError = null;
-        emit({ full: full, rows: rows.length, added: added, removed: removed, first: !hadAny && Q.length > 0 });
-        return { ok: true, added: added, removed: removed };
+        return r;
       } catch (e) {
         lastError = e;
+        console.warn("[qbank] sync", e && e.message); // (10.0) التذكرة والنت وردود السيرفر
         return { ok: false, error: e };
       } finally {
         syncing = null;
@@ -5611,14 +5911,20 @@ window.NEWDAY_DATA = {
       showNoticeSheet(list, done);
       return true;
     },
-    info: function () { return { loaded: loaded, count: Q.length, rows: byQid.size, epoch: meta.epoch, maxUpdatedAt: meta.maxUpdatedAt, syncedAt: meta.syncedAt }; }
+    info: function () { return { loaded: loaded, count: Q.length, rows: byQid.size, epoch: meta.epoch, maxUpdatedAt: meta.maxUpdatedAt, syncedAt: meta.syncedAt, tier: curTier(), checkedAt: meta.checkedAt || 0 }; },
+    // (10.0) بند 41 الجزء 2 و52 و49
+    tier: curTier,
+    downgrade: downgradeSafe, // (10.0) بعد التحميل وأي مزامنة شغالة
+    close: closeDb,
+    reload: function () { return sync({ force: true }); }
   };
 
   /* ---------- البداية: من الجهاز فورًا، وبعدين مزامنة ---------- */
-  kvGetMany(["rows", "meta"]).then(function (v) {
-    if (Array.isArray(v.rows)) v.rows.forEach(function (r) { if (r && r.qid != null) byQid.set(r.qid, r); });
+  loadAll().then(function (v) { // (10.0) بند 50
+    v.rows.forEach(function (r) { if (r && r.qid != null) byQid.set(r.qid, r); });
+    chunkReset();
     if (v.meta && typeof v.meta === "object") meta = Object.assign({}, meta, v.meta);
-  }).catch(function () { /* أول مرة أو التخزين مش متاح */ }).then(function () {
+  }).catch(function (e) { console.warn("[qbank] load", e && e.name); /* أول مرة أو التخزين مش متاح */ }).then(function () {
     rebuild();
     loaded = true;
     readyCbs.splice(0).forEach(function (fn) { try { fn(); } catch (e) {} });
@@ -5651,7 +5957,7 @@ if (window.QB) {
       ndRenderLists();
       if (id === "questions") {
         const shown = lastRenderedQCode;
-        const exists = !!shown && window.NEWDAY_DATA.QUESTIONS.some(q => q.qCode === shown);
+        const exists = !!shown && window.NEWDAY_DATA.QUESTIONS.some(q => q.qCode === shown && !q.locked); // (10.0) المقفول مايفضلش معروض
         if (info.first || !exists || currentPool.length === 0) renderQuestion();
       }
       if (info.added > 0 && !info.first) {
@@ -5690,6 +5996,7 @@ async function switchStorageNamespaceForCurrentUser() {
     ? "newday_state_v3_guest"
     : "newday_state_v3_" + currentUserId;
   await loadMemberState(); // لازم نجيب حالة العضو من قاعدة البيانات قبل أي تحميل تاني
+  ndWipeAfterState(); // (10.0) (ب) 2
   await loadState();
   if (!offlineAccountMode) hydrateRemindersFromServer(); // (7.3) في الخلفية — مواعيد التذكير من ملف العضو على السيرفر
   ensurePushSubscriptionSynced(); // من غير await — في الخلفية، مايأخّرش فتح التطبيق
@@ -5709,6 +6016,20 @@ async function switchStorageNamespaceForCurrentUser() {
 const SUPABASE_URL = "https://wymcsdzuwzabjdjpuprc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_igUClzy2FNybrF0W5UZwLA_ALedOf4h";
 let supabaseClient = null;
+// (10.0) بند 76: خروج ماكملش في فتحة قبل كده (النت كان مقطوع، أو التطبيق اتقفل قبل ما الخروج اللي في الخلفية يخلص)
+// ← الجلسة المحفوظة ونسخة الحساب يتشالوا قبل ما المكتبة تقرا الجلسة. المفتاح مكتوب هنا بالنص لأن ND_ACCOUNT_CACHE_KEY
+// const متعرّف بعد السطر ده في نفس السكريبت (لو اتنادت clearAccountCache هنا كانت هترمي وتتبلع ومابتمسحش).
+const ND_LOGOUT_PENDING_KEY = "nd_logout_pending";
+function ndDropStoredSession() {
+  try { Object.keys(localStorage).forEach(k => { if (/^sb-.*-auth-token$/.test(k)) localStorage.removeItem(k); }); } catch (e) {}
+}
+try {
+  if (localStorage.getItem(ND_LOGOUT_PENDING_KEY)) {
+    ndDropStoredSession();
+    localStorage.removeItem("nd_last_account_v1"); // = ND_ACCOUNT_CACHE_KEY
+    localStorage.removeItem(ND_LOGOUT_PENDING_KEY);
+  }
+} catch (e) { console.warn("[ND] pending logout cleanup", e && e.name); }
 if (typeof window !== "undefined" && window.supabase) {
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 }
@@ -5739,13 +6060,14 @@ function showGlobalError(taskLabel, err) {
 `OOC New Day — تقرير خطأ
 المهمة: ${taskLabel || "غير محددة"}
 تفاصيل الخطأ: ${errMsg}
-رقم الإصدار: ${typeof APP_VERSION !== "undefined" ? APP_VERSION : "?"}
+رقم الإصدار: ${typeof APP_VERSION_LABEL !== "undefined" ? APP_VERSION_LABEL : "?"}
 حجم الشاشة: ${screenSize}
 المتصفح: ${navigator.userAgent}
 التوقيت: ${new Date().toISOString()}`;
 
     titleEl.textContent = `⚠️ حدث خطأ، لم يتم إكمال: ${taskLabel || "العملية"}`;
     diagEl.value = diag;
+    try { ndRenderContactPlace("error"); } catch (e) {} // (10.0) قاعدة التواصل
     overlay.classList.add("open");
   } catch (e) { /* لو حتى صندوق الخطأ نفسه فشل، ماتكسرش التطبيق بسببه */ }
 }
@@ -5952,12 +6274,54 @@ let currentUserRole = "member"; // member / admin / owner
 let currentUserPermissions = []; // لو role="admin" — أي أقسام لوحة الأدمن مسموحله يشوفها/يعدّل فيها
 let currentUserIsPrimaryOwner = false;
 
+// (10.0) بند 41 الجزء 2: تذكرة بنك الأسئلة (qbank بيطلبها قبل get_bank). كاش في الذاكرة لحد قبل انتهائها بدقيقة،
+// ومابتتخزنش على الجهاز. null للزائر أو حساب اتحذف (رد صريح nd_not_authenticated) بس؛ أي خطأ تاني (نت، مهلة، سيرفر)
+// بيرمي، فالمزامنة تفشل وتسجّل السبب من غير ما تلمس البنك، عشان عضو مفعّل مايتخفّضش بسبب النت.
+let ndTicketMem = null; // { uid, ticket, exp } — بيتصفّر مع أي تبديل حساب
+window.ndBankTicket = async function (force) {
+  if (isGuest || !currentUserId || !supabaseClient) return null;
+  const now = Math.floor(Date.now() / 1000);
+  if (!force && ndTicketMem && ndTicketMem.uid === currentUserId && ndTicketMem.exp - 60 > now) return ndTicketMem.ticket;
+  const uid = currentUserId;
+  const { data, error } = await withTimeout(supabaseClient.rpc("nd_bank_ticket"), 6000, "bank ticket");
+  if (error) {
+    if (/nd_not_authenticated/.test(String(error.message || ""))) return null;
+    throw new Error("ticket: " + (error.code || error.message || "error"));
+  }
+  if (!data || !data.ticket) throw new Error("ticket: empty");
+  if (uid !== currentUserId) throw new Error("ticket: account changed"); // الحساب اتبدّل والطلب شغال
+  ndTicketMem = { uid: uid, ticket: data.ticket, exp: Number(data.exp) || now };
+  return data.ticket;
+};
+
+// (10.0) بند 49: لو الفحص اليومي لقى اختلاف بين الجهاز والسيرفر وفضل بعد التنزيل الكامل، بيتسجّل للإدارة مرة واحدة
+// (السيرفر بيقبل سطر لكل جهاز في اليوم و5 بالكتير للحساب). للأعضاء بس، ومن غير ما الطالب يشوف حاجة.
+window.ndBankCheckReport = function (tier, localN, serverN) {
+  if (isGuest || !currentUserId || !supabaseClient) return;
+  if (tier !== "full" && tier !== "trial") return;
+  supabaseClient.rpc("nd_bank_check_report", {
+    p_device: ndDeviceId(), p_tier: tier, p_local_n: localN | 0, p_server_n: serverN | 0, p_version: APP_VERSION_LABEL
+  }).then(({ error }) => { if (error) console.warn("[qbank] check report", error.code || error.message); },
+          (e) => console.warn("[qbank] check report", e && e.message));
+};
+
+// (10.0) بند 41 الجزء 2: البنك بيتبع الحساب. الخروج والزائر ← تخفيض على الجهاز علطول (من غير نت)؛
+// الدخول ← مزامنة بالتذكرة الجديدة (المفعّل بينزّل البنك كله). بداية التطبيق كعضو مالهاش نداء هنا (مزامنة البداية كفاية).
+function ndBankAfterSwitch(kind) {
+  if (!window.QB || !QB.whenReady) return;
+  QB.whenReady(() => {
+    const p = kind === "guest" ? QB.downgrade("guest") : QB.sync({ after: true }); // after: مزامنة عادية بعد أي مزامنة شغالة بتذكرة الحساب القديم
+    Promise.resolve(p).catch((e) => console.warn("[qbank] switch", kind, e && e.message));
+  });
+}
+
 /* ============================================================
    2) CONSTANTS
    ============================================================ */
 // رقم إصدار التطبيق الحالي — يترفع مننا لما نعمل تحديث مهم، وليه نظير في لوحة الأدمن (required_app_version)
 // رقم إصدار التطبيق — نظام عشري: تعديل صغير يرفع الجزء العشري (3.2→3.3)، تعديل كبير يرفع الجزء الصحيح (3.4→4.0)
-const APP_VERSION = 9.9; // (9.9) بند 91 (الأيقونة ج1) وجملة المضمار من غير نت فوق بلون ذهبي (قرارات صاحب المشروع 4/10، كانت مخططة 9.8.1)
+const APP_VERSION = 10.0; // (10.0) حماية البنك (41 الجزء 2، و52 بالتوسيع، و76، و49، و50، و94) وسطر تنويه الخروج (قرارات صاحب المشروع 4/10)
+// قبلها: const APP_VERSION = 9.9; // (9.9) بند 91 (الأيقونة ج1) وجملة المضمار من غير نت فوق بلون ذهبي (قرارات صاحب المشروع 4/10، كانت مخططة 9.8.1)
 // قبلها: const APP_VERSION = 9.8; // (9.8) النقاط والعدّ خطوة 2 (57: النقاط على السيرفر) و42 (لوحة المضمار) و86 (الأسهم) و87 (الأخطاء من غير حد) والحفظ وقت الخروج. و(9.7) النقاط والعدّ خطوة 1 (77 و78) و83 و84 والدليل. و(9.6) الواجهة والحركة: 82 و80 و79 و74. و(9.5) أخطاء وطلبات الطالب قبل الإطلاق: 56 و35 و36 و71 و70 و72 و54 و44 (4) و34 و75 و67 و68 و73. و(9.4) بنود 61 و62 و63: النقاط وحد الـ 149، والرسم مع الجهاز الواحد، ورسايل النت. و(9.3) بند 44 (1): جهاز واحد في نفس الوقت. و(9.2) بند 44 (2): الرسم في جدول لوحده. و(9.1) إصدار طلاب أ2: بند 39 ج (لوحة الأدمن في ملف الإدارة admin.js). و(9.0) أ1: بند 39 ب و46 و47
 const APP_VERSION_LABEL = Number(APP_VERSION).toFixed(1); // للعرض بس (6.0 مش 6)
 
@@ -6144,6 +6508,173 @@ function ndDeviceId() {
   ndDeviceIdMem = id;
   return id;
 }
+/* (10.0) بند 52 بالتوسيع (قرارات صاحب المشروع 4/10، نموذج الموازي (ج)): أوامر المسح من السيرفر لرقم الجهاز ده.
+   - السؤال بعد ما الشاشة الأولى تفتح، ومع رجوع النت والتطبيق مفتوح (مرة في الدقيقة بالكتير). المسح بس لما السيرفر يرد صراحة،
+     وأي خطأ نت أو مهلة مايمسحش حاجة.
+   - الإجابات والتقدّم المستنيين بيتبعتوا الأول (المستوى 1 و2 لنفس الحساب)؛ لو مااتبعتوش، المسح يتأجل للمرة الجاية.
+   - المستوى 1 = البنك بس (تلقائي مع إلغاء التفعيل وانتهاء العضوية، أو من اللوحة). المستوى 2 = حظر: كل حاجة تخص التطبيق
+     والخروج. المستوى 3 = الحساب اتحذف: زي 2. والرسايل دبلوماسية من غير ذكر المسح.
+   - رقم الجهاز مابيتمسحش أبدًا: الأوامر التلقائية مربوطة بيه، ولو اتغيّر العضو المقفول هيتمسح تاني مع كل دخول. الرقم عشوائي
+     ومافيهوش أي بيانات عن العضو. */
+const ND_WIPE_ACK_KEY = "nd_wipe_ack";   // { ids }: مسح خلص وتأكيده لسه ماوصلش السيرفر
+const ND_WIPE_MSG_KEY = "nd_wipe_msg";   // sessionStorage: { k: "2" أو "3" أو "other", e: إيميل الحساب اللي كان داخل }، للرسالة بعد إعادة التحميل
+const ND_WIPE_TEXTS = {
+  1: "تم تحديث حالة حسابك. تقدّمك محفوظ في حسابك، ويعود كما هو بعد التفعيل. للتفعيل تواصل مع فريق OOC.",
+  2: "تم تحديث حالة حسابك. تقدّمك محفوظ في حسابك. للاستفسار تواصل مع فريق OOC.", // قرار صاحب المشروع 5/10: للحظر بس، من غير «ويمكنك تسجيل الدخول مرة أخرى»
+  3: "تم تحديث حالة حسابك. للاستفسار تواصل مع فريق OOC.",
+  // قرار صاحب المشروع 5/10: الحساب الداخل اتخرّج لأن الجهاز اتمسح بسبب حظر حساب تاني. حسابه هو ماتغيرش، ومن غير ما نكشف الحساب التاني
+  other: "تم تسجيل خروجك من هذا الجهاز. تقدّمك محفوظ في حسابك. للاستفسار تواصل مع فريق OOC."
+};
+let ndWipeBusy = false, ndWipeLastAt = 0;
+let ndAutoRefreshStopped = false; // (ب) 6: الخروج من غير نت وقّف التجديد التلقائي
+function ndAutoRefreshResume() {
+  if (!ndAutoRefreshStopped) return;
+  ndAutoRefreshStopped = false;
+  try { supabaseClient.auth.startAutoRefresh(); } catch (e) {}
+}
+let ndWipeWaitState = false; // (ب) 2: المسح اتأجّل لحد ما حالة الحساب تتحمّل
+function ndWipeShowMsg(k, email) {
+  if (!ND_WIPE_TEXTS[k]) return;
+  ndShowLinkSheet({ icon: "ℹ️", title: "تحديث الحساب", body: [ND_WIPE_TEXTS[k]], primary: "متابعة",
+                    contact: { place: "account", email: email || "" } });
+}
+// (ب) 2: بعد ما حالة الحساب تتحمّل (الدخول أو رجوع النت)، لو المسح كان مستنيها نسأل تاني علطول
+function ndWipeAfterState() {
+  if (!ndWipeWaitState || !memberStateSafeToUpload) return;
+  ndWipeWaitState = false; ndWipeLastAt = 0;
+  setTimeout(() => ndWipeCheck(), 1500);
+}
+
+// رقم الجهاز من غير ما نعمل واحد جديد (جهاز عمره ماكان عليه عضو مالوش رقم ← مفيش حاجة تتمسح)
+function ndWipeDeviceId() { try { return localStorage.getItem(ND_DEVICE_KEY); } catch (e) { return null; } }
+function ndWipeSaveAck(ids) { try { localStorage.setItem(ND_WIPE_ACK_KEY, JSON.stringify({ ids })); } catch (e) {} }
+
+async function ndWipeAck(ids, dev, ms) {
+  try {
+    const { data, error } = await withTimeout(supabaseClient.rpc("nd_wipe_ack", { p_device: dev, p_orders: ids }), ms || 6000, "wipe ack");
+    if (error) { console.warn("[wipe] ack", error.code || error.message); return false; }
+    return typeof data === "number";
+  } catch (e) { console.warn("[wipe] ack", e && e.message); return false; }
+}
+
+async function ndWipeCheck() {
+  if (ndWipeBusy || !supabaseClient || navigator.onLine === false) return;
+  if (Date.now() - ndWipeLastAt < 60 * 1000) return;
+  const dev = ndWipeDeviceId();
+  if (!dev || !ND_DEVICE_RE.test(dev)) return;
+  ndWipeBusy = true; ndWipeLastAt = Date.now();
+  try {
+    // 1) تأكيد مسح قديم ماوصلش (النت قطع بعد المسح)
+    let pend = null;
+    try { pend = JSON.parse(localStorage.getItem(ND_WIPE_ACK_KEY) || "null"); } catch (e) {}
+    if (pend && Array.isArray(pend.ids) && pend.ids.length) {
+      if (await ndWipeAck(pend.ids, dev)) { try { localStorage.removeItem(ND_WIPE_ACK_KEY); } catch (e) {} }
+      return;
+    }
+    // 2) السؤال (بحساب لو فيه جلسة، أو من غير حساب). أي خطأ ← مفيش مسح
+    const { data, error } = await withTimeout(supabaseClient.rpc("nd_wipe_check", { p_device: dev }), 6000, "wipe check");
+    if (error) { console.warn("[wipe] check", error.code || error.message); return; }
+    if (!Array.isArray(data) || !data.length) return;
+    await ndWipeRun(data, dev);
+  } catch (e) {
+    console.warn("[wipe] check", e && e.message); // من غير نت أو مهلة: مقصود إنه مايمسحش
+  } finally {
+    ndWipeBusy = false;
+  }
+}
+
+// الإجابات والتقدّم المستنيين الأول. true لو وصلوا كلهم (ndLogoutSaveRun بقت بترجّع ده صراحة).
+async function ndWipeFlushFirst() {
+  // (ب) 2: ndWipeCheck ممكن تتنادى قبل ما loadMemberState تخلص؛ وقتها ndLogoutSnapshot بترجع null من غير ما يبقى فيه حاجة اترفعت
+  if (useCloudState() && !memberStateSafeToUpload) { ndWipeWaitState = true; return false; }
+  try {
+    const snap = ndLogoutSnapshot();
+    const ok = snap ? await withTimeout(ndLogoutSaveRun(snap), 15000, "wipe flush") : true;
+    if (!ok) {
+      // الحفظ ماوصلش: المؤقتات اللي ndLogoutSnapshot وقفتها ترجع، عشان الحفظ العادي يكمّل والمسح يستنى
+      try {
+        if (memberStatePendingSync) { clearTimeout(memberStateSaveTimer); memberStateSaveTimer = setTimeout(persistMemberState, 2500); }
+        if (ndAnsQueue().length) ndAnsSchedule(2500);
+      } catch (e) { console.warn("[wipe] reschedule", e && e.name); }
+      return false;
+    }
+    return navigator.onLine !== false;
+  } catch (e) {
+    console.warn("[wipe] flush", e && e.message);
+    return false;
+  }
+}
+
+// التخزين المحلي كله (ومعاه جلسة الدخول ونسخة الحساب)، ماعدا تأكيد المسح (لو لسه ماوصلش) ورقم الجهاز
+function ndWipeLocal(keepAck) {
+  try {
+    const keep = { [ND_DEVICE_KEY]: 1 };
+    if (keepAck) keep[ND_WIPE_ACK_KEY] = 1;
+    Object.keys(localStorage).forEach(k => { if (!keep[k]) localStorage.removeItem(k); });
+  } catch (e) { console.warn("[wipe] local", e && e.name); }
+}
+
+// كل حاجة تخص التطبيق على الجهاز (المستوى 2 و3)
+async function ndWipeEverything() {
+  try {
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      const reg = await withTimeout(navigator.serviceWorker.ready, 2000, "sw");
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        try { await withTimeout(supabaseClient.from("push_subscriptions").delete().eq("endpoint", sub.endpoint), 2500, "unlink"); } catch (e) {}
+        try { await sub.unsubscribe(); } catch (e) {}
+      }
+    }
+  } catch (e) { console.warn("[wipe] push", e && e.message); }
+  // البنك والرسم (الاتصال بيتقفل الأول؛ لو المتصفح استنى، الحذف بيكمل مع إعادة التحميل)
+  try { if (window.QB && QB.close) await QB.close(); } catch (e) {}
+  await Promise.all(["nd_qbank", "nd_annotations"].map(n => new Promise(res => {
+    try { const r = indexedDB.deleteDatabase(n); r.onsuccess = r.onerror = r.onblocked = () => res(); } catch (e) { res(); }
+  })));
+  // كاش الكود (ملف الخدمة بيفضل متسجل، وأول فتح جاي بينزّل الكود من النت)
+  try { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } catch (e) {}
+  ndWipeLocal(true);
+  try { sessionStorage.clear(); } catch (e) {}
+}
+
+/* (10.0) قرار صاحب المشروع 5/10 (ملاحظة الموازي (ب) 5، الخيار 3): أي حظر أو حذف بيتنفّذ على الجهاز كله.
+   - أي أمر مستوى 2 أو 3 لأي حساب على الجهاز = مسح الجهاز كله وخروج أي حساب داخل، بعد ما إجابات وتقدّم الحساب الداخل
+     المستنيين يتبعتوا الأول (إلا لو هو نفسه اتحذف). ومفيش حظر تلقائي على السيرفر لأي حساب تاني.
+   - الأوامر كلها مستوى 1: الحساب الداخل بيتخفّض لو فيه أمر ليه (أو للجهاز من غير حساب، أو الجهاز من غير حد داخل)،
+     وأوامر الحسابات التانية بتتأكد من غير حاجة (مستواها بيتحدد بتذكرتها لما تدخل).
+   - كل الأوامر بتتأكد، لأن المسح الكامل بيشمل اللي تحته (ملاحظة (ب) 1: كان بينفّذ أول أمر بس ويأكّد الكل).
+   - الرسالة: الحساب الداخل اتحظر أو اتحذف ← رسالة مستواه؛ اتخرّج بسبب حساب تاني ← "other"؛ مفيش حد داخل ← من غير رسالة. */
+async function ndWipeRun(orders, dev) {
+  const list = (Array.isArray(orders) ? orders : [])
+    .filter(x => x && Number.isFinite(Number(x.id)) && [1, 2, 3].indexOf(Number(x.level)) !== -1).slice(0, 50);
+  if (!list.length) { console.warn("[wipe] bad order"); return; }
+  const ids = list.map(x => Number(x.id));
+  const signedIn = !isGuest && !!currentUserId;
+  const lvlWhere = (f) => list.reduce((m, x) => (f(x) ? Math.max(m, Number(x.level)) : m), 0);
+  const top = lvlWhere(() => true);
+  const myLvl = signedIn ? lvlWhere(x => x.user === currentUserId) : 0;
+
+  if (top === 1) {
+    const own = !signedIn || myLvl === 1 || lvlWhere(x => !x.user) === 1;
+    if (myLvl === 1 && !(await ndWipeFlushFirst())) return;          // نأجّل من غير ما نخفّض
+    if (own && window.QB && QB.downgrade) await QB.downgrade(signedIn ? "trial" : "guest");
+    if (!(await ndWipeAck(ids, dev))) ndWipeSaveAck(ids);
+    if (myLvl === 1) ndWipeShowMsg(1, currentUserEmail);
+    return;
+  }
+
+  if (signedIn && myLvl < 3 && !(await ndWipeFlushFirst())) return; // نأجّل من غير مسح
+  const msg = !signedIn ? "" : myLvl >= 2 ? String(myLvl) : "other";
+  const email = signedIn ? String(currentUserEmail || "") : "";
+  ndWipeSaveAck(ids);
+  await ndWipeEverything();
+  // (ب) 3: من بعد المسح لحد إعادة التحميل ممكن تعدي ثواني، وأي حفظ وقتها بيرجّع بيانات للجهاز ← لفة مسح تاني قبل التحميل علطول
+  const acked = await ndWipeAck(ids, dev, 3000);
+  ndWipeLocal(!acked);
+  if (msg) { try { sessionStorage.setItem(ND_WIPE_MSG_KEY, JSON.stringify({ k: msg, e: email })); } catch (e) {} }
+  location.replace(location.pathname);           // فتح من جديد من غير حساب، ورسالة الحالة
+}
+
 // نوع الجهاز والمتصفح لسجل الإدارة بس (أقصاه 60 حرف، والقاعدة بتقصّه كمان)
 function ndDeviceLabel() {
   const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
@@ -6544,6 +7075,7 @@ async function ndRecoverRun() {
   // (9.4) بند 65 (مراجعة 1/10): التحميل فشل (السيرفر مارجعش في المهلة) ← loadMemberState رجّعت الحالة {}، فالحالة المؤقتة
   // ترجع زي ما هي (الحالة الحدية د: إجابات الجلسة ماتختفيش من الشاشة قبل التحميل، وعلامة الحل تفضل للرسالة في المحاولة الجاية)
   if (!memberStateSafeToUpload) { if (memberStateLoaded) memberState = tempState; return; }
+  ndWipeAfterState(); // (10.0) (ب) 2
   await loadState();
   try { renderModeTabs(); } catch (e) {}
   const active = document.querySelector(".screen.active");
@@ -6607,15 +7139,15 @@ function ndLogoutSnapshot() {
     return null;
   }
 }
-async function ndLogoutSaveRun(s) {
-  if (!s) return;
+async function ndLogoutSaveRun(s) { // (10.0) بترجّع true لو كل اللي مستني وصل (أوامر المسح بتستنى ده)
+  if (!s) return true;
   // (9.8) بند 57: الطابور. لو فشل، بيفضل في نسخة الجهاز ويتبعت في الدخول الجاي هنا (الإعادة آمنة بالرقم).
   // (مراجعة (ل)) بيتبعت جنب حفظ الحالة مش قبله، عشان على نت بطيء حفظ الحالة (ملحوظة 85) مايستناش الدفعة جوه نفس الـ 5 ثواني
   const ansReq = (async () => {
     if (s.ans && s.ans.length) {
       try {
         const r = await supabaseClient.rpc("nd_points_batch", Object.assign({}, s.args, { p_answers: s.ans }));
-        if (r && r.error) ndPtsErr(r.error, "logout");
+        if (r && r.error) { ndPtsErr(r.error, "logout"); return false; }
         else {
           const sent = new Set(s.ans.map(a => a.seq));
           try {
@@ -6628,8 +7160,9 @@ async function ndLogoutSaveRun(s) {
           } catch (e) { /* الطابور فاضل في النسخة، والسيرفر هيتجاهله كمكرر */ }
           if (r && r.data && typeof r.data.last_seq === "number" && r.data.last_seq > ndAnsSeqGet(s.uid)) ndAnsSeqSet(s.uid, r.data.last_seq);
         }
-      } catch (e) { ndPtsErr(e, "logout"); }
+      } catch (e) { ndPtsErr(e, "logout"); return false; }
     }
+    return true;
   })();
   const req = (async () => {
     if (!s.upd) return;
@@ -6650,7 +7183,10 @@ async function ndLogoutSaveRun(s) {
     console.warn("[ND] logout save failed; kept on this device for next sign-in:",
       ndIsReplacedError(e) ? "device_replaced" : String((e && (e.message || e)) || "").slice(0, 120));
   });
-  try { await withTimeout(Promise.all([ansReq, req.catch(() => {})]), ND_LOGOUT_SAVE_MS, "logout-save"); } catch (e) { /* المهلة خلصت: الخروج يكمّل */ }
+  try {
+    const r = await withTimeout(Promise.all([ansReq, req.then(() => true, () => false)]), ND_LOGOUT_SAVE_MS, "logout-save");
+    return r[0] === true && r[1] === true;
+  } catch (e) { return false; /* المهلة خلصت: الخروج يكمّل */ }
 }
 
 // (9.8) بند 57 (خطة طلاب 9.8، اتعتمدت 3/10): النقاط والعدّ والحافز والخصم بتتحسب على السيرفر بنفس قواعد 9.7، والسيرفر هو المرجع.
@@ -8039,9 +8575,10 @@ async function checkForcedUpdate() {
         const diagText = document.getElementById("forceUpdateDiagText");
         if (diagBlock) diagBlock.style.display = "block";
         if (diagText) {
-          diagText.value = `OOC New Day — فشل التحديث\nالنسخة الحالية: ${APP_VERSION}\nالنسخة المطلوبة: ${required}\nالمتصفح: ${navigator.userAgent}`;
+          diagText.value = `OOC New Day — فشل التحديث\nالنسخة الحالية: ${APP_VERSION_LABEL}\nالنسخة المطلوبة: ${Number(required).toFixed(1)}\nالمتصفح: ${navigator.userAgent}`;
         }
       }
+      try { ndRenderContactPlace("update"); } catch (e) {} // (10.0) قاعدة التواصل: إيميل العضو لو معروف
       navigate("forceUpdate");
       return false;
     }
@@ -8940,9 +9477,13 @@ async function awardPoints(qCode, isCorrect, answered) {
  */
 function getAllQuestionsInContext(ctx) { // (8.9) ctx اختياري: رابط السؤال بيفحص فولدر السؤال نفسه قبل ما ينقل الطالب
   const all = filterQuestions(window.NEWDAY_DATA.QUESTIONS, ctx || context);
-  if (isGuest) return all.slice(0, 10);
-  if (currentUserRole === "admin" || currentUserRole === "owner" || currentUserApproved) return all;
-  return all.slice(0, 20);
+  let out;
+  if (isGuest) out = all.slice(0, 10);
+  else if (currentUserRole === "admin" || currentUserRole === "owner" || currentUserApproved) out = all;
+  else out = all.slice(0, 20);
+  // (10.0) بند 41 الجزء 2: الصف المقفول (رقم وتصنيف بس) بيتعدّ في الإحصائيات بس، ومايتعرضش أبدًا
+  // (مثال: عضو جهازه فاكره مفعّل وعضويته خلصت على السيرفر ← البنك محدود، والـ 20 بس اللي يظهروا)
+  return out.filter(q => !q.locked);
 }
 
 /**
@@ -10430,6 +10971,7 @@ async function renderRace() {
   let rows, meOutside = null, offlineNote = false;
   // (9.8) بند 42، قرار صاحب المشروع 3/10: من غير نت أو لو التحميل فشل (للعضو) = آخر ترتيب اتحمّل للحساب ده، وتحته جملة
   if (!b && !isGuest) { b = ndRaceLast(); offlineNote = true; }
+  else if (b && !isGuest && navigator.onLine === false) offlineNote = true; // (10.0) بند 94: من غير أي طلب جديد
   if (b) {
     rows = b.top.slice();
     const meInTop = rows.some(r => r.isMe);
@@ -11234,6 +11776,7 @@ function setupProfileEditing() {
   const contactRow = document.getElementById("profileContactRow");
   if (contactRow) {
     contactRow.addEventListener("click", () => {
+      try { ndRenderContactPlace("profile"); } catch (e) {} // (10.0) قاعدة التواصل: إيميل الحساب الحالي
       toggleProfileEditPanel("profileContactEdit",
         ALL_PANELS.filter(p => p !== "profileContactEdit"));
     });
@@ -11824,7 +12367,14 @@ function ndShowLinkSheet(o) {
     } else body.appendChild(document.createTextNode(String(part == null ? "" : part)));
   });
   const ok = document.createElement("button"); ok.type = "button"; ok.className = "qbn-ok"; ok.textContent = o.primary || "متابعة";
-  sh.append(handle, icon, title, body, ok);
+  sh.append(handle, icon, title, body);
+  if (o.contact && o.contact.place) { // (10.0) قاعدة التواصل
+    const cb = document.createElement("div"); cb.className = "contact-btns nd-sheet-contact"; cb.dataset.place = o.contact.place;
+    if (o.contact.email != null) cb.dataset.email = String(o.contact.email);
+    sh.appendChild(cb);
+    try { renderContactButtons(cb); } catch (e) { console.warn("[contact] sheet", e && e.message); cb.hidden = true; }
+  }
+  sh.appendChild(ok);
   let alt = null;
   if (o.secondary) { alt = document.createElement("button"); alt.type = "button"; alt.className = "qbn-never"; alt.textContent = o.secondary; sh.appendChild(alt); }
   ov.appendChild(sh);
@@ -11901,7 +12451,8 @@ async function ndOpenPendingQuestion() {
           icon: "🔒",
           title: "العضوية غير مفعّلة",
           body: ["هذا السؤال متاح بعد تفعيل العضوية، فتواصل مع فريق OOC لتفعيلها."],
-          primary: "متابعة"
+          primary: "متابعة",
+          contact: { place: "locked" } // (10.0) قاعدة التواصل
         });
       }
       return false;
@@ -12602,6 +13153,44 @@ function countAdminFail() {
   return false;
 }
 
+// (10.0) بند 49: الاختصار المخفي (قرار صاحب المشروع 4/10، ومكتوب في قسم "اختصارات" في لوحة الأدمن): 5 لمسات ورا بعض
+// (فاصل 1.6 ثانية بالكتير زي المدخل المخفي) على سطر رقم الإصدار = تحديث البنك على الجهاز ده لمستوى اللي داس (الزائر أول 10
+// في كل فولدر، وغير المفعّل أول 20، والمفعّل كامل). محتاج نت، والبنك القديم بيفضل لحد ما الجديد يوصل كامل، وطلب واحد في نفس الوقت.
+const ND_RELOAD_TEXTS = {
+  busy: "جارٍ تحديث الأسئلة على هذا الجهاز…",
+  ok: "تم تحديث الأسئلة على هذا الجهاز.",
+  fail: "تعذّر تحديث الأسئلة الآن. تحقّق من الاتصال بالإنترنت ثم حاول مرة أخرى."
+};
+let ndReloadBusy = false;
+async function ndBankReloadShortcut() {
+  if (ndReloadBusy || !window.QB || !QB.reload) return;
+  if (navigator.onLine === false) { showToast(ND_RELOAD_TEXTS.fail, 4000); return; }
+  ndReloadBusy = true;
+  showToast(ND_RELOAD_TEXTS.busy, 10 * 60 * 1000);
+  try {
+    const r = await QB.reload();
+    if (r && r.ok) showToast(ND_RELOAD_TEXTS.ok, 3500);
+    else { console.warn("[qbank] reload", r && (r.offline ? "offline" : (r.error && r.error.message))); showToast(ND_RELOAD_TEXTS.fail, 4000); }
+  } catch (e) {
+    console.warn("[qbank] reload", e && e.message);
+    showToast(ND_RELOAD_TEXTS.fail, 4000);
+  } finally {
+    ndReloadBusy = false;
+  }
+}
+function setupBankReloadShortcut() {
+  const el = document.getElementById("profileVersionLine");
+  if (!el) return;
+  const NEEDED = 5, MAX_GAP_MS = 1600; // زي المدخل المخفي
+  let n = 0, last = 0;
+  el.addEventListener("click", () => {
+    const now = Date.now();
+    n = (last && now - last <= MAX_GAP_MS) ? n + 1 : 1;
+    last = now;
+    if (n >= NEEDED) { n = 0; last = 0; ndBankReloadShortcut(); }
+  });
+}
+
 function setupAdminEntry() {
   const wOnline = document.getElementById("agWordOnline");
   const wOphth = document.getElementById("agWordOphthalmology");
@@ -12947,7 +13536,7 @@ async function ndDeviceInfo() {
   const installed = !!((window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone);
   return {
     device: model || "", os, browser, installed,
-    app_version: String(APP_VERSION),
+    app_version: APP_VERSION_LABEL, // (10.0) "10.0" مش "10"
     screen: `${window.screen.width}×${window.screen.height}`,
     lite: document.documentElement.classList.contains("lite"),
     member_no: (typeof memberNo !== "undefined" && memberNo) || "",
@@ -13160,10 +13749,14 @@ const CONTACT_PLACES = [
   { key: "trial", label: "⏳ انتهاء الفترة التجريبية" },
   { key: "update", label: "🔄 التحديث الإجباري" },
   { key: "profile", label: "👤 «تواصل معنا» في الملف الشخصي" },
+  // (10.0) قاعدة التواصل (قرار صاحب المشروع 5/10)
+  { key: "account", label: "ℹ️ رسالة «تحديث الحساب»" },
+  { key: "locked", label: "🔒 «العضوية غير مفعّلة» لرابط سؤال" },
+  { key: "error", label: "⚠️ صندوق «حدث خطأ»" },
 ];
 const DEFAULT_CONTACTS = [
-  { id: "messenger", emoji: "💬", label: "Messenger", url: "https://m.me/6.6.4.ooc", active: true, places: ["feedback", "trial", "update", "profile"] },
-  { id: "telegram", emoji: "✈️", label: "Telegram", url: "http://t.me/oocadmin3", active: true, places: ["feedback", "trial", "update", "profile"] },
+  { id: "messenger", emoji: "💬", label: "Messenger", url: "https://m.me/6.6.4.ooc", active: true, places: ["feedback", "trial", "update", "profile", "account", "locked", "error"] },
+  { id: "telegram", emoji: "✈️", label: "Telegram", url: "http://t.me/oocadmin3", active: true, places: ["feedback", "trial", "update", "profile", "account", "locked", "error"] },
 ];
 const CONTACT_CACHE_KEY = "nd_contacts_v1";
 let contactChannels = (() => {
@@ -13184,8 +13777,14 @@ function contactBrandClass(c) {
 function renderContactButtons(box) {
   const place = box.dataset.place;
   const list = channelsFor(place);
-  const text = (c) => place === "update" ? `تواصل عبر ${c.label} للتحديث` : place === "trial" ? `تواصل عبر ${c.label}` : c.label;
-  box.innerHTML = list.map(c =>
+  const text = (c) => place === "update" ? `تواصل عبر ${c.label} للتحديث` : place === "profile" ? c.label : `تواصل عبر ${c.label}`;
+  // (10.0) قاعدة التواصل: إيميل العضو بزرار نسخ (انتهاء التجربة ليها صندوقها من قبل كده). data-email = إيميل محفوظ للمكان
+  // (رسالة المسح بعد الخروج)، ولو فاضي مفيش إيميل. ولو مفيش وسائل للمكان، الصندوق كله مستخبي.
+  const em = box.dataset.email != null ? box.dataset.email : ((!isGuest && currentUserEmail) || "");
+  const emailRow = (em && list.length && place !== "trial")
+    ? `<div class="trial-email-box nd-email-box"><span>${ndEscape(em)}</span><button type="button" class="trial-email-copy nd-email-copy" data-copy="${ndEscape(em)}">📋 نسخ</button></div>`
+    : "";
+  box.innerHTML = emailRow + list.map(c =>
     `<a class="profile-contact-btn ${contactBrandClass(c)}" href="${ndEscape(c.url)}" target="_blank" rel="noopener"><span>${ndEscape(c.emoji || "🔗")}</span><span>${ndEscape(text(c))}</span></a>`).join("");
   box.hidden = !list.length;
   if (place === "update") { const h = document.getElementById("forceUpdateContactHint"); if (h) h.hidden = !list.length; }
@@ -13200,6 +13799,27 @@ function renderFeedbackDirectButtons() {
   wrap.innerHTML = channelsFor("feedback").map(c =>
     `<button type="button" class="fb-direct-btn ${contactBrandClass(c)}" data-href="${ndEscape(c.url)}">${ndEscape(c.emoji || "🔗")} ${ndEscape(c.label)}</button>`).join("");
 }
+function ndRenderContactPlace(place) {
+  document.querySelectorAll(`.contact-btns[data-place="${place}"]`).forEach(renderContactButtons);
+}
+function ndCopyText(t) {
+  t = String(t || "");
+  try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(() => {}); } catch (e) {}
+  try { // احتياطي زي نسخ إيميل انتهاء التجربة (من غير اتصال آمن)
+    const ta = document.createElement("textarea");
+    ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    ta.remove();
+  } catch (e) { console.warn("[contact] copy", e && e.name); }
+}
+document.addEventListener("click", (ev) => {
+  const b = ev.target && ev.target.closest && ev.target.closest(".nd-email-copy");
+  if (!b) return;
+  ndCopyText(b.dataset.copy);
+  b.textContent = "✅ تم النسخ";
+  setTimeout(() => { b.textContent = "📋 نسخ"; }, 1500);
+});
 function renderAllContactButtons() {
   document.querySelectorAll(".contact-btns").forEach(renderContactButtons);
   renderFeedbackDirectButtons();
@@ -13638,6 +14258,7 @@ async function handleSignup() {
 
   isGuest = false;
   currentUserId = userId;
+  ndTicketMem = null; // (10.0) تذكرة البنك للحساب ده بس
   currentUserEmail = email;
   currentUserTrialStart = Date.now();
   currentUserApproved = false;
@@ -13648,6 +14269,8 @@ async function handleSignup() {
   // مهم: بدّل صندوق التخزين المحلي لهذا الحساب بالذات — عشان نقاطه وهيستوري
   // أسئلته ما تتشاركش مع أي حساب تاني كان شغال على نفس الجهاز ده قبل كده
   await switchStorageNamespaceForCurrentUser();
+  ndBankAfterSwitch("member"); // (10.0) مستوى الحساب الجديد من التذكرة
+  ndAutoRefreshResume(); // (10.0) بند 76: لو الخروج اللي قبله وقّفه (ومن غيرها مانناديهاش، (ب) 6)
   // حساب جديد تمامًا — لازم يبدأ نضيف، مش وارث بيانات حساب تاني كان شغال على الجهاز ده
   displayName = "Dr. You";
   memberNo = null;
@@ -13693,6 +14316,7 @@ async function handleLogin() {
 
   isGuest = false;
   currentUserId = userId;
+  ndTicketMem = null; // (10.0) تذكرة البنك للحساب ده بس
   currentUserEmail = email;
   currentUserTrialStart = profile ? new Date(profile.trial_started_at).getTime() : Date.now();
   currentUserApproved = profile ? profile.admin_approved : false;
@@ -13704,6 +14328,8 @@ async function handleLogin() {
   // مهم: بدّل صندوق التخزين المحلي لهذا الحساب — عشان نقاطه وهيستوري أسئلته
   // ما تتشاركش مع أي حساب تاني كان شغال على نفس الجهاز قبل كده
   await switchStorageNamespaceForCurrentUser();
+  ndBankAfterSwitch("member"); // (10.0) مستوى الحساب الجديد من التذكرة
+  ndAutoRefreshResume(); // (10.0) بند 76: لو الخروج اللي قبله وقّفه (ومن غيرها مانناديهاش، (ب) 6)
   // نرجّع الاسم/اللون للافتراضي أو لقيمة الحساب ده بالظبط
   displayName = (profile && profile.display_name) || "Dr. You";
   memberNo = (profile && profile.member_no) || null;
@@ -13744,10 +14370,12 @@ async function handleForgotPassword() {
 async function handleContinueAsGuest() {
   isGuest = true;
   currentUserId = null;
+  ndTicketMem = null; // (10.0)
   currentUserRole = "member";
   currentUserPermissions = [];
   currentUserIsPrimaryOwner = false;
   await switchStorageNamespaceForCurrentUser();
+  ndBankAfterSwitch("guest"); // (10.0)
   goToMotivation(); // (و) الزائر بيشوف رسالة الزيارة الأول
 }
 
@@ -13767,6 +14395,7 @@ async function handleLogout() {
   // (9.5) بند 68: الشبكة في الخلفية بنفس الترتيب القديم، وصفحة الدخول بعد الجزء المحلي علطول (قبل كده لحد 5.5 ثانية على نت بطيء)
   // قبل الخروج: افصل الجهاز ده عن إشعارات الحساب اللي خارج (عشان إشعاراته متوصلش لجهاز مش داخل بيه)
   // الاشتراك نفسه بيفضل في المتصفح، فلما أي حساب يدخل تاني بيتسجّل له تلقائيًا
+  try { localStorage.setItem(ND_LOGOUT_PENDING_KEY, String(Date.now())); } catch (e) {} // (10.0) بند 76
   const ndBg = (async () => {
     await ndLogoutSaveRun(ndSave); // (9.8) ملحوظة 85: الحفظ الأول، والجلسة لسه موجودة (مابترميش خطأ)
     try {
@@ -13780,7 +14409,14 @@ async function handleLogout() {
       // (9.5) قرار صاحب المشروع 2/10: scope local = جلسة الجهاز ده بس. من غيرها المكتبة بتقفل جلسات الحساب على كل الأجهزة
       // (global)، فالخروج من شاشة "حسابك مفتوح الآن على جهاز آخر" كان بيخرّج الجهاز الشغال كمان لما جلسته تتجدد.
       try { await supabaseClient.auth.signOut({ scope: "local" }); } catch (e) { /* من غير نت، كمّل واعمل logout محلي برضو */ }
+      // (10.0) بند 76: signOut من غير نت بيرجّع خطأ من غير ما يمسح الجلسة المحفوظة ← تتشال هنا، والتجديد التلقائي يقف
+      // عشان مايرجّعهاش (وبيشتغل تاني مع أي دخول ناجح: ndBankAfterSwitch("member") جنب startAutoRefresh)
+      if (hasStoredAuthSession()) {
+        ndDropStoredSession();
+        try { supabaseClient.auth.stopAutoRefresh(); ndAutoRefreshStopped = true; } catch (e) {}
+      }
     }
+    try { localStorage.removeItem(ND_LOGOUT_PENDING_KEY); } catch (e) {}
   })();
   const ndDone = ndBg.then(() => {
     if (ndLogoutPending === ndDone) ndLogoutPending = null;
@@ -13791,6 +14427,7 @@ async function handleLogout() {
 
   isGuest = true;
   currentUserId = null;
+  ndTicketMem = null; // (10.0)
   currentUserEmail = null;
   clearAccountCache(); // (ج) خرج بنفسه ← منفتحش بحسابه من غير نت بعد كده
   ndRaceForget(); // (9.8) بند 42، قرار 3/10: آخر ترتيب محفوظ بيتمسح مع الخروج (ومعاه كاش اللوحة)
@@ -13804,6 +14441,7 @@ async function handleLogout() {
   saveAdminUnlocked(false);
 
   await switchStorageNamespaceForCurrentUser(); // (9.5) بند 68: signOut بقى في الخلفية (ndLogoutPending)
+  ndBankAfterSwitch("guest"); // (10.0)
 
   navigate("authGate");
 }
@@ -14556,7 +15194,7 @@ function wireCriticalGlobalUI() {
         const failBlock = document.getElementById("forceUpdateFailBlock");
         const diagText = document.getElementById("forceUpdateDiagText");
         if (failBlock) failBlock.style.display = "block";
-        if (diagText) diagText.value = `OOC New Day — تأخر التحديث\nالنسخة الحالية: ${APP_VERSION}\nحجم الشاشة: ${window.innerWidth}×${window.innerHeight}\nالمتصفح: ${navigator.userAgent}\nالتوقيت: ${new Date().toISOString()}`;
+        if (diagText) diagText.value = `OOC New Day — تأخر التحديث\nالنسخة الحالية: ${APP_VERSION_LABEL}\nحجم الشاشة: ${window.innerWidth}×${window.innerHeight}\nالمتصفح: ${navigator.userAgent}\nالتوقيت: ${new Date().toISOString()}`;
       }, 10000);
 
       let done = false;
@@ -14692,6 +15330,7 @@ function ndOfflineAccountForStoredSession() {
 function applyAccountCache(c) {
   isGuest = false;
   currentUserId = c.id;
+  ndTicketMem = null; // (10.0)
   currentUserEmail = c.email || null;
   currentUserRole = c.role || "member";
   currentUserPermissions = Array.isArray(c.permissions) ? c.permissions : [];
@@ -14894,6 +15533,7 @@ async function init() {
       if (session && session.user) {
         isGuest = false;
         currentUserId = session.user.id;
+        ndTicketMem = null; // (10.0)
         currentUserEmail = session.user.email;
         const { data: profile } = await withTimeout(supabaseClient.from("users").select(ND_PROFILE_COLS).eq("id", currentUserId).single(), 5000, "بيانات الحساب").catch(() => ({ data: null })); // (9.0) بند 46
         if (profile) {
@@ -14917,8 +15557,20 @@ async function init() {
     const c = readAccountCache();
     if (c && hasStoredAuthSession()) { applyAccountCache(c); offlineAccountMode = true; }
   }
+  if (isGuest) ndBankAfterSwitch("guest"); // (10.0) اتفتح زائر وعلى الجهاز بنك أكبر (نسخة قديمة أو خروج ماكملش)
   // ب3: لو التطبيق اتفتح من الضغط على إشعار ← افتح الرسالة علطول (من غير ما نستنى باقي التحميل)
   ndAuthResolved = true;
+  // (10.0) بند 52: رسالة المسح بعد إعادة التحميل، ثم السؤال عن الأوامر (بعد الفتح، ومع رجوع النت والتطبيق مفتوح)
+  try {
+    const wr = sessionStorage.getItem(ND_WIPE_MSG_KEY);
+    if (wr) {
+      sessionStorage.removeItem(ND_WIPE_MSG_KEY);
+      let w = null; try { w = JSON.parse(wr); } catch (e) {}
+      if (w && ND_WIPE_TEXTS[w.k]) ndWipeShowMsg(w.k, typeof w.e === "string" ? w.e : "");
+    }
+  } catch (e) {}
+  if ("requestIdleCallback" in window) requestIdleCallback(() => ndWipeCheck(), { timeout: 5000 }); else setTimeout(() => ndWipeCheck(), 2000);
+  window.addEventListener("online", () => ndWipeCheck());
   if (typeof tryOpenPendingNotif === "function") tryOpenPendingNotif(0);
   if (typeof ndTryPendingQuestion === "function") ndTryPendingQuestion(0); // (8.9) بند 27: رابط سؤال مباشر
   refreshMotivData(); // (و) الرسائل التحفيزية وجمل الترحيب (من غير ما نستنى)
@@ -15023,6 +15675,7 @@ async function init() {
   setupOnboarding();
   setupProfileEditing();
   setupAdminEntry();
+  setupBankReloadShortcut(); // (10.0) بند 49
   setupAdminPasswordOverlay();
   // (9.1) بند 39 ج: setupAdminForms بقى بيتشغّل من admin.js بعد تحميله بس، مش مع فتح التطبيق لكل طالب
   setupAuthScreens();
